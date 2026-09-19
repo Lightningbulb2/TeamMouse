@@ -1,0 +1,109 @@
+SharedMouse2026 -- TODO
+
+
+DONE in v6 (hotfix)
+====================
+
+Crash on a large cursor jump
+    "attempt to perform arithmetic on field 't' (a nil value)" / "Attempt to
+    set attribute 't' on nil". Root cause: the sample buffer's jump-reset
+    cleared entries by assigning nil, which desyncs the hidden 'n' field that
+    Lua 5.0's table.insert/remove/getn maintain on a table -- table.getn then
+    reported a stale count, and table.remove handed back nil off an array it
+    still considered non-empty. Fixed by managing the buffer with an explicit
+    count and direct indexing, never those three functions. The test mock now
+    emulates 5.0's table semantics, so this class of bug is caught going
+    forward rather than only visible on 5.1.
+
+Team colour mode
+    ArmyInfo.color returning names like 'RoyalBlue' instead of hex now
+    resolves through the game's own colour parser and a nearest-match against
+    the shipped palette, rather than falling through to the neutral arrow.
+
+ui_only
+    Flipped to true -- nothing here touches the sim except the optional
+    replay codec, which goes through UserUnit the same way the base game's own
+    rename does.
+
+Hardening pass
+    OnReceive wrapped in pcall and every wire field validated (type, range,
+    NaN) so a single bad packet can no longer abort gamemain.ReceiveChat for
+    every mod. Local mouse position validated before transmit. Frame driver no
+    longer permanently disables itself after a handful of errors. Recipient
+    list checks both index and nickname before excluding a client as hostile.
+    Stuck selection-drag flag now self-clears. Zoom persists across a trip
+    into the HUD. A view smaller than the HUD panel no longer fights its own
+    clamp. The frame loop checks a visual's view is still the live one before
+    projecting against it. Disabling Hud.Enabled falls back to the plain
+    cursor cleanly.
+
+
+DONE in v5
+==========
+
+FIX splitscreen
+    Was caused by a `return` inside the inner loop of SyncViews, so only the
+    first view of the first player was ever handled. Now driven off
+    worldview.GetWorldViews(), which is the live registry, so it picks up any
+    number of views automatically. Cursors are culled to their own view's
+    bounds so they no longer bleed across the divider.
+
+improve smoothness and slowdown
+    Smoothness: timestamped sample buffer with a 130ms render delay,
+    interpolating between the two samples that bracket the target time,
+    instead of easing toward whatever arrived most recently.
+    Slowdown: the per-frame LayoutHelpers.AtLeftTopIn calls were the cost --
+    they rebuild closures on every call. Cursors are now pinned anchors whose
+    children are laid out once, and the whole mod runs on a single frame
+    callback rather than one per cursor.
+
+cursor scaling and transparency to indicate zoom level, as well as
+transparency when you get close to someone else's cursor
+    Scale is (their zoom / your zoom) ^ 0.5, clamped, so a teammate working
+    over a wider area than your view covers draws larger. Cursors also fade as
+    your own camera pulls back, and fade toward 12% as your mouse approaches
+    them. All of it is in Config.Zoom and Config.Proximity.
+
+show building schematic someone is holding or at least icon
+    The unit's build icon with a coloured ghost frame around it, next to their
+    cursor. Config.Build.
+
+keep cursor active while selecting and drawing, consider showing when someone
+is selecting
+    Updates now stream continuously for the duration of a drag rather than
+    being suppressed by the movement threshold, and a pulsing ring shows on
+    the receiving end. Config.Selection.
+
+EXPERIMENTAL: HUD indication
+    Implemented as a stylised panel -- see Config.Hud and the note below.
+
+EXPERIMENTAL: encode mouse coordinates onto the commander name
+    Codec implemented, round-trip tested, and wired to both the write and read
+    paths. Off by default: Config.ReplayCodec.Enabled.
+
+
+STILL OPEN
+==========
+
+Replay coverage for non-focused armies
+    During playback, GetArmyAvatars only reaches the army you are currently
+    observing. Other armies' commanders are only readable if you have moused
+    over them, which hook/unitview.lua caches. There is no UI-side way to
+    enumerate units by category, so full coverage would need a different
+    carrier than the commander -- possibly encoding into a unit you are
+    guaranteed to be able to reach, or accepting per-army partial data.
+
+Replay codec cost
+    Renaming the ACU at the send rate is real sim traffic. If this is going to
+    be used seriously it wants a lower write rate than the display rate, plus
+    some thought about whether a delta encoding would cut the payload down.
+
+Painting / drawing
+    The base game already shares the painting canvas between teammates, so
+    there was nothing to add. Worth confirming the selection-drag hook does
+    not interfere with a brush stroke in practice.
+
+HUD panel fidelity
+    The panel is a silhouette, not a capture -- see the note in config.lua.
+    'full' detail could track the player's actual chosen layout if their
+    layout name were added to the payload, which would be cheap.

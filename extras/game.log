@@ -1,0 +1,1577 @@
+info: Client version: 2026.4.1
+info: Game version: 3836
+info: Game type: faf
+info: Process - priority set to: 'high'
+info: Process - affinity set to: 65532
+info: Loading custom vault path: C:/ProgramData/FAForever/user/My Games/Gas Powered Games/Supreme Commander Forged Alliance
+info: Found mod icons in calibershqicons, mounted at: /textures/ui/common/game/strategicicons/calibershqicons
+info: Found mod icons in calibersmassicons, mounted at: /textures/ui/common/game/strategicicons/calibersmassicons
+info: Found mod icons in calibersnuke, mounted at: /textures/ui/common/game/strategicicons/calibersnuke
+info: Mounting sounds in mod: pings
+info: Found mod icons in redux strategic icons large, mounted at: /textures/ui/common/game/strategicicons/redux strategic icons large
+info: mounting content: effects.nx2
+info: mounting content: env.nx2
+info: mounting content: etc.nx2
+info: mounting content: loc.nx2
+info: mounting content: lua.nx2
+info: mounting content: meshes.nx2
+info: mounting content: projectiles.nx2
+info: mounting content: textures.nx2
+info: mounting content: units.nx2
+info: mounting content: effects.scd
+info: mounting content: env.scd
+info: mounting content: loc_US.scd
+info: mounting content: meshes.scd
+info: mounting content: mods.scd
+info: mounting content: objects.scd
+info: mounting content: projectiles.scd
+info: mounting content: props.scd
+info: mounting content: skins.scd
+info: mounting content: textures.scd
+info: mounting content: units.scd
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\10_ultimate_you_shall_not_pass.v0004', mounted as '/maps/10_ultimate_you_shall_not_pass.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\10_ultimate_you_shall_not_pass.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\4v4 acu wars.v0001', mounted as '/maps/4v4 acu wars.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\4v4 acu wars.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\8 - badlands_v4.v0001', mounted as '/maps/8 - badlands_v4.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\8 - badlands_v4.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\abrogation.v0004', mounted as '/maps/abrogation.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\abrogation.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_adrastea.v0004', mounted as '/maps/adaptive_adrastea.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_adrastea.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_aloren.v0002', mounted as '/maps/adaptive_aloren.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_aloren.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_argon.v0002', mounted as '/maps/adaptive_argon.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_argon.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_azurean_isles.v0017', mounted as '/maps/adaptive_azurean_isles.v0017/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_azurean_isles.v0017"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_canis_river.v0002', mounted as '/maps/adaptive_canis_river.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_canis_river.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_fangtooth_islands.v0004', mounted as '/maps/adaptive_fangtooth_islands.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_fangtooth_islands.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_flooded_tabula_rasa.v0002', mounted as '/maps/adaptive_flooded_tabula_rasa.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_flooded_tabula_rasa.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_hardshield_oasis.v0004', mounted as '/maps/adaptive_hardshield_oasis.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_hardshield_oasis.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_hilly_plateau.v0003', mounted as '/maps/adaptive_hilly_plateau.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_hilly_plateau.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_kusoge.v0003', mounted as '/maps/adaptive_kusoge.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_kusoge.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_maridia.v0003', mounted as '/maps/adaptive_maridia.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_maridia.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_metir.v0002', mounted as '/maps/adaptive_metir.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_metir.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_millennium.v0006', mounted as '/maps/adaptive_millennium.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_millennium.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_monument_valley.v0005', mounted as '/maps/adaptive_monument_valley.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_monument_valley.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_pillars_of_sand.v0001', mounted as '/maps/adaptive_pillars_of_sand.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_pillars_of_sand.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_point_of_reason.v0002', mounted as '/maps/adaptive_point_of_reason.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_point_of_reason.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_albus.v0007', mounted as '/maps/adaptive_project_albus.v0007/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_albus.v0007"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_dust.v0002', mounted as '/maps/adaptive_project_dust.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_dust.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_luminary_maxima.v0007', mounted as '/maps/adaptive_project_luminary_maxima.v0007/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_project_luminary_maxima.v0007"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_sin.v0004', mounted as '/maps/adaptive_sin.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_sin.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_skadi.v0002', mounted as '/maps/adaptive_skadi.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_skadi.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_step_forward.v0002', mounted as '/maps/adaptive_step_forward.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_step_forward.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_terminus_of_hope.v0001', mounted as '/maps/adaptive_terminus_of_hope.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_terminus_of_hope.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_tourmaline.v0004', mounted as '/maps/adaptive_tourmaline.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_tourmaline.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_twin_rivers.v0002', mounted as '/maps/adaptive_twin_rivers.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\adaptive_twin_rivers.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\africa.v0005', mounted as '/maps/africa.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\africa.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ambush_pass_8v8.v0001', mounted as '/maps/ambush_pass_8v8.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ambush_pass_8v8.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\anchor.v0011', mounted as '/maps/anchor.v0011/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\anchor.v0011"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\arcane.v0001', mounted as '/maps/arcane.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\arcane.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\arctic_refuge_-_faf_version.v0002', mounted as '/maps/arctic_refuge_-_faf_version.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\arctic_refuge_-_faf_version.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_rich_huge.v0004', mounted as '/maps/astro_crater_battles_4x4_rich_huge.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_rich_huge.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_v2-2_teamplay_ai.v0001', mounted as '/maps/astro_crater_battles_4x4_v2-2_teamplay_ai.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_v2-2_teamplay_ai.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_v2_teamplay_ai.v0001', mounted as '/maps/astro_crater_battles_4x4_v2_teamplay_ai.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_4x4_v2_teamplay_ai.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_5vs5.v0001', mounted as '/maps/astro_crater_battles_5vs5.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\astro_crater_battles_5vs5.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\bbf_blacksundefense', mounted as '/maps/bbf_blacksundefense/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\bbf_blacksundefense"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\coalition hq.v0006', mounted as '/maps/coalition hq.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\coalition hq.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\corona', mounted as '/maps/corona/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\corona"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\corvana chasm v2', mounted as '/maps/corvana chasm v2/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\corvana chasm v2"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_iskellian_coast_4v4_supcom2.v0002', mounted as '/maps/crude_iskellian_coast_4v4_supcom2.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_iskellian_coast_4v4_supcom2.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_iskellian_coast_5v5_supcom2.v0002', mounted as '/maps/crude_iskellian_coast_5v5_supcom2.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_iskellian_coast_5v5_supcom2.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_van_horne_core_3v3_supcom2.v0001', mounted as '/maps/crude_van_horne_core_3v3_supcom2.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_van_horne_core_3v3_supcom2.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_van_horne_core_5v5_supcom2.v0003', mounted as '/maps/crude_van_horne_core_5v5_supcom2.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\crude_van_horne_core_5v5_supcom2.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\deadlock.v0015', mounted as '/maps/deadlock.v0015/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\deadlock.v0015"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desert_push_40x5.v0006', mounted as '/maps/desert_push_40x5.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desert_push_40x5.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desolatia1v1.v0002', mounted as '/maps/desolatia1v1.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desolatia1v1.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desolatia3v3.v0004', mounted as '/maps/desolatia3v3.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\desolatia3v3.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\distortion.v0018', mounted as '/maps/distortion.v0018/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\distortion.v0018"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ditch reborn.v0001', mounted as '/maps/ditch reborn.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ditch reborn.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_adaptive.v0014', mounted as '/maps/dualgap_adaptive.v0014/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_adaptive.v0014"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_adoptive.v0021', mounted as '/maps/dualgap_adoptive.v0021/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_adoptive.v0021"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_seven_adaptive.v0001', mounted as '/maps/dualgap_seven_adaptive.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\dualgap_seven_adaptive.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\emeraldcraterredux.v0001', mounted as '/maps/emeraldcraterredux.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\emeraldcraterredux.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\endymion.v0003', mounted as '/maps/endymion.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\endymion.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\enfilade.v0007', mounted as '/maps/enfilade.v0007/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\enfilade.v0007"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\eonnacia.v0035', mounted as '/maps/eonnacia.v0035/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\eonnacia.v0035"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\esais_vengeance_4v4.v0007', mounted as '/maps/esais_vengeance_4v4.v0007/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\esais_vengeance_4v4.v0007"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\esgaroths_ruins_-_faf_version.v0002', mounted as '/maps/esgaroths_ruins_-_faf_version.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\esgaroths_ruins_-_faf_version.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\eye_of_the_storm_-_faf_version.v0001', mounted as '/maps/eye_of_the_storm_-_faf_version.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\eye_of_the_storm_-_faf_version.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_fort_clarke_assault.v0019', mounted as '/maps/faf_coop_fort_clarke_assault.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_fort_clarke_assault.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_havens_invasion.v0005', mounted as '/maps/faf_coop_havens_invasion.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_havens_invasion.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_novax_station_assault.v0011', mounted as '/maps/faf_coop_novax_station_assault.v0011/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_novax_station_assault.v0011"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_blockade.v0001', mounted as '/maps/faf_coop_operation_blockade.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_blockade.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_blockade.v0003', mounted as '/maps/faf_coop_operation_blockade.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_blockade.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_golden_crystals.v0001', mounted as '/maps/faf_coop_operation_golden_crystals.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_golden_crystals.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_holy_raid.v0001', mounted as '/maps/faf_coop_operation_holy_raid.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_holy_raid.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_ioz_shavoh_kael.v0002', mounted as '/maps/faf_coop_operation_ioz_shavoh_kael.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_ioz_shavoh_kael.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rebel's_rest.v0001', mounted as '/maps/faf_coop_operation_rebel's_rest.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rebel's_rest.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_red_revenge.v0001', mounted as '/maps/faf_coop_operation_red_revenge.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_red_revenge.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rescue.v0005', mounted as '/maps/faf_coop_operation_rescue.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rescue.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rescue.v0006', mounted as '/maps/faf_coop_operation_rescue.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_rescue.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0011', mounted as '/maps/faf_coop_operation_tha_atha_aez.v0011/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0011"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0013', mounted as '/maps/faf_coop_operation_tha_atha_aez.v0013/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0013"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0014', mounted as '/maps/faf_coop_operation_tha_atha_aez.v0014/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tha_atha_aez.v0014"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tight_spot.v0001', mounted as '/maps/faf_coop_operation_tight_spot.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tight_spot.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tight_spot.v0002', mounted as '/maps/faf_coop_operation_tight_spot.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_tight_spot.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_trident.v0001', mounted as '/maps/faf_coop_operation_trident.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_trident.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_uhthe_thuum_qai.v0003', mounted as '/maps/faf_coop_operation_uhthe_thuum_qai.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_uhthe_thuum_qai.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_uhthe_thuum_qai.v0004', mounted as '/maps/faf_coop_operation_uhthe_thuum_qai.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_uhthe_thuum_qai.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_yath_aez.v0003', mounted as '/maps/faf_coop_operation_yath_aez.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_yath_aez.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_yath_aez.v0004', mounted as '/maps/faf_coop_operation_yath_aez.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_operation_yath_aez.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_prothyon_16.v0019', mounted as '/maps/faf_coop_prothyon_16.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_prothyon_16.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_theta_civilian_rescue.v0014', mounted as '/maps/faf_coop_theta_civilian_rescue.v0014/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_theta_civilian_rescue.v0014"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_theta_civilian_rescue.v0015', mounted as '/maps/faf_coop_theta_civilian_rescue.v0015/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\faf_coop_theta_civilian_rescue.v0015"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\fields of great phoenix', mounted as '/maps/fields of great phoenix/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\fields of great phoenix"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\finns_revenge_4v4_edition.v0003', mounted as '/maps/finns_revenge_4v4_edition.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\finns_revenge_4v4_edition.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\floralis.v0003', mounted as '/maps/floralis.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\floralis.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\forgotten_archipelago.v0012', mounted as '/maps/forgotten_archipelago.v0012/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\forgotten_archipelago.v0012"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\four-corners_16_player.v0003', mounted as '/maps/four-corners_16_player.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\four-corners_16_player.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\frithen.v0004', mounted as '/maps/frithen.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\frithen.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\funeral_plains.v0001', mounted as '/maps/funeral_plains.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\funeral_plains.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\geothermal_borehole.v0003', mounted as '/maps/geothermal_borehole.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\geothermal_borehole.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\geothermal_borehole.v0004', mounted as '/maps/geothermal_borehole.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\geothermal_borehole.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\hollow.v0005', mounted as '/maps/hollow.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\hollow.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\hollow4players.v0001', mounted as '/maps/hollow4players.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\hollow4players.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\horizons.v0014', mounted as '/maps/horizons.v0014/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\horizons.v0014"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\huracan.v0002', mounted as '/maps/huracan.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\huracan.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ice_valley.v0005', mounted as '/maps/ice_valley.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ice_valley.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\iskellian_coast.v0002', mounted as '/maps/iskellian_coast.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\iskellian_coast.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\juventae_chasma.v0001', mounted as '/maps/juventae_chasma.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\juventae_chasma.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\kappa.v0031', mounted as '/maps/kappa.v0031/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\kappa.v0031"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lena_river.v0008', mounted as '/maps/lena_river.v0008/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lena_river.v0008"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lena_river.v0009', mounted as '/maps/lena_river.v0009/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lena_river.v0009"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\loki_-_faf_version.v0004', mounted as '/maps/loki_-_faf_version.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\loki_-_faf_version.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lost_archipelago.v0005', mounted as '/maps/lost_archipelago.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lost_archipelago.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lost_wisdom.v0002', mounted as '/maps/lost_wisdom.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lost_wisdom.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lush_na.v0002', mounted as '/maps/lush_na.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\lush_na.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\madsea20x20.v0032', mounted as '/maps/madsea20x20.v0032/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\madsea20x20.v0032"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\mangrove_delta.v0002', mounted as '/maps/mangrove_delta.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\mangrove_delta.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\massless v3', mounted as '/maps/massless v3/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\massless v3"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\miracle', mounted as '/maps/miracle/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\miracle"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\mirage.v0003', mounted as '/maps/mirage.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\mirage.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\nomadiah.v0001', mounted as '/maps/nomadiah.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\nomadiah.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\odda.v0007', mounted as '/maps/odda.v0007/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\odda.v0007"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\open waters v2.v0001', mounted as '/maps/open waters v2.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\open waters v2.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ophius.v0002', mounted as '/maps/ophius.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\ophius.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\osiris.v0006', mounted as '/maps/osiris.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\osiris.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\project_situs_impactae.v0006', mounted as '/maps/project_situs_impactae.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\project_situs_impactae.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\project_tabula.v0006', mounted as '/maps/project_tabula.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\project_tabula.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\saskiya.v0005', mounted as '/maps/saskiya.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\saskiya.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\saskiya_-_less_mass_rework.v0003', mounted as '/maps/saskiya_-_less_mass_rework.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\saskiya_-_less_mass_rework.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_coalition_hq_3v1_v2.v0002', mounted as '/maps/sc2_coalition_hq_3v1_v2.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_coalition_hq_3v1_v2.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_etched_desert.v0002', mounted as '/maps/sc2_etched_desert.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_etched_desert.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_mirror_island_v2.v0003', mounted as '/maps/sc2_mirror_island_v2.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\sc2_mirror_island_v2.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a01.v0017', mounted as '/maps/scca_coop_a01.v0017/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a01.v0017"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a02.v0022', mounted as '/maps/scca_coop_a02.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a02.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a03.v0022', mounted as '/maps/scca_coop_a03.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a03.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a05.v0023', mounted as '/maps/scca_coop_a05.v0023/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a05.v0023"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a06.v0022', mounted as '/maps/scca_coop_a06.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_a06.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0020', mounted as '/maps/scca_coop_e01.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0021', mounted as '/maps/scca_coop_e01.v0021/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0021"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0022', mounted as '/maps/scca_coop_e01.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0023', mounted as '/maps/scca_coop_e01.v0023/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e01.v0023"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e02.v0019', mounted as '/maps/scca_coop_e02.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e02.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e02.v0020', mounted as '/maps/scca_coop_e02.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e02.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e03.v0020', mounted as '/maps/scca_coop_e03.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e03.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e03.v0022', mounted as '/maps/scca_coop_e03.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e03.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e04.v0019', mounted as '/maps/scca_coop_e04.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e04.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e04.v0021', mounted as '/maps/scca_coop_e04.v0021/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e04.v0021"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e05.v0023', mounted as '/maps/scca_coop_e05.v0023/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e05.v0023"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e06.v0019', mounted as '/maps/scca_coop_e06.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e06.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e06.v0021', mounted as '/maps/scca_coop_e06.v0021/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_e06.v0021"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r01.v0019', mounted as '/maps/scca_coop_r01.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r01.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r02.v0020', mounted as '/maps/scca_coop_r02.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r02.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r03.v0020', mounted as '/maps/scca_coop_r03.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r03.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r04.v0020', mounted as '/maps/scca_coop_r04.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r04.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r05.v0019', mounted as '/maps/scca_coop_r05.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r05.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r06.v0019', mounted as '/maps/scca_coop_r06.v0019/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scca_coop_r06.v0019"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_0130.v0001', mounted as '/maps/scmp_0130.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_0130.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_019_3v3.v0003', mounted as '/maps/scmp_019_3v3.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_019_3v3.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_019_lnox.v0001', mounted as '/maps/scmp_019_lnox.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_019_lnox.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_wild_mass_canyon.v0001', mounted as '/maps/scmp_wild_mass_canyon.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\scmp_wild_mass_canyon.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\selkie isle 5v5', mounted as '/maps/selkie isle 5v5/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\selkie isle 5v5"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\semi-drained_crystal_finns_revenge.v0002', mounted as '/maps/semi-drained_crystal_finns_revenge.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\semi-drained_crystal_finns_revenge.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\seraphim outpost ep.v0002', mounted as '/maps/seraphim outpost ep.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\seraphim outpost ep.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\setons_clutch_-_faf_version.v0004', mounted as '/maps/setons_clutch_-_faf_version.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\setons_clutch_-_faf_version.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\shrunkenisland.v0001', mounted as '/maps/shrunkenisland.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\shrunkenisland.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\small_reeeeee.v0001', mounted as '/maps/small_reeeeee.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\small_reeeeee.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\stella maris 1v1.v0001', mounted as '/maps/stella maris 1v1.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\stella maris 1v1.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\summer_duel_8v8.v0002', mounted as '/maps/summer_duel_8v8.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\summer_duel_8v8.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\supreme_risk.v0014', mounted as '/maps/supreme_risk.v0014/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\supreme_risk.v0014"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension v2', mounted as '/maps/survival_5thdimension v2/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension v2"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension.v0001', mounted as '/maps/survival_5thdimension.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension_16_player_v5.v0018', mounted as '/maps/survival_5thdimension_16_player_v5.v0018/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdimension_16_player_v5.v0018"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdim_center.v0006', mounted as '/maps/survival_5thdim_center.v0006/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_5thdim_center.v0006"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_defense_atoll.v0001', mounted as '/maps/survival_defense_atoll.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_defense_atoll.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_horde.v0005', mounted as '/maps/survival_horde.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_horde.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_horde_ee.v0021', mounted as '/maps/survival_horde_ee.v0021/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\survival_horde_ee.v0021"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\syrtis_major_-_faf_version.v0002', mounted as '/maps/syrtis_major_-_faf_version.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\syrtis_major_-_faf_version.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the cold maze v2', mounted as '/maps/the cold maze v2/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the cold maze v2"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the cold place.v0001', mounted as '/maps/the cold place.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the cold place.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the frigid maze', mounted as '/maps/the frigid maze/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the frigid maze"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\therum.v0004', mounted as '/maps/therum.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\therum.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\theta_passage_-_faf_version.v0001', mounted as '/maps/theta_passage_-_faf_version.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\theta_passage_-_faf_version.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the_drunken_beetles_dance_-_faf_version.v0005', mounted as '/maps/the_drunken_beetles_dance_-_faf_version.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\the_drunken_beetles_dance_-_faf_version.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\this_is_retarded.v0001', mounted as '/maps/this_is_retarded.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\this_is_retarded.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\tomb_guard_survival.v0003', mounted as '/maps/tomb_guard_survival.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\tomb_guard_survival.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\tourney_dome1', mounted as '/maps/tourney_dome1/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\tourney_dome1"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\turtle_rocks.v0002', mounted as '/maps/turtle_rocks.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\turtle_rocks.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\twin rivers.v0001', mounted as '/maps/twin rivers.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\twin rivers.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\uef_weapon_testing_center.v0003', mounted as '/maps/uef_weapon_testing_center.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\uef_weapon_testing_center.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\valley_of_pain.v0002', mounted as '/maps/valley_of_pain.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\valley_of_pain.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\voodoo castle v17', mounted as '/maps/voodoo castle v17/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\voodoo castle v17"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\voodoo_battle_v1_survival.v0003', mounted as '/maps/voodoo_battle_v1_survival.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\voodoo_battle_v1_survival.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wet world.v0001', mounted as '/maps/wet world.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wet world.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wheres the mass.v0001', mounted as '/maps/wheres the mass.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wheres the mass.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\where_is_the_mass_swarm_survival.v0005', mounted as '/maps/where_is_the_mass_swarm_survival.v0005/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\where_is_the_mass_swarm_survival.v0005"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winter duel6-6', mounted as '/maps/winter duel6-6/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winter duel6-6"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winters water.v0001', mounted as '/maps/winters water.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winters water.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winter_duel_8v8.v0001', mounted as '/maps/winter_duel_8v8.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\winter_duel_8v8.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wonder open 6v6 v2', mounted as '/maps/wonder open 6v6 v2/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wonder open 6v6 v2"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wonder.v0004', mounted as '/maps/wonder.v0004/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\wonder.v0004"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\woody_plains.v0001', mounted as '/maps/woody_plains.v0001/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\woody_plains.v0001"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\worldset_pacific.v0013', mounted as '/maps/worldset_pacific.v0013/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\worldset_pacific.v0013"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\world_map_ai_40x40.v0003', mounted as '/maps/world_map_ai_40x40.v0003/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\world_map_ai_40x40.v0003"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0025', mounted as '/maps/x1ca_coop_001.v0025/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0025"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0026', mounted as '/maps/x1ca_coop_001.v0026/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0026"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0029', mounted as '/maps/x1ca_coop_001.v0029/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_001.v0029"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_002.v0022', mounted as '/maps/x1ca_coop_002.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_002.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_002.v0024', mounted as '/maps/x1ca_coop_002.v0024/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_002.v0024"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_003.v0020', mounted as '/maps/x1ca_coop_003.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_003.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_003.v0023', mounted as '/maps/x1ca_coop_003.v0023/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_003.v0023"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_004.v0020', mounted as '/maps/x1ca_coop_004.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_004.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_004.v0022', mounted as '/maps/x1ca_coop_004.v0022/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_004.v0022"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_005.v0020', mounted as '/maps/x1ca_coop_005.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_005.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_006.v0020', mounted as '/maps/x1ca_coop_006.v0020/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\x1ca_coop_006.v0020"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\yemkey.v0002', mounted as '/maps/yemkey.v0002/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\yemkey.v0002"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\zombi war v4', mounted as '/maps/zombi war v4/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\maps\zombi war v4"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\advanced mini map', mounted as '/mods/advanced mini map/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\advanced mini map"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\advanced target priorities', mounted as '/mods/advanced target priorities/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\advanced target priorities"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\buildrangepreview', mounted as '/mods/buildrangepreview/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\buildrangepreview"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibershqicons', mounted as '/mods/calibershqicons/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibershqicons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibershqicons\custom-strategic-icons', mounted as '/textures/ui/common/game/strategicicons/calibershqicons/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibershqicons\custom-strategic-icons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersmassicons', mounted as '/mods/calibersmassicons/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersmassicons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersmassicons\custom-strategic-icons', mounted as '/textures/ui/common/game/strategicicons/calibersmassicons/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersmassicons\custom-strategic-icons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersnuke', mounted as '/mods/calibersnuke/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersnuke"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersnuke\custom-strategic-icons', mounted as '/textures/ui/common/game/strategicicons/calibersnuke/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\calibersnuke\custom-strategic-icons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\faf-sim-speed-balancer', mounted as '/mods/faf-sim-speed-balancer/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\faf-sim-speed-balancer"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\fafprofiler-main', mounted as '/mods/fafprofiler-main/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\fafprofiler-main"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\firvs-vetty', mounted as '/mods/firvs-vetty/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\firvs-vetty"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\iel', mounted as '/mods/iel/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\iel"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\modbootstrap', mounted as '/mods/modbootstrap/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\modbootstrap"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\newmodbootstrap', mounted as '/mods/newmodbootstrap/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\newmodbootstrap"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\personal ui waifu', mounted as '/mods/personal ui waifu/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\personal ui waifu"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\pings', mounted as '/mods/pings/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\pings"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\pings\sounds', mounted as '/sounds/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\pings\sounds"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\redux strategic icons large', mounted as '/mods/redux strategic icons large/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\redux strategic icons large"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\redux strategic icons large\custom-strategic-icons', mounted as '/textures/ui/common/game/strategicicons/redux strategic icons large/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\redux strategic icons large\custom-strategic-icons"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui', mounted as '/mods/reui/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.actionspanel', mounted as '/mods/reui.actionspanel/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.actionspanel"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.construction', mounted as '/mods/reui.construction/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.construction"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.economy', mounted as '/mods/reui.economy/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.economy"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.missilepanel', mounted as '/mods/reui.missilepanel/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.missilepanel"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.reclaim', mounted as '/mods/reui.reclaim/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.reclaim"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.score', mounted as '/mods/reui.score/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.score"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse', mounted as '/mods/sharedmouse/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse2026', mounted as '/mods/sharedmouse2026/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse2026"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremeeconomy', mounted as '/mods/supremeeconomy/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremeeconomy"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremescoreboard2cbt', mounted as '/mods/supremescoreboard2cbt/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremescoreboard2cbt"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\vetnames', mounted as '/mods/vetnames/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\vetnames"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\effects.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\env.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\etc.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\loc.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\lua.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\meshes.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\projectiles.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\textures.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\programdata\faforever\gamedata\units.nx2', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\effects.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\env.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\loc_us.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\meshes.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\mods.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\objects.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\projectiles.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\props.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\skins.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\textures.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\gamedata\units.scd', mounted as '/'
+info: DISK: AddSearchPath: 'c:\users\satre\appdata\local\gas powered games\supreme commander forged alliance', mounted as '/preferences/'
+info: Watching directory "c:\users\satre\appdata\local\gas powered games\supreme commander forged alliance"
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\movies', mounted as '/movies/'
+info: Watching directory "c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\movies"
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\sounds', mounted as '/sounds/'
+info: Watching directory "c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\sounds"
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\maps', mounted as '/maps/'
+info: Watching directory "c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\maps"
+info: DISK: AddSearchPath: 'c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\fonts', mounted as '/fonts/'
+info: Watching directory "c:\program files (x86)\steam\steamapps\common\supreme commander forged alliance\fonts"
+info: MD5 of global settings: d2a23d6464d3fd77956e7648c43b5077
+info: IsStreamingWaveBank("/sounds/aeonselect.xwb") => false
+debug: Wavebank prepared: 1d3ed28
+debug: SND: Loaded WaveBank 'aeonselect' at 1d3ed28
+info: IsStreamingWaveBank("/sounds/ambienttest.xwb") => false
+debug: Wavebank prepared: 1d3ee58
+debug: SND: Loaded WaveBank 'ambienttest' at 1d3ee58
+info: IsStreamingWaveBank("/sounds/cybranselect.xwb") => false
+debug: Wavebank prepared: 458ffe8
+debug: SND: Loaded WaveBank 'cybranselect' at 458ffe8
+info: IsStreamingWaveBank("/sounds/explosions.xwb") => false
+debug: Wavebank prepared: 4590118
+debug: SND: Loaded WaveBank 'explosions' at 4590118
+info: IsStreamingWaveBank("/sounds/explosionsstream.xwb") => true
+debug: SND: Loaded WaveBank 'explosionsstream' at 4590248
+info: IsStreamingWaveBank("/sounds/fmv_bg.xwb") => true
+debug: SND: Loaded WaveBank 'fmv_bg' at 45917b8
+info: IsStreamingWaveBank("/sounds/impacts.xwb") => false
+debug: Wavebank prepared: 4592920
+debug: SND: Loaded WaveBank 'impacts' at 4592920
+info: IsStreamingWaveBank("/sounds/interface.xwb") => false
+debug: Wavebank prepared: 4592a50
+debug: SND: Loaded WaveBank 'interface' at 4592a50
+info: IsStreamingWaveBank("/sounds/music.xwb") => true
+debug: SND: Loaded WaveBank 'music' at 4592b80
+info: IsStreamingWaveBank("/sounds/op_briefing.xwb") => true
+debug: SND: Loaded WaveBank 'op_briefing' at 4593ce8
+info: IsStreamingWaveBank("/sounds/pings.xwb") => false
+debug: Wavebank prepared: 4594e50
+debug: SND: Loaded WaveBank 'pings' at 4594e50
+info: IsStreamingWaveBank("/sounds/seraphimselect.xwb") => false
+debug: Wavebank prepared: 4594f80
+debug: SND: Loaded WaveBank 'seraphimselect' at 4594f80
+info: IsStreamingWaveBank("/sounds/uaa.xwb") => false
+debug: Wavebank prepared: 45950b0
+debug: SND: Loaded WaveBank 'uaa' at 45950b0
+info: IsStreamingWaveBank("/sounds/uaadestroy.xwb") => false
+debug: Wavebank prepared: 45951e0
+debug: SND: Loaded WaveBank 'uaadestroy' at 45951e0
+info: IsStreamingWaveBank("/sounds/uaaweapon.xwb") => false
+debug: Wavebank prepared: 4595310
+debug: SND: Loaded WaveBank 'uaaweapon' at 4595310
+info: IsStreamingWaveBank("/sounds/uab.xwb") => false
+debug: Wavebank prepared: 4595440
+debug: SND: Loaded WaveBank 'uab' at 4595440
+info: IsStreamingWaveBank("/sounds/ual.xwb") => false
+debug: Wavebank prepared: 4595570
+debug: SND: Loaded WaveBank 'ual' at 4595570
+info: IsStreamingWaveBank("/sounds/ualdestroy.xwb") => false
+debug: Wavebank prepared: 45956a0
+debug: SND: Loaded WaveBank 'ualdestroy' at 45956a0
+info: IsStreamingWaveBank("/sounds/ualweapon.xwb") => false
+debug: Wavebank prepared: 45957d0
+debug: SND: Loaded WaveBank 'ualweapon' at 45957d0
+info: IsStreamingWaveBank("/sounds/uas.xwb") => false
+debug: Wavebank prepared: 4595900
+debug: SND: Loaded WaveBank 'uas' at 4595900
+info: IsStreamingWaveBank("/sounds/uasdestroy.xwb") => true
+debug: SND: Loaded WaveBank 'uasdestroy' at 4595a30
+info: IsStreamingWaveBank("/sounds/uasweapon.xwb") => false
+debug: Wavebank prepared: 4596b98
+debug: SND: Loaded WaveBank 'uasweapon' at 4596b98
+info: IsStreamingWaveBank("/sounds/uea.xwb") => false
+debug: Wavebank prepared: 4597b90
+debug: SND: Loaded WaveBank 'uea' at 4597b90
+info: IsStreamingWaveBank("/sounds/ueadestroy.xwb") => false
+debug: Wavebank prepared: 4597098
+debug: SND: Loaded WaveBank 'ueadestroy' at 4597098
+info: IsStreamingWaveBank("/sounds/ueaweapon.xwb") => false
+debug: Wavebank prepared: 4596cf0
+debug: SND: Loaded WaveBank 'ueaweapon' at 4596cf0
+info: IsStreamingWaveBank("/sounds/ueb.xwb") => false
+debug: Wavebank prepared: 4596e28
+debug: SND: Loaded WaveBank 'ueb' at 4596e28
+info: IsStreamingWaveBank("/sounds/uefselect.xwb") => false
+debug: Wavebank prepared: 4596f60
+debug: SND: Loaded WaveBank 'uefselect' at 4596f60
+info: IsStreamingWaveBank("/sounds/uel.xwb") => false
+debug: Wavebank prepared: 45971d0
+debug: SND: Loaded WaveBank 'uel' at 45971d0
+info: IsStreamingWaveBank("/sounds/ueldestroy.xwb") => false
+debug: Wavebank prepared: 45977e8
+debug: SND: Loaded WaveBank 'ueldestroy' at 45977e8
+info: IsStreamingWaveBank("/sounds/uelweapon.xwb") => false
+debug: Wavebank prepared: 4597308
+debug: SND: Loaded WaveBank 'uelweapon' at 4597308
+info: IsStreamingWaveBank("/sounds/ues.xwb") => false
+debug: Wavebank prepared: 4597440
+debug: SND: Loaded WaveBank 'ues' at 4597440
+info: IsStreamingWaveBank("/sounds/uesdestroy.xwb") => true
+debug: SND: Loaded WaveBank 'uesdestroy' at 4597cd0
+info: IsStreamingWaveBank("/sounds/uesweapon.xwb") => false
+debug: Wavebank prepared: 4597578
+debug: SND: Loaded WaveBank 'uesweapon' at 4597578
+info: IsStreamingWaveBank("/sounds/unitrumble.xwb") => false
+debug: Wavebank prepared: 45976b0
+debug: SND: Loaded WaveBank 'unitrumble' at 45976b0
+info: IsStreamingWaveBank("/sounds/unitsglobal.xwb") => false
+debug: Wavebank prepared: 4597a58
+debug: SND: Loaded WaveBank 'unitsglobal' at 4597a58
+info: IsStreamingWaveBank("/sounds/ura.xwb") => false
+debug: Wavebank prepared: 4597920
+debug: SND: Loaded WaveBank 'ura' at 4597920
+info: IsStreamingWaveBank("/sounds/uradestroy.xwb") => false
+debug: Wavebank prepared: 45996e8
+debug: SND: Loaded WaveBank 'uradestroy' at 45996e8
+info: IsStreamingWaveBank("/sounds/uraweapon.xwb") => false
+debug: Wavebank prepared: 459a0a8
+debug: SND: Loaded WaveBank 'uraweapon' at 459a0a8
+info: IsStreamingWaveBank("/sounds/urb.xwb") => false
+debug: Wavebank prepared: 4598f98
+debug: SND: Loaded WaveBank 'urb' at 4598f98
+info: IsStreamingWaveBank("/sounds/url.xwb") => false
+debug: Wavebank prepared: 4599f70
+debug: SND: Loaded WaveBank 'url' at 4599f70
+info: IsStreamingWaveBank("/sounds/urldestroy.xwb") => false
+debug: Wavebank prepared: 4599958
+debug: SND: Loaded WaveBank 'urldestroy' at 4599958
+info: IsStreamingWaveBank("/sounds/urlweapon.xwb") => false
+debug: Wavebank prepared: 459aba0
+debug: SND: Loaded WaveBank 'urlweapon' at 459aba0
+info: IsStreamingWaveBank("/sounds/urs.xwb") => false
+debug: Wavebank prepared: 4599a90
+debug: SND: Loaded WaveBank 'urs' at 4599a90
+info: IsStreamingWaveBank("/sounds/ursdestroy.xwb") => true
+debug: SND: Loaded WaveBank 'ursdestroy' at 459ae40
+info: IsStreamingWaveBank("/sounds/ursstream.xwb") => true
+debug: SND: Loaded WaveBank 'ursstream' at 459bfa8
+info: IsStreamingWaveBank("/sounds/ursweapon.xwb") => false
+debug: Wavebank prepared: 459acd8
+debug: SND: Loaded WaveBank 'ursweapon' at 459acd8
+info: IsStreamingWaveBank("/sounds/xaa_weapon.xwb") => false
+debug: Wavebank prepared: 4598e60
+debug: SND: Loaded WaveBank 'xaa_weapon' at 4598e60
+info: IsStreamingWaveBank("/sounds/xab.xwb") => false
+debug: Wavebank prepared: 459a930
+debug: SND: Loaded WaveBank 'xab' at 459a930
+info: IsStreamingWaveBank("/sounds/xal.xwb") => false
+debug: Wavebank prepared: 459a7f8
+debug: SND: Loaded WaveBank 'xal' at 459a7f8
+info: IsStreamingWaveBank("/sounds/xal_weapon.xwb") => false
+debug: Wavebank prepared: 4599340
+debug: SND: Loaded WaveBank 'xal_weapon' at 4599340
+info: IsStreamingWaveBank("/sounds/xas.xwb") => false
+debug: Wavebank prepared: 459aa68
+debug: SND: Loaded WaveBank 'xas' at 459aa68
+info: IsStreamingWaveBank("/sounds/xas_weapons.xwb") => false
+debug: Wavebank prepared: 4599d00
+debug: SND: Loaded WaveBank 'xas_weapons' at 4599d00
+info: IsStreamingWaveBank("/sounds/xea.xwb") => false
+debug: Wavebank prepared: 45990d0
+debug: SND: Loaded WaveBank 'xea' at 45990d0
+info: IsStreamingWaveBank("/sounds/xea_weapons.xwb") => false
+debug: Wavebank prepared: 4599208
+debug: SND: Loaded WaveBank 'xea_weapons' at 4599208
+info: IsStreamingWaveBank("/sounds/xeb.xwb") => false
+debug: Wavebank prepared: 4599bc8
+debug: SND: Loaded WaveBank 'xeb' at 4599bc8
+info: IsStreamingWaveBank("/sounds/xel.xwb") => false
+debug: Wavebank prepared: 459a450
+debug: SND: Loaded WaveBank 'xel' at 459a450
+info: IsStreamingWaveBank("/sounds/xel_weapons.xwb") => false
+debug: Wavebank prepared: 4599e38
+debug: SND: Loaded WaveBank 'xel_weapons' at 4599e38
+info: IsStreamingWaveBank("/sounds/xes.xwb") => false
+debug: Wavebank prepared: 45995b0
+debug: SND: Loaded WaveBank 'xes' at 45995b0
+info: IsStreamingWaveBank("/sounds/xes_destroy.xwb") => true
+debug: SND: Loaded WaveBank 'xes_destroy' at 459d110
+info: IsStreamingWaveBank("/sounds/xes_weapons.xwb") => false
+debug: Wavebank prepared: 459a1e0
+debug: SND: Loaded WaveBank 'xes_weapons' at 459a1e0
+info: IsStreamingWaveBank("/sounds/xra.xwb") => false
+debug: Wavebank prepared: 4599820
+debug: SND: Loaded WaveBank 'xra' at 4599820
+info: IsStreamingWaveBank("/sounds/xra_weapon.xwb") => false
+debug: Wavebank prepared: 459a318
+debug: SND: Loaded WaveBank 'xra_weapon' at 459a318
+info: IsStreamingWaveBank("/sounds/xrb.xwb") => false
+debug: Wavebank prepared: 4599478
+debug: SND: Loaded WaveBank 'xrb' at 4599478
+info: IsStreamingWaveBank("/sounds/xrl.xwb") => false
+debug: Wavebank prepared: 459a588
+debug: SND: Loaded WaveBank 'xrl' at 459a588
+info: IsStreamingWaveBank("/sounds/xrl_stream.xwb") => true
+debug: SND: Loaded WaveBank 'xrl_stream' at 459e278
+info: IsStreamingWaveBank("/sounds/xrl_weapon.xwb") => false
+debug: Wavebank prepared: 459a6c0
+debug: SND: Loaded WaveBank 'xrl_weapon' at 459a6c0
+info: IsStreamingWaveBank("/sounds/xrs.xwb") => false
+debug: Wavebank prepared: 459fa20
+debug: SND: Loaded WaveBank 'xrs' at 459fa20
+info: IsStreamingWaveBank("/sounds/xrs_weapon.xwb") => false
+debug: Wavebank prepared: 45a08c0
+debug: SND: Loaded WaveBank 'xrs_weapon' at 45a08c0
+info: IsStreamingWaveBank("/sounds/xsa.xwb") => false
+debug: Wavebank prepared: 45a09f8
+debug: SND: Loaded WaveBank 'xsa' at 45a09f8
+info: IsStreamingWaveBank("/sounds/xsa_destroy.xwb") => false
+debug: Wavebank prepared: 45a02a8
+debug: SND: Loaded WaveBank 'xsa_destroy' at 45a02a8
+info: IsStreamingWaveBank("/sounds/xsa_weapon.xwb") => false
+debug: Wavebank prepared: 45a0170
+debug: SND: Loaded WaveBank 'xsa_weapon' at 45a0170
+info: IsStreamingWaveBank("/sounds/xsb.xwb") => false
+debug: Wavebank prepared: 45a1148
+debug: SND: Loaded WaveBank 'xsb' at 45a1148
+info: IsStreamingWaveBank("/sounds/xsb_weapon.xwb") => false
+debug: Wavebank prepared: 45a0b30
+debug: SND: Loaded WaveBank 'xsb_weapon' at 45a0b30
+info: IsStreamingWaveBank("/sounds/xsl.xwb") => false
+debug: Wavebank prepared: 45a03e0
+debug: SND: Loaded WaveBank 'xsl' at 45a03e0
+info: IsStreamingWaveBank("/sounds/xsl_destroy.xwb") => false
+debug: Wavebank prepared: 45a0518
+debug: SND: Loaded WaveBank 'xsl_destroy' at 45a0518
+info: IsStreamingWaveBank("/sounds/xsl_weapon.xwb") => false
+debug: Wavebank prepared: 459fb58
+debug: SND: Loaded WaveBank 'xsl_weapon' at 459fb58
+info: IsStreamingWaveBank("/sounds/xss.xwb") => false
+debug: Wavebank prepared: 45a0650
+debug: SND: Loaded WaveBank 'xss' at 45a0650
+info: IsStreamingWaveBank("/sounds/xss_destroy.xwb") => true
+debug: SND: Loaded WaveBank 'xss_destroy' at 45a13e8
+info: IsStreamingWaveBank("/sounds/xss_weapon.xwb") => false
+debug: Wavebank prepared: 45a0788
+debug: SND: Loaded WaveBank 'xss_weapon' at 45a0788
+debug: SND: Loaded SoundBank 'ambienttest'
+debug: SND: Loaded SoundBank 'explosions'
+debug: SND: Loaded SoundBank 'fmv_bg'
+debug: SND: Loaded SoundBank 'impacts'
+debug: SND: Loaded SoundBank 'interface'
+debug: SND: Loaded SoundBank 'music'
+debug: SND: Loaded SoundBank 'op_briefing'
+debug: SND: Loaded SoundBank 'pings'
+debug: SND: Loaded SoundBank 'seraphimselect'
+debug: SND: Loaded SoundBank 'uaa'
+debug: SND: Loaded SoundBank 'uaadestroy'
+debug: SND: Loaded SoundBank 'uaaweapon'
+debug: SND: Loaded SoundBank 'uab'
+debug: SND: Loaded SoundBank 'ual'
+debug: SND: Loaded SoundBank 'ualdestroy'
+debug: SND: Loaded SoundBank 'ualweapon'
+debug: SND: Loaded SoundBank 'uas'
+debug: SND: Loaded SoundBank 'uasdestroy'
+debug: SND: Loaded SoundBank 'uasweapon'
+debug: SND: Loaded SoundBank 'uea'
+debug: SND: Loaded SoundBank 'ueadestroy'
+debug: SND: Loaded SoundBank 'ueaweapon'
+debug: SND: Loaded SoundBank 'ueb'
+debug: SND: Loaded SoundBank 'uel'
+debug: SND: Loaded SoundBank 'ueldestroy'
+debug: SND: Loaded SoundBank 'uelweapon'
+debug: SND: Loaded SoundBank 'ues'
+debug: SND: Loaded SoundBank 'uesdestroy'
+debug: SND: Loaded SoundBank 'uesweapon'
+debug: SND: Loaded SoundBank 'unitrumble'
+debug: SND: Loaded SoundBank 'unitsglobal'
+debug: SND: Loaded SoundBank 'ura'
+debug: SND: Loaded SoundBank 'uradestroy'
+debug: SND: Loaded SoundBank 'uraweapon'
+debug: SND: Loaded SoundBank 'urb'
+debug: SND: Loaded SoundBank 'url'
+debug: SND: Loaded SoundBank 'urldestroy'
+debug: SND: Loaded SoundBank 'urlweapon'
+debug: SND: Loaded SoundBank 'urs'
+debug: SND: Loaded SoundBank 'ursdestroy'
+debug: SND: Loaded SoundBank 'ursstream'
+debug: SND: Loaded SoundBank 'ursweapon'
+debug: SND: Loaded SoundBank 'xaa'
+debug: SND: Loaded SoundBank 'xaa_weapon'
+debug: SND: Loaded SoundBank 'xab'
+debug: SND: Loaded SoundBank 'xal'
+debug: SND: Loaded SoundBank 'xal_weapon'
+debug: SND: Loaded SoundBank 'xas'
+debug: SND: Loaded SoundBank 'xas_weapon'
+debug: SND: Loaded SoundBank 'xca'
+debug: SND: Loaded SoundBank 'xcb'
+debug: SND: Loaded SoundBank 'xcl'
+debug: SND: Loaded SoundBank 'xcs'
+debug: SND: Loaded SoundBank 'xea'
+debug: SND: Loaded SoundBank 'xea_weapon'
+debug: SND: Loaded SoundBank 'xeb'
+debug: SND: Loaded SoundBank 'xel'
+debug: SND: Loaded SoundBank 'xel_weapons'
+debug: SND: Loaded SoundBank 'xes'
+debug: SND: Loaded SoundBank 'xes_destroy'
+debug: SND: Loaded SoundBank 'xes_weapons'
+debug: SND: Loaded SoundBank 'xra'
+debug: SND: Loaded SoundBank 'xra_weapon'
+debug: SND: Loaded SoundBank 'xrb'
+debug: SND: Loaded SoundBank 'xrl'
+debug: SND: Loaded SoundBank 'xrl_destroy'
+debug: SND: Loaded SoundBank 'xrl_stream'
+debug: SND: Loaded SoundBank 'xrl_weapon'
+debug: SND: Loaded SoundBank 'xrs'
+debug: SND: Loaded SoundBank 'xrs_weapon'
+debug: SND: Loaded SoundBank 'xsa'
+debug: SND: Loaded SoundBank 'xsa_destroy'
+debug: SND: Loaded SoundBank 'xsa_weapon'
+debug: SND: Loaded SoundBank 'xsb'
+debug: SND: Loaded SoundBank 'xsb_weapon'
+debug: SND: Loaded SoundBank 'xsl'
+debug: SND: Loaded SoundBank 'xsl_destroy'
+debug: SND: Loaded SoundBank 'xsl_weapon'
+debug: SND: Loaded SoundBank 'xss'
+debug: SND: Loaded SoundBank 'xss_destroy'
+debug: SND: Loaded SoundBank 'xss_weapon'
+debug: MEM: -47712416 bytes SND
+info: MD5 of global settings: d2a23d6464d3fd77956e7648c43b5077
+info: IsStreamingWaveBank("/sounds/voice/us/briefings.xwb") => true
+debug: SND: Loaded WaveBank 'briefings' at 45cc008
+info: IsStreamingWaveBank("/sounds/voice/us/seraphim_language.xwb") => true
+debug: SND: Loaded WaveBank 'seraphim_language' at 45cd170
+info: IsStreamingWaveBank("/sounds/voice/us/x01_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x01_vo' at 45ceb70
+info: IsStreamingWaveBank("/sounds/voice/us/x02_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x02_vo' at 45ce300
+info: IsStreamingWaveBank("/sounds/voice/us/x03_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x03_vo' at 45cee40
+info: IsStreamingWaveBank("/sounds/voice/us/x04_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x04_vo' at 45cecd8
+info: IsStreamingWaveBank("/sounds/voice/us/x05_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x05_vo' at 45cefa8
+info: IsStreamingWaveBank("/sounds/voice/us/x06_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x06_vo' at 45ce738
+info: IsStreamingWaveBank("/sounds/voice/us/x1t_vo.xwb") => true
+debug: SND: Loaded WaveBank 'x1t_vo' at 45cf110
+info: IsStreamingWaveBank("/sounds/voice/us/x_fmv.xwb") => true
+debug: SND: Loaded WaveBank 'x_fmv' at 45ce468
+info: IsStreamingWaveBank("/sounds/voice/us/xgg.xwb") => true
+debug: SND: Loaded WaveBank 'xgg' at 45cea08
+debug: SND: Loaded SoundBank 'briefings'
+debug: SND: Loaded SoundBank 'x01_vo'
+debug: SND: Loaded SoundBank 'x02_vo'
+debug: SND: Loaded SoundBank 'x03_vo'
+debug: SND: Loaded SoundBank 'x04_vo'
+debug: SND: Loaded SoundBank 'x05_vo'
+debug: SND: Loaded SoundBank 'x06_vo'
+debug: SND: Loaded SoundBank 'x1t_vo'
+debug: SND: Loaded SoundBank 'x_fmv'
+debug: SND: Loaded SoundBank 'xgg'
+debug: MEM: -796091502 bytes SND
+info: MD5 of global settings: d2a23d6464d3fd77956e7648c43b5077
+debug: MEM: -796091502 bytes SND
+debug: Lua user environment initialized with game version 3836, game type FAF and at commit hash 90d9ae8acf5798df1f0702b3afd5b7c44bb3da1b
+info: adding font file /fonts/arial.ttf
+info: adding font file /fonts/arialbd.ttf
+info: adding font file /fonts/arialbi.ttf
+info: adding font file /fonts/ariali.ttf
+info: adding font file /fonts/arialn.ttf
+info: adding font file /fonts/arialnb.ttf
+info: adding font file /fonts/arialnbi.ttf
+info: adding font file /fonts/arialni.ttf
+info: adding font file /fonts/ariblk.ttf
+info: adding font file /fonts/arlrdbd.ttf
+info: adding font file /fonts/butterbe.ttf
+info: adding font file /fonts/vdub.ttf
+info: adding font file /fonts/wintermu.ttf
+info: adding font file /fonts/zeroes_3.ttf
+warning: Keybindings cannot find action "shift_toggle_repeat_build" for key Shift-Z
+warning: Keybindings cannot find action "shift_pause_unit" for key Shift-X
+warning: Keybindings cannot find action "debug_toggle_sim_speed_balancing" for key Ctrl-NumSlash
+info: Compiled shader: /effects/cartographic.fx
+info: Compiled shader: /effects/frame.fx
+info: Compiled shader: /effects/mesh.fx
+info: Compiled shader: /effects/particle.fx
+info: Compiled shader: /effects/primbatcher.fx
+info: Compiled shader: /effects/range.fx
+info: Compiled shader: /effects/sky.fx
+info: Compiled shader: /effects/terrain.fx
+info: Compiled shader: /effects/ui.fx
+info: Compiled shader: /effects/vision.fx
+info: Compiled shader: /effects/water2.fx
+info: SHADERS COMPILED
+debug: Wavebank prepared: 4590248
+debug: Wavebank prepared: 45917b8
+debug: Wavebank prepared: 4592b80
+debug: Wavebank prepared: 4593ce8
+debug: Wavebank prepared: 4595a30
+debug: Wavebank prepared: 4597cd0
+debug: Wavebank prepared: 459ae40
+debug: Wavebank prepared: 459bfa8
+debug: Wavebank prepared: 459d110
+debug: Wavebank prepared: 459e278
+debug: Wavebank prepared: 45a13e8
+debug: Wavebank prepared: 45cc008
+debug: Wavebank prepared: 45cd170
+debug: Wavebank prepared: 45ce300
+debug: Wavebank prepared: 45cee40
+debug: Wavebank prepared: 45cecd8
+debug: Wavebank prepared: 45cefa8
+debug: Wavebank prepared: 45ce738
+debug: Wavebank prepared: 45cf110
+debug: Wavebank prepared: 45ce468
+debug: Wavebank prepared: 45ceb70
+debug: Wavebank prepared: 45cea08
+info: /country
+info: /init
+info: /numgames
+info: /mean
+info: /clan
+info: /deviation
+info: LOBBY: Game port 0[None] opened.
+info: LOBBY: assigning ourselves the uid of 0
+info:  {
+info:     9c82a91e-677d-40bb-91fc-df9358de7f4e = true
+info:     eternal-_KasperAUS_Lightningbulb_shared_mouse_2026 = true
+info:  }
+info:  { }
+debug: GpgNetSend	GameMods	activated	2
+debug: GpgNetSend	GameMods	uids	9c82a91e-677d-40bb-91fc-df9358de7f4e eternal-_KasperAUS_Lightningbulb_shared_mouse_2026
+debug: GpgNetSend	GameOption	Share	FullShare
+debug: GpgNetSend	GameOption	DisconnectShare	SameAsShare
+debug: GpgNetSend	GameOption	DisconnectShareCommanders	Explode
+debug: GpgNetSend	GameOption	Unranked	No
+debug: GpgNetSend	GameOption	AllowObservers	true
+debug: GpgNetSend	GameOption	UnitCap	1000
+debug: GpgNetSend	GameOption	ShareUnitCap	allies
+debug: GpgNetSend	GameOption	FogOfWar	explored
+debug: GpgNetSend	GameOption	Victory	demoralization
+debug: GpgNetSend	GameOption	Timeouts	3
+debug: GpgNetSend	GameOption	DisconnectionDelay02	30
+debug: GpgNetSend	GameOption	GameSpeed	adjustable
+debug: GpgNetSend	GameOption	CheatsEnabled	true
+debug: GpgNetSend	GameOption	CivilianAlliance	enemy
+debug: GpgNetSend	GameOption	RevealCivilians	Yes
+debug: GpgNetSend	GameOption	PrebuiltUnits	Off
+debug: GpgNetSend	GameOption	NoRushOption	Off
+debug: GpgNetSend	GameOption	RandomMap	Off
+debug: GpgNetSend	GameOption	Score	no
+debug: GpgNetSend	GameOption	ManualUnitShare	all
+debug: GpgNetSend	GameOption	AIReplacement	Off
+debug: GpgNetSend	GameOption	TeamSpawn	fixed
+debug: GpgNetSend	GameOption	TeamLock	locked
+debug: GpgNetSend	GameOption	AutoTeams	pvsi
+debug: GpgNetSend	GameOption	CommonArmy	Off
+debug: GpgNetSend	GameOption	TeamShareOverflow	enabled
+debug: GpgNetSend	GameOption	CheatMult	1.5
+debug: GpgNetSend	GameOption	BuildMult	1.5
+debug: GpgNetSend	GameOption	TMLRandom	0
+debug: GpgNetSend	GameOption	LandExpansionsAllowed	5
+debug: GpgNetSend	GameOption	NavalExpansionsAllowed	4
+debug: GpgNetSend	GameOption	OmniCheat	on
+debug: GpgNetSend	GameOption	SSB_MaxRecovery	3
+debug: GpgNetSend	GameOption	SSB_TargetTickrate	1.0
+debug: GpgNetSend	GameOption	ScenarioFile	/maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass_scenario.lua
+debug: GpgNetSend	GameOption	Slots	10
+debug: GpgNetSend	GameOption	AllowObservers	true
+debug: GpgNetSend	PlayerOption	0	Faction	5
+debug: GpgNetSend	PlayerOption	0	Color	2
+debug: GpgNetSend	PlayerOption	0	Team	1
+debug: GpgNetSend	PlayerOption	0	StartSpot	1
+debug: GpgNetSend	ClearSlot	2
+debug: GpgNetSend	ClearSlot	3
+debug: GpgNetSend	ClearSlot	4
+debug: GpgNetSend	ClearSlot	5
+debug: GpgNetSend	ClearSlot	6
+debug: GpgNetSend	ClearSlot	7
+debug: GpgNetSend	ClearSlot	8
+debug: GpgNetSend	ClearSlot	9
+debug: GpgNetSend	ClearSlot	10
+debug: GpgNetSend	PlayerOption	0	Faction	5
+debug: GpgNetSend	PlayerOption	0	Color	2
+debug: GpgNetSend	PlayerOption	0	Team	1
+debug: GpgNetSend	PlayerOption	0	StartSpot	1
+debug: GpgNetSend	ClearSlot	2
+debug: GpgNetSend	ClearSlot	3
+debug: GpgNetSend	ClearSlot	4
+debug: GpgNetSend	ClearSlot	5
+debug: GpgNetSend	ClearSlot	6
+debug: GpgNetSend	ClearSlot	7
+debug: GpgNetSend	ClearSlot	8
+debug: GpgNetSend	ClearSlot	9
+debug: GpgNetSend	ClearSlot	10
+info: ModsManager deselected: GAME mod - SharedMouse2026 ---- (v4.0) - /mods/sharedmouse2026
+info: ModsManager selected: UI mod - Advanced Target Priorities ---- (v1.0) - /mods/advanced target priorities
+info: mods.sim.active {
+info: mods.sim.active    9c82a91e-677d-40bb-91fc-df9358de7f4e = true
+info: mods.sim.active }
+info: mods.ui.active {
+info: mods.ui.active    20dec73e-d4b2-11e5-ab30-625662811111 = true
+info: mods.ui.active }
+info:  {
+info:     9c82a91e-677d-40bb-91fc-df9358de7f4e = true
+info:  }
+info:  {
+info:     20dec73e-d4b2-11e5-ab30-625662811111 = true
+info:  }
+info: MOD LIST SET TO:
+info:         Advanced target priorities  (20dec73e-d4b2-11e5-ab30-625662811111)
+info:         Sim Speed Balancer  (9c82a91e-677d-40bb-91fc-df9358de7f4e)
+info:  {
+info:     9c82a91e-677d-40bb-91fc-df9358de7f4e = true
+info:  }
+info:  {
+info:     20dec73e-d4b2-11e5-ab30-625662811111 = true
+info:  }
+debug: GpgNetSend	GameMods	activated	1
+debug: GpgNetSend	GameMods	uids	9c82a91e-677d-40bb-91fc-df9358de7f4e
+debug: GpgNetSend	PlayerOption	0	Faction	5
+debug: GpgNetSend	PlayerOption	0	Color	2
+debug: GpgNetSend	PlayerOption	0	Team	1
+debug: GpgNetSend	PlayerOption	0	StartSpot	1
+debug: GpgNetSend	ClearSlot	2
+debug: GpgNetSend	ClearSlot	3
+debug: GpgNetSend	ClearSlot	4
+debug: GpgNetSend	ClearSlot	5
+debug: GpgNetSend	ClearSlot	6
+debug: GpgNetSend	ClearSlot	7
+debug: GpgNetSend	ClearSlot	8
+debug: GpgNetSend	ClearSlot	9
+debug: GpgNetSend	ClearSlot	10
+info:  {
+info:     9c82a91e-677d-40bb-91fc-df9358de7f4e = true
+info:  }
+info:  {
+info:     20dec73e-d4b2-11e5-ab30-625662811111 = true
+info:  }
+debug: GpgNetSend	GameOption	ScenarioFile	/maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass_scenario.lua
+debug: GpgNetSend	GameOption	Slots	10
+debug: GpgNetSend	PlayerOption	0	Faction	5
+debug: GpgNetSend	PlayerOption	0	Color	2
+debug: GpgNetSend	PlayerOption	0	Team	1
+debug: GpgNetSend	PlayerOption	0	StartSpot	1
+debug: GpgNetSend	ClearSlot	2
+debug: GpgNetSend	ClearSlot	3
+debug: GpgNetSend	ClearSlot	4
+debug: GpgNetSend	ClearSlot	5
+debug: GpgNetSend	ClearSlot	6
+debug: GpgNetSend	ClearSlot	7
+debug: GpgNetSend	ClearSlot	8
+debug: GpgNetSend	ClearSlot	9
+debug: GpgNetSend	ClearSlot	10
+debug: GameOptions['Victory'] changed temporarily from "demoralization" to "sandbox"
+debug: GpgNetSend	PlayerOption	0	Faction	5
+debug: GpgNetSend	PlayerOption	0	Color	2
+debug: GpgNetSend	PlayerOption	0	Team	2
+debug: GpgNetSend	PlayerOption	0	StartSpot	1
+info: >> SendArmySettingsToServer: Setting army 1 for slot 1
+debug: GpgNetSend	PlayerOption	0	Army	1
+info: >> SendArmySettingsToServer: Slot 2 empty
+info: >> SendArmySettingsToServer: Slot 3 empty
+info: >> SendArmySettingsToServer: Slot 4 empty
+info: >> SendArmySettingsToServer: Slot 5 empty
+info: >> SendArmySettingsToServer: Slot 6 empty
+info: >> SendArmySettingsToServer: Slot 7 empty
+info: >> SendArmySettingsToServer: Slot 8 empty
+info: >> SendArmySettingsToServer: Slot 9 empty
+info: >> SendArmySettingsToServer: Slot 10 empty
+info: >> SendArmySettingsToServer: Slot 11 empty
+info: >> SendArmySettingsToServer: Slot 12 empty
+info: >> SendArmySettingsToServer: Slot 13 empty
+info: >> SendArmySettingsToServer: Slot 14 empty
+info: >> SendArmySettingsToServer: Slot 15 empty
+info: >> SendArmySettingsToServer: Slot 16 empty
+debug: GpgNetSend	GameState	Launching
+info: Starting background task "Map loader /maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass.scmap"
+info: Background task "Map loader /maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass.scmap" running.
+info: Active game mods for blueprint loading:
+info:         "Sim Speed Balancer"            v17 (9c82a91e-677d-40bb-91fc-df9358de7f4e) by Lightningbulb
+info: Blueprints Loading... '*.bp' files
+info: Blueprints Loading: original files from /effects directory
+info: Blueprints Loading: original files from /env directory
+info: Blueprints Loading: original files from /meshes directory
+info: Blueprints Loading: original files from /projectiles directory
+info: Blueprints Loading: original files from /props directory
+info: Blueprints Loading: original files from /units directory
+info: Blueprints Loading: modded files from "Sim Speed Balancer" mod
+info: Blueprints Extracting mesh...
+info: Blueprints Modding...
+info: Blueprints Loading... completed: 606 original, 0 modded, and 69 preset units
+info: Blueprints Loading... completed: 393 original and 0 modded projectiles
+info: Blueprints Registering...
+debug: MEM: -31 bytes RULE
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+debug: Lua session environment initialized with game version 3836, game type FAF and at commit hash 90d9ae8acf5798df1f0702b3afd5b7c44bb3da1b
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+info: Active mods in session:
+info:         "Sim Speed Balancer"            v17 (9c82a91e-677d-40bb-91fc-df9358de7f4e) by Lightningbulb
+info:         "Advanced target priorities"    v01 (20dec73e-d4b2-11e5-ab30-625662811111) by Strogo
+info: Hooked /lua/ui/uimain.lua with /mods/faf-sim-speed-balancer/hook/lua/ui/uimain.lua
+info: Hooked /lua/keymap/defaultkeymap.lua with /mods/faf-sim-speed-balancer/hook/lua/keymap/defaultkeymap.lua
+debug: MEM: -5247026 bytes STIMap
+debug: MEM: -5247026 bytes LoadTexturing
+debug: MEM: -5247026 bytes WaterMask
+debug: MEM: -12252683 bytes TERRAIN
+info: Background task "Map loader /maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass.scmap" finished.
+info: Saving replay to "C:\Users\satre\Documents\My Games\Gas Powered Games\Supreme Commander Forged Alliance\replays\Lightning\LastGame.SCFAReplay"
+debug: MEM: -4194304 bytes LUABP
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+info: Hooked /loc/us/strings_db.lua with /mods/faf-sim-speed-balancer/hook/loc/us/strings_db.lua
+debug: Lua sim environment initialized with game version 3836, game type FAF and at commit hash 90d9ae8acf5798df1f0702b3afd5b7c44bb3da1b
+debug: MEM: -4194304 bytes OGRID
+info: Loading save file: 	/maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass_save.lua
+info: Loading script file: 	/maps/10_ultimate_you_shall_not_pass.v0004/10_ultimate_you_shall_not_pass_script.lua
+warning:  NUM PROPS = 70
+info: Initialize Armies brain nickname is Lightning
+info: CreateArmy group ARMY_1
+debug: Sim mod detected - adding in missing fields to unit class to improve compatibility
+info: Initialize Armies brain nickname is civilian
+info: CreateArmy group ARMY_17
+info: Initialize Armies brain nickname is civilian
+info: CreateArmy group NEUTRAL_CIVILIAN
+debug: SetPlayableArea before round : 0, 0 512, 512
+debug: SetPlayableArea after round : 0, 0 512, 512
+info: Hooked /lua/ui/game/gamemain.lua with /mods/faf-sim-speed-balancer/hook/lua/ui/game/gamemain.lua
+info: Hooked /lua/keymap/keydescriptions.lua with /mods/faf-sim-speed-balancer/hook/lua/keymap/keydescriptions.lua
+info: Hooked /lua/keymap/keyactions.lua with /mods/faf-sim-speed-balancer/hook/lua/keymap/keyactions.lua
+info: Hooked /lua/keymap/debugkeyactions.lua with /mods/faf-sim-speed-balancer/hook/lua/keymap/debugkeyactions.lua
+debug: Preloading 1418 batch textures
+debug: Preloading 0 d3d textures
+debug: Preloading 0 models
+debug: Preloading 0 animations
+info: Hooked /lua/ui/game/commandmode.lua with /mods/faf-sim-speed-balancer/hook/lua/ui/game/commandmode.lua
+info: Hooked /lua/ui/game/orders.lua with /mods/advanced target priorities/hook/lua/ui/game/orders.lua
+info: Hooked /lua/keymap/misckeyactions.lua with /mods/advanced target priorities/hook/lua/keymap/misckeyactions.lua
+info: creating high fidelity terrain
+info: creating high fidelity water
+info: creating high fidelity terrain
+info: creating high fidelity water
+info: Hooked /lua/ui/game/score.lua with /mods/faf-sim-speed-balancer/hook/lua/ui/game/score.lua
+debug: Context based templates: Found template: AppendPowerGeneratorsToTML with name Power generators
+debug: Context based templates: Found template: AppendT3FabricatorWithStorages with name Storages
+debug: Context based templates: Found template: TorpedoDefense with name Torpedo defense
+debug: Context based templates: Found template: T3ExtractorWithStorages with name Extractor and storages
+debug: Context based templates: Found template: AppendPowerGeneratorsToSalvation with name Power generators
+debug: Context based templates: Found template: AppendWallsToPointDefense with name Walls
+debug: Context based templates: Found template: AppendOpticsWithPower with name Power generators
+debug: Context based templates: Found template: AppendAirGrid with name Air grid
+debug: Context based templates: Found template: AppendPowerGeneratorsToEnergyStorage with name Power generators
+debug: Context based templates: Found template: AppendExtractorWithFabs with name Storages and fabricators
+debug: Context based templates: Found template: AppendPowerGeneratorsToT3Artillery with name Power generators
+debug: Context based templates: Found template: AppendRadarWithPower with name Power generators
+debug: Context based templates: Found template: AppendPowerGeneratorsToT2Artillery with name Power generators
+debug: Context based templates: Found template: T1Hydrocarbon with name Hydrocarbon
+debug: Context based templates: Found template: T3ExtractorWithStoragesAndFabs with name Extractor, storages and fabricators
+debug: Context based templates: Found template: AppendT3ArtilleryWithPower with name Power generators
+debug: Context based templates: Found template: PointDefense with name Point defense
+debug: Context based templates: Found template: AppendT2ArtilleryWithPower with name Power generators
+debug: Context based templates: Found template: AirDefenseLand with name Anti-air defense
+debug: Context based templates: Found template: AppendExtractorWithStorages with name Storages
+debug: Context based templates: Found template: T3Extractor with name Extractor
+debug: Context based templates: Found template: AirDefenseWater with name Anti-air defense
+debug: Context based templates: Found template: AppendSalvationWithPower with name Power generators
+debug: Context based templates: Found 23 templates
+warning: GetResource: Invalid name ""
+info: Can't find texture "" -- trying fallback.
+warning: GetResource: Invalid name ""
+info: Can't find texture "" -- trying fallback.
+warning: GetResource: Invalid name ""
+info: Can't find texture "" -- trying fallback.
+warning: GetResource: Invalid name ""
+info: Can't find texture "" -- trying fallback.
+warning: GetResource: Invalid name ""
+info: Can't find texture "" -- trying fallback.
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+debug: Session time: 00:02:15	Game time: 00:00:00	Heap: 224.0M / 220.7M
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+info: Exe GitSHA: 96af320e872a083fdb302fde7406d6d7f17c418d
+debug: Session time: 00:02:25	Game time: 00:00:10	Heap: 288.0M / 249.0M
+debug: Session time: 00:02:42	Game time: 00:00:27	Heap: 288.0M / 261.6M
+debug: Session time: 00:02:59	Game time: 00:00:44	Heap: 288.0M / 255.4M
+debug: Session time: 00:03:16	Game time: 00:01:01	Heap: 288.0M / 259.0M
+debug: Session time: 00:03:33	Game time: 00:01:17	Heap: 288.0M / 269.5M
+debug: Session time: 00:03:50	Game time: 00:01:34	Heap: 288.0M / 258.1M
+debug: Session time: 00:04:07	Game time: 00:01:51	Heap: 288.0M / 263.5M
+debug: Session time: 00:04:24	Game time: 00:02:08	Heap: 288.0M / 273.6M
+debug: Session time: 00:04:41	Game time: 00:02:25	Heap: 288.0M / 255.8M
+debug: Session time: 00:04:57	Game time: 00:02:42	Heap: 288.0M / 265.1M
+debug: Session time: 00:05:14	Game time: 00:02:59	Heap: 288.0M / 276.6M
+debug: Session time: 00:05:31	Game time: 00:03:15	Heap: 288.0M / 258.0M
+debug: Session time: 00:05:48	Game time: 00:03:32	Heap: 288.0M / 268.8M
+debug: Session time: 00:06:05	Game time: 00:03:49	Heap: 288.0M / 256.3M
+debug: Session time: 00:06:22	Game time: 00:04:06	Heap: 288.0M / 261.2M
+debug: Session time: 00:06:39	Game time: 00:04:23	Heap: 288.0M / 272.6M
+debug: Session time: 00:06:55	Game time: 00:04:40	Heap: 288.0M / 256.2M
+debug: Session time: 00:07:12	Game time: 00:04:57	Heap: 288.0M / 265.4M
+debug: Session time: 00:07:29	Game time: 00:05:13	Heap: 288.0M / 275.6M
+debug: Session time: 00:07:46	Game time: 00:05:30	Heap: 288.0M / 256.9M
+debug: Session time: 00:08:03	Game time: 00:05:47	Heap: 288.0M / 266.5M
+debug: Session time: 00:08:19	Game time: 00:06:04	Heap: 288.0M / 276.7M
+debug: Session time: 00:08:36	Game time: 00:06:21	Heap: 288.0M / 259.7M
+debug: Session time: 00:08:53	Game time: 00:06:37	Heap: 288.0M / 269.5M
+debug: Session time: 00:09:10	Game time: 00:06:54	Heap: 288.0M / 256.5M
+debug: Session time: 00:09:27	Game time: 00:07:11	Heap: 288.0M / 262.8M
+debug: Session time: 00:09:44	Game time: 00:07:28	Heap: 288.0M / 273.9M
+debug: Session time: 00:10:00	Game time: 00:07:45	Heap: 288.0M / 256.9M
+debug: Session time: 00:10:17	Game time: 00:08:02	Heap: 288.0M / 265.0M
+debug: Session time: 00:10:34	Game time: 00:08:18	Heap: 288.0M / 275.0M
+debug: Session time: 00:10:51	Game time: 00:08:35	Heap: 288.0M / 255.8M
+debug: Session time: 00:11:07	Game time: 00:08:52	Heap: 288.0M / 266.1M
+debug: Session time: 00:11:24	Game time: 00:09:08	Heap: 288.0M / 276.1M
+debug: Session time: 00:11:41	Game time: 00:09:25	Heap: 288.0M / 257.8M
+debug: Session time: 00:11:58	Game time: 00:09:42	Heap: 288.0M / 269.1M
+debug: Session time: 00:12:15	Game time: 00:09:59	Heap: 288.0M / 255.9M
+debug: Session time: 00:12:32	Game time: 00:10:16	Heap: 288.0M / 261.0M
+debug: Session time: 00:12:48	Game time: 00:10:33	Heap: 288.0M / 271.1M
+debug: Session time: 00:13:05	Game time: 00:10:49	Heap: 288.0M / 256.0M
+debug: Session time: 00:13:22	Game time: 00:11:06	Heap: 288.0M / 261.6M
+debug: Session time: 00:13:39	Game time: 00:11:23	Heap: 288.0M / 272.8M
+debug: Session time: 00:13:55	Game time: 00:11:40	Heap: 288.0M / 256.5M
+debug: Session time: 00:14:12	Game time: 00:11:56	Heap: 288.0M / 263.6M
+debug: Session time: 00:14:29	Game time: 00:12:13	Heap: 288.0M / 273.8M
+debug: Session time: 00:14:45	Game time: 00:12:30	Heap: 288.0M / 257.2M
+debug: Session time: 00:15:02	Game time: 00:12:47	Heap: 288.0M / 264.7M
+debug: Session time: 00:15:19	Game time: 00:13:03	Heap: 288.0M / 274.8M
+debug: Session time: 00:15:36	Game time: 00:13:20	Heap: 288.0M / 255.5M
+debug: Session time: 00:15:52	Game time: 00:13:37	Heap: 288.0M / 265.0M
+debug: Session time: 00:16:09	Game time: 00:13:53	Heap: 288.0M / 276.2M
+debug: Session time: 00:16:26	Game time: 00:14:11	Heap: 288.0M / 259.0M
+debug: Session time: 00:16:43	Game time: 00:14:28	Heap: 288.0M / 270.7M
+debug: Session time: 00:17:00	Game time: 00:14:45	Heap: 288.0M / 257.1M
+debug: Session time: 00:17:17	Game time: 00:15:02	Heap: 288.0M / 264.9M
+debug: Session time: 00:17:34	Game time: 00:15:19	Heap: 288.0M / 276.6M
+debug: Session time: 00:17:51	Game time: 00:15:35	Heap: 288.0M / 258.2M
+debug: Session time: 00:18:08	Game time: 00:15:52	Heap: 288.0M / 268.2M
+debug: Session time: 00:18:24	Game time: 00:16:09	Heap: 288.0M / 255.5M
+debug: Session time: 00:18:41	Game time: 00:16:26	Heap: 288.0M / 258.7M
+debug: Session time: 00:18:58	Game time: 00:16:42	Heap: 288.0M / 269.0M
+debug: Session time: 00:19:15	Game time: 00:16:59	Heap: 288.0M / 256.1M
+debug: Session time: 00:19:32	Game time: 00:17:16	Heap: 288.0M / 263.1M
+debug: Session time: 00:19:49	Game time: 00:17:33	Heap: 288.0M / 273.5M
+debug: Session time: 00:20:06	Game time: 00:17:50	Heap: 288.0M / 256.5M
+debug: Session time: 00:20:22	Game time: 00:18:07	Heap: 288.0M / 265.6M
+debug: Session time: 00:20:39	Game time: 00:18:23	Heap: 288.0M / 276.2M
+debug: Session time: 00:20:56	Game time: 00:18:40	Heap: 288.0M / 258.2M
+debug: Session time: 00:21:13	Game time: 00:18:57	Heap: 288.0M / 267.9M
+debug: Session time: 00:21:30	Game time: 00:19:14	Heap: 288.0M / 255.8M
+debug: Session time: 00:21:46	Game time: 00:19:31	Heap: 288.0M / 261.2M
+debug: [uiutil.lua, function UIFile()] - Unable to find file:/textures/ui/cybran/icons/units/zxa0002_icon.dds
+debug: Session time: 00:22:04	Game time: 00:19:48	Heap: 288.0M / 268.6M
+debug: Session time: 00:22:21	Game time: 00:20:05	Heap: 288.0M / 257.2M
+info: buildActionUnit
+info:  - T3_Support_Factory
+info: buildActionUnit
+info:  - T2_Support_Factory
+debug: Session time: 00:22:38	Game time: 00:20:22	Heap: 288.0M / 264.5M
+debug: Session time: 00:22:55	Game time: 00:20:39	Heap: 288.0M / 258.2M
+debug: Session time: 00:23:11	Game time: 00:20:56	Heap: 288.0M / 259.5M
+debug: Session time: 00:23:29	Game time: 00:21:13	Heap: 288.0M / 263.1M
+debug: Session time: 00:23:46	Game time: 00:21:30	Heap: 288.0M / 258.3M
+debug: Session time: 00:24:03	Game time: 00:21:47	Heap: 288.0M / 260.1M
+debug: Session time: 00:24:19	Game time: 00:22:04	Heap: 288.0M / 263.8M
+debug: Session time: 00:24:37	Game time: 00:22:21	Heap: 288.0M / 258.6M
+debug: Session time: 00:24:54	Game time: 00:22:38	Heap: 288.0M / 262.4M
+debug: Session time: 00:25:10	Game time: 00:22:55	Heap: 288.0M / 258.2M
+debug: Session time: 00:25:27	Game time: 00:23:12	Heap: 288.0M / 259.6M
+debug: Session time: 00:25:44	Game time: 00:23:29	Heap: 288.0M / 263.5M
+debug: Session time: 00:26:01	Game time: 00:23:46	Heap: 288.0M / 257.9M
+debug: Session time: 00:26:18	Game time: 00:24:02	Heap: 288.0M / 261.3M
+debug: Session time: 00:26:35	Game time: 00:24:19	Heap: 288.0M / 259.2M
+debug: Session time: 00:26:52	Game time: 00:24:36	Heap: 288.0M / 259.6M
+debug: Session time: 00:27:09	Game time: 00:24:53	Heap: 288.0M / 263.0M
+debug: Session time: 00:27:26	Game time: 00:25:10	Heap: 288.0M / 259.3M
+debug: Session time: 00:27:43	Game time: 00:25:27	Heap: 288.0M / 260.7M
+debug: Session time: 00:28:00	Game time: 00:25:44	Heap: 288.0M / 258.5M
+debug: Session time: 00:28:16	Game time: 00:26:01	Heap: 288.0M / 258.2M
+debug: Session time: 00:28:33	Game time: 00:26:18	Heap: 288.0M / 261.3M
+debug: Session time: 00:28:50	Game time: 00:26:34	Heap: 288.0M / 258.5M
+debug: Session time: 00:29:07	Game time: 00:26:51	Heap: 288.0M / 262.1M
+debug: Session time: 00:29:24	Game time: 00:27:08	Heap: 288.0M / 270.7M
+debug: Session time: 00:29:40	Game time: 00:27:25	Heap: 288.0M / 260.5M
+debug: Session time: 00:29:57	Game time: 00:27:41	Heap: 288.0M / 263.3M
+debug: Session time: 00:30:14	Game time: 00:27:58	Heap: 288.0M / 270.9M
+debug: Session time: 00:30:30	Game time: 00:28:15	Heap: 288.0M / 260.8M
+debug: Session time: 00:30:47	Game time: 00:28:32	Heap: 288.0M / 265.3M
+debug: Session time: 00:31:04	Game time: 00:28:49	Heap: 288.0M / 273.9M
+debug: Session time: 00:31:21	Game time: 00:29:05	Heap: 288.0M / 261.7M
+debug: Session time: 00:31:38	Game time: 00:29:23	Heap: 288.0M / 269.4M
+debug: Session time: 00:31:55	Game time: 00:29:40	Heap: 288.0M / 262.0M
+debug: Session time: 00:32:12	Game time: 00:29:56	Heap: 288.0M / 263.4M
+debug: Session time: 00:32:29	Game time: 00:30:13	Heap: 288.0M / 271.9M
+debug: Session time: 00:32:46	Game time: 00:30:30	Heap: 288.0M / 260.2M
+debug: Session time: 00:33:02	Game time: 00:30:47	Heap: 288.0M / 265.2M
+debug: Session time: 00:33:19	Game time: 00:31:03	Heap: 288.0M / 273.5M
+debug: Session time: 00:33:36	Game time: 00:31:20	Heap: 288.0M / 261.0M
+debug: Session time: 00:33:53	Game time: 00:31:37	Heap: 288.0M / 267.1M
+debug: Session time: 00:34:10	Game time: 00:31:54	Heap: 288.0M / 261.0M
+debug: Session time: 00:34:26	Game time: 00:32:11	Heap: 288.0M / 261.5M
+debug: Session time: 00:34:43	Game time: 00:32:28	Heap: 288.0M / 269.7M
+debug: Session time: 00:35:00	Game time: 00:32:44	Heap: 288.0M / 260.7M
+debug: Session time: 00:35:17	Game time: 00:33:01	Heap: 288.0M / 262.5M
+debug: Session time: 00:35:33	Game time: 00:33:17	Heap: 288.0M / 268.6M
+debug: Session time: 00:35:50	Game time: 00:33:34	Heap: 288.0M / 262.4M
+debug: Session time: 00:36:06	Game time: 00:33:51	Heap: 288.0M / 261.7M
+debug: Session time: 00:36:23	Game time: 00:34:07	Heap: 288.0M / 268.5M
+debug: Session time: 00:36:40	Game time: 00:34:24	Heap: 288.0M / 260.9M
+debug: Session time: 00:36:57	Game time: 00:34:41	Heap: 288.0M / 262.2M
+debug: Session time: 00:37:13	Game time: 00:34:58	Heap: 288.0M / 270.7M
+debug: Session time: 00:37:30	Game time: 00:35:14	Heap: 288.0M / 263.0M
+debug: Session time: 00:37:47	Game time: 00:35:31	Heap: 288.0M / 263.1M
+debug: Session time: 00:38:04	Game time: 00:35:48	Heap: 288.0M / 270.8M
+debug: Session time: 00:38:20	Game time: 00:36:05	Heap: 288.0M / 262.0M
+debug: Session time: 00:38:37	Game time: 00:36:21	Heap: 288.0M / 263.9M
+debug: Session time: 00:38:54	Game time: 00:36:38	Heap: 288.0M / 270.9M
+debug: Session time: 00:39:10	Game time: 00:36:55	Heap: 288.0M / 261.4M
+debug: Session time: 00:39:27	Game time: 00:37:11	Heap: 288.0M / 263.9M
+debug: Session time: 00:39:43	Game time: 00:37:28	Heap: 288.0M / 270.4M
+debug: Session time: 00:40:00	Game time: 00:37:45	Heap: 288.0M / 262.4M
+debug: Session time: 00:40:17	Game time: 00:38:02	Heap: 288.0M / 264.1M
+debug: Session time: 00:40:34	Game time: 00:38:19	Heap: 288.0M / 273.3M
+debug: Session time: 00:40:51	Game time: 00:38:36	Heap: 288.0M / 261.3M
+debug: Session time: 00:41:08	Game time: 00:38:52	Heap: 288.0M / 267.3M
+debug: Session time: 00:41:24	Game time: 00:39:09	Heap: 288.0M / 261.2M
+debug: Session time: 00:41:41	Game time: 00:39:25	Heap: 288.0M / 261.4M
+debug: Session time: 00:41:58	Game time: 00:39:42	Heap: 288.0M / 267.0M
+debug: Session time: 00:42:14	Game time: 00:39:59	Heap: 288.0M / 274.5M
+debug: Session time: 00:42:31	Game time: 00:40:16	Heap: 288.0M / 261.7M
+debug: Session time: 00:42:48	Game time: 00:40:32	Heap: 288.0M / 268.8M
+debug: Session time: 00:43:05	Game time: 00:40:49	Heap: 288.0M / 261.4M
+debug: Session time: 00:43:21	Game time: 00:41:06	Heap: 288.0M / 261.2M
+debug: Session time: 00:43:38	Game time: 00:41:22	Heap: 288.0M / 268.0M
+debug: Session time: 00:43:55	Game time: 00:41:39	Heap: 288.0M / 261.2M
+debug: Session time: 00:44:11	Game time: 00:41:56	Heap: 288.0M / 261.4M
+debug: Session time: 00:44:28	Game time: 00:42:12	Heap: 288.0M / 268.1M
+debug: Session time: 00:44:45	Game time: 00:42:29	Heap: 288.0M / 261.5M
+debug: Session time: 00:45:01	Game time: 00:42:46	Heap: 288.0M / 260.0M
+debug: Session time: 00:45:18	Game time: 00:43:02	Heap: 288.0M / 267.3M
+debug: Session time: 00:45:34	Game time: 00:43:19	Heap: 288.0M / 260.7M
+debug: Session time: 00:45:51	Game time: 00:43:36	Heap: 288.0M / 261.1M
+debug: Session time: 00:46:09	Game time: 00:43:53	Heap: 288.0M / 271.6M
+debug: Session time: 00:46:27	Game time: 00:44:11	Heap: 288.0M / 262.6M
+debug: Session time: 00:46:45	Game time: 00:44:29	Heap: 288.0M / 262.0M
+debug: Session time: 00:47:01	Game time: 00:44:46	Heap: 288.0M / 261.2M
+debug: Session time: 00:47:18	Game time: 00:45:02	Heap: 288.0M / 268.4M
+debug: Session time: 00:47:35	Game time: 00:45:19	Heap: 288.0M / 260.3M
+debug: Session time: 00:47:52	Game time: 00:45:36	Heap: 288.0M / 263.2M
+debug: Session time: 00:48:08	Game time: 00:45:53	Heap: 288.0M / 270.1M
+debug: Session time: 00:48:25	Game time: 00:46:10	Heap: 288.0M / 261.2M
+debug: Session time: 00:48:42	Game time: 00:46:26	Heap: 288.0M / 262.3M
+debug: Session time: 00:48:58	Game time: 00:46:43	Heap: 288.0M / 270.3M
+debug: Session time: 00:49:15	Game time: 00:47:00	Heap: 288.0M / 260.1M
+debug: Session time: 00:49:32	Game time: 00:47:17	Heap: 288.0M / 264.0M
+debug: Session time: 00:49:49	Game time: 00:47:33	Heap: 288.0M / 273.0M
+debug: Session time: 00:50:06	Game time: 00:47:50	Heap: 288.0M / 260.1M
+debug: Session time: 00:50:23	Game time: 00:48:07	Heap: 288.0M / 266.1M
+debug: Session time: 00:50:40	Game time: 00:48:24	Heap: 288.0M / 262.3M
+debug: Session time: 00:50:56	Game time: 00:48:41	Heap: 288.0M / 262.5M
+debug: Session time: 00:51:13	Game time: 00:48:58	Heap: 288.0M / 269.2M
+debug: Session time: 00:51:30	Game time: 00:49:14	Heap: 288.0M / 262.1M
+debug: Session time: 00:51:47	Game time: 00:49:31	Heap: 288.0M / 263.1M
+debug: Session time: 00:52:04	Game time: 00:49:48	Heap: 288.0M / 271.5M
+debug: Session time: 00:52:20	Game time: 00:50:05	Heap: 288.0M / 260.3M
+debug: Session time: 00:52:37	Game time: 00:50:22	Heap: 288.0M / 264.4M
+debug: Session time: 00:52:54	Game time: 00:50:38	Heap: 288.0M / 272.0M
+debug: Session time: 00:53:10	Game time: 00:50:55	Heap: 288.0M / 260.5M
+debug: Session time: 00:53:27	Game time: 00:51:12	Heap: 288.0M / 264.7M
+debug: Session time: 00:53:44	Game time: 00:51:28	Heap: 288.0M / 273.0M
+debug: Session time: 00:54:01	Game time: 00:51:45	Heap: 288.0M / 261.9M
+debug: Session time: 00:54:18	Game time: 00:52:02	Heap: 288.0M / 267.4M
+debug: Session time: 00:54:35	Game time: 00:52:19	Heap: 288.0M / 260.0M
+debug: Session time: 00:54:51	Game time: 00:52:36	Heap: 288.0M / 260.7M
+debug: Session time: 00:55:08	Game time: 00:52:52	Heap: 288.0M / 268.7M
+debug: Session time: 00:55:25	Game time: 00:53:09	Heap: 288.0M / 261.2M
+debug: Session time: 00:55:42	Game time: 00:53:26	Heap: 288.0M / 261.2M
+debug: Session time: 00:55:58	Game time: 00:53:43	Heap: 288.0M / 269.6M
+debug: Session time: 00:56:15	Game time: 00:53:59	Heap: 288.0M / 261.6M
+debug: Session time: 00:56:32	Game time: 00:54:16	Heap: 288.0M / 262.2M
+debug: Session time: 00:56:49	Game time: 00:54:33	Heap: 288.0M / 270.6M
+debug: Session time: 00:57:05	Game time: 00:54:50	Heap: 288.0M / 261.0M
+debug: Session time: 00:57:22	Game time: 00:55:07	Heap: 288.0M / 264.9M
+debug: Session time: 00:57:39	Game time: 00:55:24	Heap: 288.0M / 274.3M
+debug: Session time: 00:57:56	Game time: 00:55:40	Heap: 288.0M / 259.9M
+debug: Session time: 00:58:13	Game time: 00:55:57	Heap: 288.0M / 266.5M
+debug: Session time: 00:58:29	Game time: 00:56:14	Heap: 288.0M / 259.4M
+debug: Session time: 00:58:46	Game time: 00:56:31	Heap: 288.0M / 260.1M
+debug: Session time: 00:59:03	Game time: 00:56:47	Heap: 288.0M / 267.9M
+debug: Session time: 00:59:20	Game time: 00:57:04	Heap: 288.0M / 261.5M
+debug: Session time: 00:59:37	Game time: 00:57:21	Heap: 288.0M / 262.1M
+debug: Session time: 00:59:53	Game time: 00:57:38	Heap: 288.0M / 269.9M
+debug: Session time: 01:00:10	Game time: 00:57:55	Heap: 288.0M / 262.0M
+debug: Session time: 01:00:27	Game time: 00:58:12	Heap: 288.0M / 265.1M
+debug: Session time: 01:00:44	Game time: 00:58:29	Heap: 288.0M / 273.8M
+debug: Session time: 01:01:01	Game time: 00:58:45	Heap: 288.0M / 259.8M
+debug: Session time: 01:01:18	Game time: 00:59:02	Heap: 288.0M / 267.1M
+debug: Session time: 01:01:35	Game time: 00:59:19	Heap: 288.0M / 259.7M
+debug: Session time: 01:01:52	Game time: 00:59:36	Heap: 288.0M / 261.6M
+debug: Session time: 01:02:08	Game time: 00:59:53	Heap: 288.0M / 270.4M
+debug: Session time: 01:02:25	Game time: 01:00:10	Heap: 288.0M / 259.5M
+debug: Session time: 01:02:42	Game time: 01:00:26	Heap: 288.0M / 263.4M
+debug: Session time: 01:02:59	Game time: 01:00:43	Heap: 288.0M / 271.4M
+debug: Session time: 01:03:16	Game time: 01:01:00	Heap: 288.0M / 261.3M
+debug: Session time: 01:03:32	Game time: 01:01:17	Heap: 288.0M / 264.5M
+debug: Session time: 01:03:49	Game time: 01:01:33	Heap: 288.0M / 272.8M
+debug: Session time: 01:04:06	Game time: 01:01:50	Heap: 288.0M / 259.6M
+debug: Session time: 01:04:22	Game time: 01:02:07	Heap: 288.0M / 265.4M
+debug: Session time: 01:04:39	Game time: 01:02:24	Heap: 288.0M / 273.9M
+debug: Session time: 01:04:56	Game time: 01:02:40	Heap: 288.0M / 260.5M
+debug: Session time: 01:05:13	Game time: 01:02:57	Heap: 288.0M / 266.9M
+debug: Session time: 01:05:30	Game time: 01:03:14	Heap: 288.0M / 259.9M
+debug: Session time: 01:05:46	Game time: 01:03:31	Heap: 288.0M / 262.6M
+debug: Session time: 01:06:03	Game time: 01:03:48	Heap: 288.0M / 269.8M
+debug: Session time: 01:06:20	Game time: 01:04:05	Heap: 288.0M / 262.2M
+debug: Session time: 01:06:37	Game time: 01:04:22	Heap: 288.0M / 264.3M
+debug: Session time: 01:06:54	Game time: 01:04:38	Heap: 288.0M / 273.3M
+debug: Session time: 01:07:11	Game time: 01:04:55	Heap: 288.0M / 261.5M
+debug: Session time: 01:07:27	Game time: 01:05:12	Heap: 288.0M / 265.4M
+debug: Session time: 01:07:44	Game time: 01:05:28	Heap: 288.0M / 273.4M
+debug: Session time: 01:08:01	Game time: 01:05:45	Heap: 288.0M / 261.1M
+debug: Session time: 01:08:17	Game time: 01:06:02	Heap: 288.0M / 265.3M
+debug: Session time: 01:08:34	Game time: 01:06:18	Heap: 288.0M / 273.4M
+debug: Session time: 01:08:51	Game time: 01:06:35	Heap: 288.0M / 262.5M
+debug: Session time: 01:09:08	Game time: 01:06:52	Heap: 288.0M / 266.0M
+debug: Session time: 01:09:24	Game time: 01:07:09	Heap: 288.0M / 274.0M
+debug: Session time: 01:09:41	Game time: 01:07:26	Heap: 288.0M / 261.3M
+debug: Session time: 01:09:58	Game time: 01:07:42	Heap: 288.0M / 267.7M
+debug: Session time: 01:10:15	Game time: 01:07:59	Heap: 288.0M / 260.5M
+debug: Session time: 01:10:32	Game time: 01:08:16	Heap: 288.0M / 262.0M
+debug: Session time: 01:10:49	Game time: 01:08:33	Heap: 288.0M / 270.5M
+debug: Session time: 01:11:05	Game time: 01:08:50	Heap: 288.0M / 259.9M
+debug: Session time: 01:11:22	Game time: 01:09:06	Heap: 288.0M / 263.6M
+debug: Session time: 01:11:39	Game time: 01:09:23	Heap: 288.0M / 272.5M
+debug: Session time: 01:11:56	Game time: 01:09:40	Heap: 288.0M / 260.3M
+debug: Session time: 01:12:13	Game time: 01:09:57	Heap: 288.0M / 265.7M
+debug: Session time: 01:12:29	Game time: 01:10:14	Heap: 288.0M / 262.3M
+debug: Session time: 01:12:47	Game time: 01:10:31	Heap: 288.0M / 261.5M
+debug: Session time: 01:13:03	Game time: 01:10:48	Heap: 288.0M / 269.7M
+debug: Session time: 01:13:20	Game time: 01:11:04	Heap: 288.0M / 261.5M
+debug: Session time: 01:13:37	Game time: 01:11:21	Heap: 288.0M / 262.5M
+debug: Session time: 01:13:53	Game time: 01:11:38	Heap: 288.0M / 270.2M
+debug: Session time: 01:14:10	Game time: 01:11:55	Heap: 288.0M / 262.5M
+debug: Session time: 01:14:27	Game time: 01:12:12	Heap: 288.0M / 264.7M
+debug: Session time: 01:14:44	Game time: 01:12:28	Heap: 288.0M / 273.1M
+debug: Session time: 01:15:01	Game time: 01:12:45	Heap: 288.0M / 259.7M
+debug: Session time: 01:15:18	Game time: 01:13:02	Heap: 288.0M / 266.9M
+debug: Session time: 01:15:35	Game time: 01:13:19	Heap: 288.0M / 261.8M
+debug: Session time: 01:15:51	Game time: 01:13:36	Heap: 288.0M / 261.8M
+debug: Session time: 01:16:08	Game time: 01:13:52	Heap: 288.0M / 268.3M
+debug: Session time: 01:16:25	Game time: 01:14:09	Heap: 288.0M / 262.5M
+debug: Session time: 01:16:42	Game time: 01:14:26	Heap: 288.0M / 262.2M
+debug: Session time: 01:16:59	Game time: 01:14:43	Heap: 288.0M / 270.6M
+debug: Session time: 01:17:15	Game time: 01:15:00	Heap: 288.0M / 261.6M
+debug: Session time: 01:17:32	Game time: 01:15:16	Heap: 288.0M / 263.6M
+debug: Session time: 01:17:49	Game time: 01:15:33	Heap: 288.0M / 271.5M
+debug: Session time: 01:18:06	Game time: 01:15:50	Heap: 288.0M / 261.4M
+debug: Session time: 01:18:22	Game time: 01:16:07	Heap: 288.0M / 265.0M
+debug: Session time: 01:18:39	Game time: 01:16:23	Heap: 288.0M / 273.5M
+debug: Session time: 01:18:56	Game time: 01:16:40	Heap: 288.0M / 261.9M
+debug: Session time: 01:19:13	Game time: 01:16:57	Heap: 288.0M / 265.8M
+debug: Session time: 01:19:29	Game time: 01:17:14	Heap: 288.0M / 273.7M
+debug: Session time: 01:19:46	Game time: 01:17:30	Heap: 288.0M / 260.9M
+debug: Session time: 01:20:03	Game time: 01:17:47	Heap: 288.0M / 266.4M
+debug: Session time: 01:20:19	Game time: 01:18:04	Heap: 288.0M / 274.5M
+debug: Session time: 01:20:36	Game time: 01:18:20	Heap: 288.0M / 263.2M
+debug: Session time: 01:20:53	Game time: 01:18:37	Heap: 288.0M / 266.5M
+debug: Session time: 01:21:09	Game time: 01:18:54	Heap: 288.0M / 274.7M
+debug: Session time: 01:21:26	Game time: 01:19:10	Heap: 288.0M / 261.4M
+debug: Session time: 01:21:43	Game time: 01:19:27	Heap: 288.0M / 266.8M
+debug: Session time: 01:21:59	Game time: 01:19:44	Heap: 288.0M / 274.9M
+debug: Session time: 01:22:16	Game time: 01:20:00	Heap: 288.0M / 262.1M
+debug: Session time: 01:22:33	Game time: 01:20:17	Heap: 288.0M / 267.2M
+debug: Session time: 01:22:50	Game time: 01:20:35	Heap: 288.0M / 262.0M
+debug: Session time: 01:23:07	Game time: 01:20:52	Heap: 288.0M / 264.5M
+debug: Session time: 01:23:24	Game time: 01:21:09	Heap: 288.0M / 273.4M
+debug: Session time: 01:23:41	Game time: 01:21:26	Heap: 288.0M / 262.9M
+debug: Session time: 01:23:59	Game time: 01:21:43	Heap: 288.0M / 269.6M
+debug: Session time: 01:24:16	Game time: 01:22:00	Heap: 288.0M / 260.8M
+debug: Session time: 01:24:33	Game time: 01:22:17	Heap: 288.0M / 267.8M
+debug: Session time: 01:24:50	Game time: 01:22:34	Heap: 288.0M / 261.7M
+debug: Session time: 01:25:07	Game time: 01:22:51	Heap: 288.0M / 263.9M
+debug: Session time: 01:25:24	Game time: 01:23:08	Heap: 288.0M / 272.8M
+debug: Session time: 01:25:41	Game time: 01:23:25	Heap: 288.0M / 259.9M
+debug: Session time: 01:25:58	Game time: 01:23:42	Heap: 288.0M / 266.3M
+debug: Session time: 01:26:14	Game time: 01:23:59	Heap: 288.0M / 273.8M
+debug: Session time: 01:26:31	Game time: 01:24:15	Heap: 288.0M / 261.0M
+debug: Session time: 01:26:48	Game time: 01:24:32	Heap: 288.0M / 266.2M
+debug: Session time: 01:27:04	Game time: 01:24:49	Heap: 288.0M / 274.2M
+debug: Session time: 01:27:21	Game time: 01:25:05	Heap: 288.0M / 260.6M
+debug: Session time: 01:27:38	Game time: 01:25:22	Heap: 288.0M / 267.1M
+debug: Session time: 01:27:54	Game time: 01:25:39	Heap: 288.0M / 274.5M
+debug: Session time: 01:28:11	Game time: 01:25:55	Heap: 288.0M / 262.0M
+debug: Session time: 01:28:28	Game time: 01:26:12	Heap: 288.0M / 267.4M
+debug: Session time: 01:28:45	Game time: 01:26:29	Heap: 288.0M / 261.7M
+debug: Session time: 01:29:01	Game time: 01:26:46	Heap: 288.0M / 262.7M
+debug: Session time: 01:29:18	Game time: 01:27:03	Heap: 288.0M / 269.7M
+debug: Session time: 01:29:35	Game time: 01:27:20	Heap: 288.0M / 261.4M
+debug: Session time: 01:29:52	Game time: 01:27:36	Heap: 288.0M / 263.8M
+debug: Session time: 01:30:09	Game time: 01:27:53	Heap: 288.0M / 272.1M
+debug: Session time: 01:30:26	Game time: 01:28:10	Heap: 288.0M / 260.6M
+debug: Session time: 01:30:42	Game time: 01:28:27	Heap: 288.0M / 265.5M
+debug: Session time: 01:30:59	Game time: 01:28:44	Heap: 288.0M / 274.2M
+debug: Session time: 01:31:16	Game time: 01:29:01	Heap: 288.0M / 260.4M
+debug: Session time: 01:31:33	Game time: 01:29:17	Heap: 288.0M / 267.6M
+debug: Session time: 01:31:50	Game time: 01:29:34	Heap: 288.0M / 262.2M
+debug: Session time: 01:32:06	Game time: 01:29:51	Heap: 288.0M / 261.8M
+debug: Session time: 01:32:23	Game time: 01:30:08	Heap: 288.0M / 269.2M
+debug: Session time: 01:32:40	Game time: 01:30:24	Heap: 288.0M / 263.3M
+debug: Session time: 01:32:57	Game time: 01:30:41	Heap: 288.0M / 262.3M
+debug: Session time: 01:33:13	Game time: 01:30:58	Heap: 288.0M / 270.4M
+debug: Session time: 01:33:30	Game time: 01:31:15	Heap: 288.0M / 262.6M
+debug: Session time: 01:33:47	Game time: 01:31:32	Heap: 288.0M / 264.3M
+debug: Session time: 01:34:04	Game time: 01:31:48	Heap: 288.0M / 272.7M
+debug: Session time: 01:34:21	Game time: 01:32:05	Heap: 288.0M / 260.4M
+debug: Session time: 01:34:38	Game time: 01:32:22	Heap: 288.0M / 266.0M
+debug: Session time: 01:34:54	Game time: 01:32:39	Heap: 288.0M / 274.5M
+debug: Session time: 01:35:11	Game time: 01:32:55	Heap: 288.0M / 261.8M
+debug: Session time: 01:35:28	Game time: 01:33:12	Heap: 288.0M / 267.3M
+debug: Session time: 01:35:45	Game time: 01:33:29	Heap: 288.0M / 260.3M
+debug: Session time: 01:36:02	Game time: 01:33:46	Heap: 288.0M / 261.4M
+debug: Session time: 01:36:18	Game time: 01:34:03	Heap: 288.0M / 269.5M
+debug: Session time: 01:36:35	Game time: 01:34:19	Heap: 288.0M / 261.9M
+debug: Session time: 01:36:52	Game time: 01:34:36	Heap: 288.0M / 262.7M
+debug: Session time: 01:37:09	Game time: 01:34:53	Heap: 288.0M / 271.0M
+debug: Session time: 01:37:26	Game time: 01:35:10	Heap: 288.0M / 261.5M
+debug: Session time: 01:37:43	Game time: 01:35:27	Heap: 288.0M / 267.2M
+debug: Session time: 01:38:00	Game time: 01:35:44	Heap: 288.0M / 261.0M
+debug: Session time: 01:38:16	Game time: 01:36:01	Heap: 288.0M / 260.4M
+debug: Session time: 01:38:33	Game time: 01:36:18	Heap: 288.0M / 269.2M
+debug: Session time: 01:38:50	Game time: 01:36:34	Heap: 288.0M / 261.0M
+debug: Session time: 01:39:07	Game time: 01:36:51	Heap: 288.0M / 262.5M
+debug: Session time: 01:39:24	Game time: 01:37:08	Heap: 288.0M / 271.0M
+debug: Session time: 01:39:40	Game time: 01:37:25	Heap: 288.0M / 260.5M
+debug: Session time: 01:39:57	Game time: 01:37:42	Heap: 288.0M / 264.2M
+debug: Session time: 01:40:14	Game time: 01:37:58	Heap: 288.0M / 272.9M
+debug: Session time: 01:40:31	Game time: 01:38:15	Heap: 288.0M / 260.9M
+debug: Session time: 01:40:48	Game time: 01:38:32	Heap: 288.0M / 265.7M
+debug: Session time: 01:41:04	Game time: 01:38:49	Heap: 288.0M / 274.7M
+debug: Session time: 01:41:21	Game time: 01:39:06	Heap: 288.0M / 261.1M
+debug: Session time: 01:41:38	Game time: 01:39:22	Heap: 288.0M / 267.5M
+debug: Session time: 01:41:55	Game time: 01:39:39	Heap: 288.0M / 260.8M
+info: Run time: 1h42m09s
