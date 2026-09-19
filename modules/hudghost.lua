@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/hudghost.lua
+--** TeamMouse -- modules/hudghost.lua
 --**
 --** A small stylised panel shown in place of a teammate's cursor while their
 --** mouse is on their own interface rather than the map.
@@ -16,7 +16,7 @@
 --**   'full'   -- adds build grid, order row, score panel and side rails
 --******************************************************************************
 
-local Config = import('/mods/SharedMouse2026/modules/config.lua')
+local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 local LayoutHelpers = import('/lua/maui/layouthelpers.lua')
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 local Group = import('/lua/maui/group.lua').Group
@@ -52,7 +52,7 @@ HudGhost = Class(Group) {
     ---@param parent Control
     ---@param playerColor string
     __init = function(self, parent, playerColor)
-        Group.__init(self, parent, 'SharedMouseHudGhost')
+        Group.__init(self, parent, 'TeamMouseHudGhost')
 
         local hud = Config.Hud
         local w = hud.Width
@@ -103,9 +103,7 @@ HudGhost = Class(Group) {
         table.insert(self.parts, Rect(self, color, 1 - tw, 0, tw, 1, w, h))
     end,
 
-    --- The interface furniture itself. Proportions are eyeballed from the
-    --- stock 'bottom' layout -- close enough to be recognisable, and it does
-    --- not matter that a given player may be running a different layout.
+    --- The fake HUD visual
     ---@param self HudGhost
     BuildChrome = function(self, hud, w, h)
         local panel = hud.PanelColor

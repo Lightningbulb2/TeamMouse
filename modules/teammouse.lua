@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/sharedmouse.lua
+--** TeamMouse -- modules/teammouse.lua
 --**
 --** Shares your mouse position, cursor state and build selection with your
 --** team, and draws theirs on your map.
@@ -10,7 +10,7 @@
 --**   remotecursor.lua the visual for one player in one view
 --**   hudghost.lua     the stylised panel shown when a teammate is on their UI
 --**   replaycodec.lua  optional zero-width encoding for replay playback
---**   sharedmouse.lua  this file: session setup, send, receive, view sync
+--**   teammouse.lua  this file: session setup, send, receive, view sync
 --**
 --** Data flow:
 --**   OnBeat (10/s)  -> read local state -> SessionSendChatMessage to allies
@@ -23,10 +23,10 @@
 --** independently.
 --******************************************************************************
 
-local Config = import('/mods/SharedMouse2026/modules/config.lua')
-local CursorData = import('/mods/SharedMouse2026/modules/cursordata.lua')
-local RemoteCursor = import('/mods/SharedMouse2026/modules/remotecursor.lua').RemoteCursor
-local ReplayCodec = import('/mods/SharedMouse2026/modules/replaycodec.lua')
+local Config = import(_G.TeamMousePath .. '/modules/config.lua')
+local CursorData = import(_G.TeamMousePath .. '/modules/cursordata.lua')
+local RemoteCursor = import(_G.TeamMousePath .. '/modules/remotecursor.lua').RemoteCursor
+local ReplayCodec = import(_G.TeamMousePath .. '/modules/replaycodec.lua')
 
 local WorldViewManager = import('/lua/ui/game/worldview.lua')
 local CommandMode = import('/lua/ui/game/commandmode.lua')
@@ -34,7 +34,6 @@ local Group = import('/lua/maui/group.lua').Group
 
 local MathFloor = math.floor
 local MathAbs = math.abs
-local TableGetN = table.getn
 
 --------------------------------------------------------------------------------
 -- Session state
@@ -78,10 +77,7 @@ local lastWorldPos = { 0, 0, 0 }
 local haveWorldPos = false
 local lastWorldZoom = 0
 
---- Send-loop state. These live at file scope on purpose: the previous version
---- declared them inside the beat callback, so they reset every call and the
---- "has the mouse moved" check always compared against the origin, meaning it
---- transmitted on every single beat regardless of movement.
+--- Send-loop state.
 local lastSent = { 0, 0, 0 }
 local lastSentOrder = -1
 local lastSentTime = 0
@@ -104,14 +100,12 @@ local outgoing = {
 }
 
 --- Forward declarations. These are referenced by functions defined earlier in
---- the file than their own bodies, and a `local function` declared later would
---- not be in lexical scope at that point -- it would silently resolve to a nil
---- global instead.
+--- the file than their own bodies.
 local CreateFrameDriver
 local VerifyViews
 
 local function Log(msg)
-    LOG('SharedMouse2026: ' .. tostring(msg))
+    LOG('TeamMouse: ' .. tostring(msg))
 end
 
 local function Debug(msg)
@@ -543,7 +537,7 @@ function OnBeat()
             lastWorldZoom = state.zoom
         end
 
-        local orderIndex = CursorData.IndexFromKey(cursor and cursor.sharedMouseOrder)
+        local orderIndex = CursorData.IndexFromKey(cursor and cursor.TeamMouseOrder)
 
         -- Build mode: send the blueprint currently on the cursor.
         local buildId = false
@@ -587,7 +581,7 @@ function OnBeat()
         ------------------------------------------------------------------
         -- Transmit
         ------------------------------------------------------------------
-        if TableGetN(recipients) > 0 then
+        if table.getn(recipients) > 0 then
             outgoing.a = myArmy
             outgoing.p[1] = x
             outgoing.p[2] = y
@@ -700,7 +694,7 @@ CreateFrameDriver = function()
         return
     end
 
-    frameDriver = Group(frame, 'SharedMouseDriver')
+    frameDriver = Group(frame, 'TeamMouseDriver')
     frameDriver.Width:Set(1)
     frameDriver.Height:Set(1)
     frameDriver:DisableHitTest(true)
@@ -740,10 +734,10 @@ local function HookViewEvents(view)
     -- Marked on the view itself rather than in a module-level table. Views are
     -- destroyed and recreated on every layout change, and a table keyed by the
     -- control would keep dead ones reachable for the rest of the session.
-    if view._sharedMouseHooked then
+    if view._TeamMouseHooked then
         return
     end
-    view._sharedMouseHooked = true
+    view._TeamMouseHooked = true
 
     local originalHandleEvent = view.HandleEvent
     view.HandleEvent = function(self, event)
@@ -833,18 +827,18 @@ local function HookCursor()
         return
     end
 
-    cursor.sharedMouseOrder = 'selectable'
+    cursor.TeamMouseOrder = 'selectable'
 
     local originalSetTexture = cursor.SetTexture
     cursor.SetTexture = function(self, filename, hotspotX, hotspotY, numFrames, fps)
         originalSetTexture(self, filename, hotspotX, hotspotY, numFrames, fps)
-        self.sharedMouseOrder = CursorData.KeyFromTexture(filename) or 'selectable'
+        self.TeamMouseOrder = CursorData.KeyFromTexture(filename) or 'selectable'
     end
 
     local originalReset = cursor.Reset
     cursor.Reset = function(self)
         originalReset(self)
-        self.sharedMouseOrder = 'selectable'
+        self.TeamMouseOrder = 'selectable'
     end
 end
 
@@ -912,7 +906,7 @@ local function FindLocalName(clients)
 end
 
 ---@param replay boolean
-function InitSharedMouse(replay)
+function InitTeamMouse(replay)
     if initialised then
         return
     end
@@ -1000,7 +994,7 @@ function InitSharedMouse(replay)
 
         Debug('army ' .. tostring(myArmy) .. ', observer=' .. tostring(isObserver)
             .. ', peers=' .. tostring(table.getsize(peers))
-            .. ', recipients=' .. tostring(TableGetN(recipients)))
+            .. ', recipients=' .. tostring(table.getn(recipients)))
 
         ------------------------------------------------------------------
         -- Wire it up
@@ -1026,7 +1020,7 @@ function InitSharedMouse(replay)
                 .. (Config.ReplayCodec.Enabled and 'enabled' or 'disabled'))
         elseif isObserver then
             Log('observing; receiving from all players')
-        elseif TableGetN(recipients) == 0 then
+        elseif table.getn(recipients) == 0 then
             Log('no teammates to share with; still receiving')
         end
     end)

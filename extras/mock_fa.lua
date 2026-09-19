@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- extras/mock_fa.lua
+--** TeamMouse -- extras/mock_fa.lua
 --**
 --** Enough of the Forged Alliance UI environment to run the mod's modules
 --** outside the game, for the test harnesses.
@@ -553,7 +553,7 @@ function M.CreateEnvironment(opts)
             return stubs[path]
         end
 
-        local file = string.gsub(path, '^/mods/SharedMouse2026/', '')
+        local file = string.gsub(path, '^/mods/TeamMouse/', '')
         local moduleEnv = setmetatable({}, { __index = env })
         cache[path] = moduleEnv
 
@@ -577,7 +577,7 @@ end
 --- Convenience: find the mod's frame driver under the root frame.
 function M.FindDriver(env)
     for _, child in ipairs(env.__frame.children) do
-        if child._name == 'SharedMouseDriver' then
+        if child._name == 'TeamMouseDriver' then
             return child
         end
     end
@@ -590,7 +590,7 @@ function M.FindCursors(env, viewKey)
     local view = env.__views[viewKey]
     if not view then return found end
     for _, child in ipairs(view.children) do
-        if child._name == 'SharedMouseCursor' then
+        if child._name == 'TeamMouseCursor' then
             table.insert(found, child)
         end
     end

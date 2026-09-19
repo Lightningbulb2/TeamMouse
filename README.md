@@ -1,7 +1,29 @@
-# SharedMouse2026
+# TeamMouse
 
 Shows your teammates what you're doing: mouse position, order cursor, the
 building you have on your cursor, and your drag-selections.
+
+## Development
+
+Set the location of your local [fa-lua-addon](https://github.com/speed2CZ/fa-lua-addon) in your vscode settings to something like
+`  "Lua.runtime.plugin": "YOUR/PATH/TO/fa-lua-addon/plugin.lua",`
+
+Junction the source folder into the mods directory so edits are live:
+
+```
+Windows:
+
+mklink /J "C:\ProgramData\FAForever\user\My Games\Gas Powered Games\Supreme Commander Forged Alliance\mods\TeamMouse" "PATH/TO/YOUR/REPO/TeamMouse"
+```
+
+Many mod flags in `config.lua`
+
+Note that FA runs Lua 5.0.1. Subtly: `table.insert`, `table.remove`
+and `table.getn` maintain a hidden `n` field in 5.0 that plain `nil`-assignment
+does not update — clearing entries that way desyncs the count from the real
+data.
+
+Also, from the notes: never `LOG` a raw engine object. It hangs the game.
 
 ## Layout
 
@@ -14,7 +36,7 @@ modules/cursordata.lua              cursor name <-> wire index <-> texture, colo
 modules/remotecursor.lua            the visual for one player in one view
 modules/hudghost.lua                the stylised panel shown when someone is in their UI
 modules/replaycodec.lua             zero-width encoding for replay playback
-modules/sharedmouse.lua             session setup, send, receive, view sync
+modules/teammouse.lua             session setup, send, receive, view sync
 extras/mock_fa.lua                  mock game environment for tests (Lua 5.0 table semantics)
 extras/test_integration.lua         111+ tests over the whole pipeline, including regressions
 extras/test_replaycodec.lua         17 tests over the codec
@@ -33,10 +55,6 @@ There is exactly one frame callback for the whole mod. It reads each view's
 bounds, camera zoom and the local mouse position once, then hands that to every
 cursor. That's deliberate — the previous version's per-cursor `OnFrame` with
 per-frame `LayoutHelpers.AtLeftTopIn` calls was the source of the slowdown.
-
-## The two flags you asked for
-
-Both live in `modules/config.lua`.
 
 ### Replay encoding
 
@@ -101,22 +119,3 @@ rather than through `table.remove`, it will pass under 5.1 and crash under
 extremes and unbalanced mouse events at the mod across many random seeds and
 asserts only that it never raises and never logs an error — run it with a new
 seed after any change that touches shared per-player state.
-
-## Development
-
-Junction the source folder into the mods directory so edits are live:
-
-```
-mklink /J "C:\ProgramData\FAForever\user\My Games\Gas Powered Games\Supreme Commander Forged Alliance\mods\SharedMouse2026" "H:\ALLMYSTUFF\development\SharedMouse2026"
-```
-
-Note that FA runs Lua 5.0.1. No `#` length operator (use `table.getn`), no `%`
-modulo (use `math.mod`), and `string.match` / `string.gmatch` exist only because
-`lua/system/utils.lua` shims them in. More subtly: `table.insert`, `table.remove`
-and `table.getn` maintain a hidden `n` field in 5.0 that plain `nil`-assignment
-does not update — clearing entries that way desyncs the count from the real
-data. This is exactly what crashed v5; see the v6 changelog entry in
-`mod_info.lua` and the note at the top of `PushSample` in `sharedmouse.lua`.
-
-Also, from the notes: never `LOG` a raw engine object. It hangs the game. The
-old replay code did exactly that in two places.

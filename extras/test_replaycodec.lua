@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- extras/test_replaycodec.lua
+--** TeamMouse -- extras/test_replaycodec.lua
 --**
 --** Round-trip test for the zero-width codec. Runs outside the game:
 --**

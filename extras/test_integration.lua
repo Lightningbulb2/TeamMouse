@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- extras/test_integration.lua
+--** TeamMouse -- extras/test_integration.lua
 --**
 --** Runs the mod's modules against the mock environment in mock_fa.lua.
 --**
@@ -78,8 +78,8 @@ local function NewSession(opts)
         ueb0101 = { Display = { IconName = 'ueb0101' } },
     }
     local env = Mock.CreateEnvironment(opts)
-    local SharedMouse = env.import('/mods/SharedMouse2026/modules/sharedmouse.lua')
-    return env, SharedMouse
+    local TeamMouse = env.import(_G.TeamMousePath .. '/modules/TeamMouse.lua')
+    return env, TeamMouse
 end
 
 --------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ Section('cursor name parsing')
 --------------------------------------------------------------------------------
 do
     local env = Mock.CreateEnvironment({ armies = Armies(), clients = Clients() })
-    local CD = env.import('/mods/SharedMouse2026/modules/cursordata.lua')
+    local CD = env.import(_G.TeamMousePath .. '/modules/cursordata.lua')
     local root = '/textures/ui/common/game/cursors/'
 
     -- Animated cursors arrive with a trailing dash; the engine appends the
@@ -181,10 +181,10 @@ Section('initialisation')
 --------------------------------------------------------------------------------
 do
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     Check('chat handler registered',
-        env.__chatFuncs['SharedMouse2026'] ~= nil)
+        env.__chatFuncs['TeamMouse'] ~= nil)
 
     -- Team A player: ally KasperAUS is visible, enemy Eternal is not, and the
     -- AI army is not a peer at all.
@@ -208,7 +208,7 @@ do
         },
     })
 
-    local ok = pcall(function() SM.InitSharedMouse(false) end)
+    local ok = pcall(function() SM.InitTeamMouse(false) end)
     Check('observer initialises without error', ok)
 
     local cursors = table.getn(Mock.FindCursors(env, 'WorldCamera'))
@@ -223,7 +223,7 @@ Section('sending')
 --------------------------------------------------------------------------------
 do
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     env.__mouseWorld = { 100, 5, 200 }
     SM.OnBeat()
@@ -281,7 +281,7 @@ do
     -- Mouse on the HUD: position freezes at the last world spot and the
     -- over-world flag goes false.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     env.__mouseWorld = { 50, 0, 60 }
     SM.OnBeat()
@@ -308,13 +308,13 @@ Section('receiving and interpolation')
 --------------------------------------------------------------------------------
 do
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
 
     local function Send(x, z, extra)
         local msg = {
-            Identifier = 'SharedMouse2026', v = 5, a = 2,
+            Identifier = 'TeamMouse', v = 5, a = 2,
             p = { x, 0, z }, o = 0, z = 60, w = true, s = false, b = false,
             hx = 0.5, hy = 0.9,
         }
@@ -368,8 +368,8 @@ end
 do
     -- A large jump must snap rather than sliding across the map.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     local function Send(x, z)
         receive('KasperAUS', {
@@ -409,7 +409,7 @@ do
     -- Default: spectators included, enemy excluded.
     do
         local env, SM = NewSession({ armies = armies, clients = clients })
-        SM.InitSharedMouse(false)
+        SM.InitTeamMouse(false)
         env.__mouseWorld = { 20, 0, 20 }
         SM.OnBeat()
 
@@ -428,9 +428,9 @@ do
     -- Disabled: spectator excluded, enemy still excluded, ally still included.
     do
         local env, SM = NewSession({ armies = armies, clients = clients })
-        local Config = env.import('/mods/SharedMouse2026/modules/config.lua')
+        local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
         Config.Network.ShareWithObservers = false
-        SM.InitSharedMouse(false)
+        SM.InitTeamMouse(false)
         env.__mouseWorld = { 20, 0, 20 }
         SM.OnBeat()
 
@@ -459,8 +459,8 @@ do
     -- This needs the buffer driven past capacity AFTER a jump, so the eviction
     -- path is the one that runs.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     local function Send(x)
         receive('KasperAUS', {
@@ -529,8 +529,8 @@ do
     -- The samples buffer must not carry a Lua 5.0 `n` field at all, since
     -- nothing should be touching it with table.insert / table.remove.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     for i = 1, 25 do
         env.__clock.t = env.__clock.t + 0.1
@@ -557,8 +557,8 @@ do
     -- Malformed packets must never escape into gamemain.ReceiveChat, which
     -- does not guard the handlers it dispatches to.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     local junk = {
         { v = 5, a = 2, p = 'not a table' },
@@ -597,8 +597,8 @@ do
     -- Every Bitmap must be given a texture or a solid colour. The game logs
     -- "GetResource: Invalid name" for any that are not.
     local env, SM = NewSession({ splitscreen = true })
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     -- Drive through every visual state: map cursor, build ghost, selection,
     -- and the HUD panel, in both 'simple' and 'full' detail.
@@ -631,11 +631,11 @@ end
 do
     -- The same, with the full HUD silhouette.
     local env, SM = NewSession()
-    local Config = env.import('/mods/SharedMouse2026/modules/config.lua')
+    local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
     Config.Hud.Detail = 'full'
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', {
         v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = false,
         hx = 0.25, hy = 0.88,
@@ -680,10 +680,10 @@ do
             [4] = { name = 'Caster', ['local'] = true },
         } })
 
-    local ok = pcall(function() SM.InitSharedMouse(false) end)
+    local ok = pcall(function() SM.InitTeamMouse(false) end)
     Check('team colour mode initialises without error', ok)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', { v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = false })
     receive('Eternal', { v = 5, a = 3, p = { 20, 0, 20 }, o = 11, z = 60, w = true,
         s = true, b = 'ueb0101' })
@@ -697,8 +697,8 @@ end
 do
     -- Project returning nil must hide the cursor, not crash the frame loop.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', { v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = true })
 
     env.__views['WorldCamera'].projectReturnsNil = true
@@ -713,8 +713,8 @@ end
 do
     -- Zoom extremes must not produce a NaN scale or alpha.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     local zooms = { 0, 1, 500, 100000 }
     local allOk = true
@@ -737,7 +737,7 @@ do
     -- A stuck selection flag must clear itself. If ButtonRelease is consumed
     -- before reaching our hook, the ring would otherwise stay on forever.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     local view = env.__views['WorldCamera']
     view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true } })
@@ -757,7 +757,7 @@ end
 do
     -- Releasing normally must clear it immediately.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
     local view = env.__views['WorldCamera']
 
     view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true } })
@@ -793,7 +793,7 @@ do
     -- Hooking must be idempotent across repeated SyncViews calls, or each
     -- layout change would add another wrapper layer.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
     local view = env.__views['WorldCamera']
     local afterInit = view.HandleEvent
 
@@ -809,8 +809,8 @@ do
     -- A long idle must fade the cursor out and then leave it hidden, without
     -- the alpha going negative on the way.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', { v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = true })
 
     local visual = Mock.FindCursors(env, 'WorldCamera')[1]
@@ -829,7 +829,7 @@ end
 do
     -- A degenerate local mouse position must never be transmitted.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     local bad = {
         { 0 / 0, 0, 0 },
@@ -869,7 +869,7 @@ end
 do
     -- Zoom must persist across a trip into the HUD rather than dropping to 0.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     env.__setZoom(123)
     env.__mouseWorld = { 10, 0, 10 }
@@ -889,8 +889,8 @@ do
     -- A visual whose view has been replaced must be skipped by the frame loop
     -- rather than projecting against a destroyed control.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', { v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = true })
 
     -- Swap the view without telling the mod, as a layout change would.
@@ -913,7 +913,7 @@ end
 do
     -- A view smaller than the HUD panel must not push the panel outside it.
     local env, SM = NewSession()
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     local view = env.__views['WorldCamera']
     view.Right:Set(80)
@@ -921,7 +921,7 @@ do
     view.Width:Set(80)
     view.Height:Set(50)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', {
         v = 5, a = 2, p = { 10, 0, 10 }, o = 0, z = 60, w = false,
         hx = 0.5, hy = 0.9,
@@ -942,11 +942,11 @@ do
     -- Disabling the HUD feature must fall back to the plain cursor rather
     -- than leaving it frozen part-updated.
     local env, SM = NewSession()
-    local Config = env.import('/mods/SharedMouse2026/modules/config.lua')
+    local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
     Config.Hud.Enabled = false
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', {
         v = 5, a = 2, p = { 10, 0, 10 }, o = 23, z = 60, w = false,
     })
@@ -969,7 +969,7 @@ Section('view synchronisation and splitscreen')
 --------------------------------------------------------------------------------
 do
     local env, SM = NewSession({ splitscreen = true })
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     local function CountCursors(viewKey)
         return table.getn(Mock.FindCursors(env, viewKey))
@@ -1003,8 +1003,8 @@ do
     -- Culling: a cursor projected outside its view must hide, so the left
     -- view's cursors do not bleed across the splitscreen divider.
     local env, SM = NewSession({ splitscreen = true })
-    SM.InitSharedMouse(false)
-    local receive = env.__chatFuncs['SharedMouse2026']
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
 
     -- Mock projection is worldX * 2, so world x=700 lands at screen x=1400,
     -- well beyond the left view's right edge of 960.
@@ -1023,7 +1023,7 @@ Section('teardown')
 --------------------------------------------------------------------------------
 do
     local env, SM = NewSession({ splitscreen = true })
-    SM.InitSharedMouse(false)
+    SM.InitTeamMouse(false)
 
     local before = Mock.destroyedCount
     local ok = pcall(function() SM.Destroy() end)

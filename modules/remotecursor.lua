@@ -1,10 +1,10 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/remotecursor.lua
+--** TeamMouse -- modules/remotecursor.lua
 --**
 --** One of these exists per remote player per world view. It owns the arrow,
 --** the name label, the build ghost, the selection ring and the HUD ghost.
 --**
---** It does NOT drive itself. sharedmouse.lua runs a single frame callback that
+--** It does NOT drive itself. teammouse.lua runs a single frame callback that
 --** advances every player's interpolated position once, then calls UpdateFrame
 --** on each visual with pre-read view state. That keeps us to one engine frame
 --** callback for the whole mod, and means view bounds, camera zoom and the
@@ -23,9 +23,9 @@
 --**  * Textures and alphas are only pushed when they actually change.
 --******************************************************************************
 
-local Config = import('/mods/SharedMouse2026/modules/config.lua')
-local CursorData = import('/mods/SharedMouse2026/modules/cursordata.lua')
-local HudGhost = import('/mods/SharedMouse2026/modules/hudghost.lua').HudGhost
+local Config = import(_G.TeamMousePath .. '/modules/config.lua')
+local CursorData = import(_G.TeamMousePath .. '/modules/cursordata.lua')
+local HudGhost = import(_G.TeamMousePath .. '/modules/hudghost.lua').HudGhost
 
 local UIUtil = import('/lua/ui/uiutil.lua')
 local LayoutHelpers = import('/lua/maui/layouthelpers.lua')
@@ -76,9 +76,9 @@ RemoteCursor = Class(Group) {
 
     ---@param self RemoteCursor
     ---@param view WorldView        # the world view this cursor is drawn in
-    ---@param record table          # shared per-player state from sharedmouse.lua
+    ---@param record table          # shared per-player state from teammouse.lua
     __init = function(self, view, record)
-        Group.__init(self, view, 'SharedMouseCursor')
+        Group.__init(self, view, 'TeamMouseCursor')
 
         self.view = view
         self.record = record
@@ -369,7 +369,7 @@ RemoteCursor = Class(Group) {
     end,
 
     --------------------------------------------------------------------------
-    -- Per-frame update, called by the driver in sharedmouse.lua
+    -- Per-frame update, called by the driver in teammouse.lua
     --------------------------------------------------------------------------
     ---@param self RemoteCursor
     ---@param viewInfo table    # { left, top, right, bottom, zoom, mouseX, mouseY, hidden }

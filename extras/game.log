@@ -505,10 +505,10 @@ info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered g
 info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.reclaim"
 info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.score', mounted as '/mods/reui.score/'
 info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\reui.score"
-info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse', mounted as '/mods/sharedmouse/'
-info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse"
-info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse2026', mounted as '/mods/sharedmouse2026/'
-info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\sharedmouse2026"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\TeamMouse', mounted as '/mods/TeamMouse/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\TeamMouse"
+info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\TeamMouse', mounted as '/mods/TeamMouse/'
+info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\TeamMouse"
 info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremeeconomy', mounted as '/mods/supremeeconomy/'
 info: Watching directory "c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremeeconomy"
 info: DISK: AddSearchPath: 'c:\programdata\faforever\user\my games\gas powered games\supreme commander forged alliance\mods\supremescoreboard2cbt', mounted as '/mods/supremescoreboard2cbt/'
@@ -1020,7 +1020,7 @@ debug: GpgNetSend	ClearSlot	7
 debug: GpgNetSend	ClearSlot	8
 debug: GpgNetSend	ClearSlot	9
 debug: GpgNetSend	ClearSlot	10
-info: ModsManager deselected: GAME mod - SharedMouse2026 ---- (v4.0) - /mods/sharedmouse2026
+info: ModsManager deselected: GAME mod - TeamMouse ---- (v4.0) - /mods/TeamMouse
 info: ModsManager selected: UI mod - Advanced Target Priorities ---- (v1.0) - /mods/advanced target priorities
 info: mods.sim.active {
 info: mods.sim.active    9c82a91e-677d-40bb-91fc-df9358de7f4e = true

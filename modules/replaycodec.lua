@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/replaycodec.lua
+--** TeamMouse -- modules/replaycodec.lua
 --**
 --** Encodes numbers as zero-width Unicode characters so they can be hidden in
 --** a unit's custom name.
@@ -28,7 +28,7 @@
 --**     that LOG-repr of a C++ object hangs the game; those calls are gone.
 --******************************************************************************
 
-local Config = import('/mods/SharedMouse2026/modules/config.lua')
+local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 
 --------------------------------------------------------------------------------
 -- Alphabet
@@ -215,10 +215,10 @@ end
 ---@param armyIndex number
 ---@return UserUnit | nil
 function FindCommander(armyIndex)
-    local cache = rawget(_G, 'SharedMouseCommanders')
+    local cache = rawget(_G, 'TeamMouseCommanders')
     if not cache then
         cache = {}
-        rawset(_G, 'SharedMouseCommanders', cache)
+        rawset(_G, 'TeamMouseCommanders', cache)
     end
 
     -- The focused army's avatar is always reachable. In a replay this is

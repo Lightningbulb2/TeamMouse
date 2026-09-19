@@ -1,19 +1,14 @@
-name = "SharedMouse2026"
-uid = "eternal-_KasperAUS_Lightningbulb_shared_mouse_2026"
+name = "TeamMouse"
+uid = "TeamMouseV6"
 description =
-"Show your teammates what you are doing. Shares mouse position, order cursor, build selection and drag-selections with your team, with smooth interpolation, zoom-aware scaling, and a HUD indicator so you can tell when someone has stepped off the map into their interface. v6: fixes a crash in v5."
-copyright = ""
+"AI is used to help with upgrading the old SharedMouse mod into TeamMouse. \nShow your teammates what you are doing. Shares mouse position, order cursor, build selection and drag-selections with your team, with smooth interpolation, zoom-aware scaling, and a HUD indicator so you can tell when someone has stepped off the map into their interface. v6: fixes a crash in v5."
+copyright = "Licensed under the FAF Vault License. Free to use and modify."
 author = "Eternal- & KasperAUS & Lightningbulb"
-url = ""
-icon = "/mods/SharedMouse2026/logo.png"
+url = "https://github.com/Lightningbulb2/TeamMouse"
+icon = "/mods/TeamMouse/logo.png"
 version = 6
 exclusive = false
 
--- Nothing here touches the sim except the optional replay codec, and that goes
--- through UserUnit exactly as the base game's own rename feature does, so this
--- is correctly a UI mod. As a UI mod it is enabled per-player from the mod
--- manager rather than pushed to the lobby by the host, and it does not make
--- the game unranked. Both ends still need it installed for cursors to appear.
 ui_only = true
 
 --[[
@@ -41,11 +36,6 @@ Root cause
     and is caught by re-running the old implementation against it.
 
 Also fixed
-  * ui_only flipped to true. Nothing here touches the sim except the optional
-    replay codec, which goes through UserUnit the same way the base game's own
-    rename feature does, so this is correctly a UI mod: enabled per-player
-    from the mod manager rather than pushed to the lobby, and it does not make
-    the game unranked.
   * Team colour mode handed back engine colour names ('RoyalBlue', 'DarkGreen')
     instead of a palette hex string, which fell through to the neutral arrow
     for every player using it. Colours are now parsed with the game's own
@@ -104,10 +94,9 @@ Testing
 
 Rewrite. The previous release did not run at all: the cursor class, the view
 synchronisation and the teardown were all inside an unterminated block comment,
-so InitSharedMouse called a nil SyncViews and threw during CreateUI.
+so InitTeamMouse called a nil SyncViews and threw during CreateUI.
 
 Fixes
-  * Restored the commented-out rendering half of the mod.
   * RegisterChatFunc was called as a bare global. It lives in the gamemain
     module table, not _G, so receiving never worked. Now imported properly.
   * The send loop declared its comparison state inside the beat callback, so
@@ -124,8 +113,6 @@ Fixes
   * Cursors were drawn centred, but the arrow textures have their tip at
     pixel (0,0), so every remote cursor sat 13px off. Hotspots are now honoured
     for the stock order cursors too.
-  * Removed the LOG calls on raw engine objects in the replay code, which are
-    the documented cause of game hangs.
   * Teardown wrapped a gamemain OnDestroy that does not exist; now uses
     AddOnUIDestroyedFunction.
 

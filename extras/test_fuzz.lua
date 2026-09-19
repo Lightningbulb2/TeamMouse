@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- extras/test_fuzz.lua
+--** TeamMouse -- extras/test_fuzz.lua
 --**
 --**     lua5.1 extras/test_fuzz.lua [seed] [iterations]
 --**
@@ -74,7 +74,7 @@ local function RandomMessage()
     -- Mostly well-formed, so the interesting code paths actually get reached.
     if r <= 6 then
         return {
-            Identifier = 'SharedMouse2026',
+            Identifier = 'TeamMouse',
             v = 5,
             a = math.random(1, 5),
             p = { math.random() * 900, math.random() * 50, math.random() * 900 },
@@ -91,7 +91,7 @@ local function RandomMessage()
     if r == 7 then
         -- Valid shape, hostile values.
         return {
-            Identifier = 'SharedMouse2026',
+            Identifier = 'TeamMouse',
             v = 5,
             a = WeirdValue(),
             p = { WeirdNumber(), WeirdNumber(), WeirdNumber() },
@@ -120,7 +120,7 @@ end
 
 local function RunSession(label, opts)
     local env = Mock.CreateEnvironment(opts)
-    local SM = env.import('/mods/SharedMouse2026/modules/sharedmouse.lua')
+    local SM = env.import(_G.TeamMousePath .. '/modules/teammouse.lua')
 
     local failures = {}
 
@@ -131,9 +131,9 @@ local function RunSession(label, opts)
         end
     end
 
-    Guard('init', function() SM.InitSharedMouse(opts.replay or false) end)
+    Guard('init', function() SM.InitTeamMouse(opts.replay or false) end)
 
-    local receive = env.__chatFuncs['SharedMouse2026']
+    local receive = env.__chatFuncs['TeamMouse']
 
     for step = 1, iterations do
         env.__clock.t = env.__clock.t + math.random() * 0.2

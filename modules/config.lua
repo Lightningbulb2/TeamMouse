@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/config.lua
+--** TeamMouse -- modules/config.lua
 --**
 --** Every tunable value and feature flag lives here. Nothing else in the mod
 --** should contain a magic number.
@@ -9,12 +9,9 @@
 --** desyncing the display.
 --******************************************************************************
 
---- Where this mod is mounted. Must match the folder name.
-ModPath = '/mods/SharedMouse2026'
-
 --- Chat identifier. gamemain.ReceiveChat dispatches on this, so it must be
 --- unique across every mod in the game and identical for every player.
-ChatIdentifier = 'SharedMouse2026'
+ChatIdentifier = 'TeamMouse'
 
 --- Bumped whenever the wire format changes. Messages carrying a different
 --- version are ignored rather than mis-parsed, so mixed lobbies degrade to
@@ -215,7 +212,7 @@ Hud = {
     --- 'full'   -- adds the build grid, the order button row, the top-right
     ---             score panel and the side panels. Closer to the real
     ---             layout, about eighteen bitmaps per teammate per view.
-    Detail = 'simple',
+    Detail = 'full',
 
     Width = 148,
 
@@ -260,12 +257,12 @@ Hud = {
 --     coverage is partial.
 --
 -- The codec itself is self-contained and round-trip tested; enabling this only
--- changes whether sharedmouse.lua calls into it.
+-- changes whether teammouse.lua calls into it.
 --
 ReplayCodec = {
     --- Master switch. Set true to write coordinates into the commander name
     --- during live play and to read them back during replay playback.
-    Enabled = false,
+    Enabled = true,
 
     --- Write side only. Lets you record without paying the playback polling
     --- cost, or vice versa.
@@ -281,5 +278,5 @@ ReplayCodec = {
 
     --- Writes are rate limited independently of the send loop, because this
     --- one costs sim bandwidth rather than chat bandwidth.
-    WriteInterval = 0.25,
+    WriteInterval = 0.1,
 }

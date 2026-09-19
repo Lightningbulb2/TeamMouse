@@ -1,5 +1,5 @@
 --******************************************************************************
---** SharedMouse2026 -- modules/cursordata.lua
+--** TeamMouse -- modules/cursordata.lua
 --**
 --** Maps between the cursor textures the game sets locally, a compact integer
 --** for the wire, and a texture we can actually draw for a remote player.
@@ -20,7 +20,7 @@
 --** string.find(filename, ".dds") where the dot is a pattern wildcard.
 --******************************************************************************
 
-local Config = import('/mods/SharedMouse2026/modules/config.lua')
+local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 local Color = import('/lua/shared/color.lua')
 
 --- Where the stock cursor textures live.
@@ -290,7 +290,7 @@ local arrowCache = {}
 ---@return string
 function ArrowForColor(color)
     if type(color) ~= 'string' or color == '' then
-        return Config.ModPath .. '/textures/cursors/' .. NeutralArrow
+        return _G.TeamMousePath .. '/textures/cursors/' .. NeutralArrow
     end
 
     local cached = arrowCache[color]
@@ -324,7 +324,7 @@ function ArrowForColor(color)
         end
     end
 
-    local path = Config.ModPath .. '/textures/cursors/' .. (file or NeutralArrow)
+    local path = _G.TeamMousePath .. '/textures/cursors/' .. (file or NeutralArrow)
     arrowCache[color] = path
     return path
 end
@@ -348,5 +348,5 @@ end
 --- Ring texture used to show that a player is dragging a selection box.
 ---@return string
 function SelectionRingTexture()
-    return Config.ModPath .. '/textures/focus/original.png'
+    return _G.TeamMousePath .. '/textures/focus/original.png'
 end
