@@ -66,6 +66,7 @@ local lastFrameErrorLog = 0
 --- Cached so we can tell when the engine has replaced a view wholesale, which
 --- happens on every layout change.
 local knownViews = {}
+local mouseView = nil
 
 --- Set by the world view event hook while a selection box is being dragged.
 local localSelecting = false
@@ -409,12 +410,16 @@ local function ReadLocalState()
         return state
     end
 
-    local view = WorldViewManager.GetTopmostWorldViewAt(screen[1], screen[2])
+    local view = mouseView
+    if view and view:IsHidden() then
+        view = nil  -- closed while the cursor was over it
+    end
 
     -- The minimap is registered as a world view, but pointing at it is HUD
     -- activity and GetMouseWorldPos is not meaningful over it.
     if view and view._cameraName ~= 'MiniMap' and view.CursorOverWorld then
         state.overWorld = true
+
         local camera = GetCamera(view._cameraName)
         if camera then
             state.zoom = camera:GetZoom()
@@ -739,23 +744,31 @@ local function HookViewEvents(view)
     end
     view._TeamMouseHooked = true
 
+    -- The engine swallows the ButtonRelease and MouseMotion events when dragging, so the first movement after a selection drag clears it
     local originalHandleEvent = view.HandleEvent
     view.HandleEvent = function(self, event)
-        -- Never let a fault in here swallow the event: this sits in front of
-        -- the game's own camera and order handling.
-        pcall(function()
-            if event.Type == 'ButtonPress' then
-                -- Only a plain left press over the world is a selection drag.
-                -- A press in command mode is issuing an order.
-                if event.Modifiers and event.Modifiers.Left
-                    and not CommandMode.InCommandMode() then
-                    localSelecting = true
-                    selectingSince = GetSystemTimeSeconds()
-                end
-            elseif event.Type == 'ButtonRelease' or event.Type == 'MouseExit' then
-                localSelecting = false
+        local t = event.Type
+
+        if t == 'MouseEnter' or t == 'MouseMotion' then
+            mouseView = self
+        elseif t == 'MouseExit' and mouseView == self then
+            mouseView = nil
+        end
+        if t == 'ButtonPress' then
+            if event.Modifiers and event.Modifiers.Left
+                and not CommandMode.InCommandMode() then
+                localSelecting = true
+                selectingSince = GetSystemTimeSeconds()
             end
-        end)
+
+        elseif t == 'ButtonRelease' then
+            localSelecting = false
+
+        elseif t == 'MouseMotion' and localSelecting
+            and event.Modifiers and not event.Modifiers.Left then
+            -- The engine consumed the release; the button is up now.
+            localSelecting = false
+        end
 
         return originalHandleEvent(self, event)
     end

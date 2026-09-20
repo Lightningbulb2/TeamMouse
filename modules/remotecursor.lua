@@ -357,14 +357,25 @@ RemoteCursor = Class(Group) {
     ---@param self RemoteCursor
     ---@param visible boolean
     SetVisible = function(self, visible)
-        if visible == (not self.hidden) then
-            return
-        end
+        if visible == (not self.hidden) then return end
         self.hidden = not visible
         if visible then
             self:Show()
+            self:ResyncChildren()
         else
             self:Hide()
+        end
+    end,
+
+    ResyncChildren = function(self)
+        local onHud = self.hudShown
+        self.icon:SetHidden(onHud)
+        if self.ring then self.ring:SetHidden(onHud or not self.ringShown) end
+        if self.hud then self.hud:SetHidden(not onHud) end
+        if self.buildIcon then
+            local hide = onHud or not self.buildShown
+            self.buildIcon:SetHidden(hide)
+            self.buildFrame:SetHidden(hide)
         end
     end,
 

@@ -20,11 +20,6 @@ Team colour mode
     resolves through the game's own colour parser and a nearest-match against
     the shipped palette, rather than falling through to the neutral arrow.
 
-ui_only
-    Flipped to true -- nothing here touches the sim except the optional
-    replay codec, which goes through UserUnit the same way the base game's own
-    rename does.
-
 Hardening pass
     OnReceive wrapped in pcall and every wire field validated (type, range,
     NaN) so a single bad packet can no longer abort gamemain.ReceiveChat for

@@ -78,7 +78,21 @@ local function NewSession(opts)
         ueb0101 = { Display = { IconName = 'ueb0101' } },
     }
     local env = Mock.CreateEnvironment(opts)
-    local TeamMouse = env.import(_G.TeamMousePath .. '/modules/TeamMouse.lua')
+    local TeamMouse = env.import('/mods/TeamMouse/modules/teammouse.lua')
+
+    -- teammouse.lua only treats the local mouse as being over the world once a
+    -- view has seen it arrive (MouseEnter / MouseMotion). A session that never
+    -- does that reads as "on the HUD with no world position yet" and sends
+    -- nothing, so start every session with the mouse over the main view.
+    local init = TeamMouse.InitTeamMouse
+    TeamMouse.InitTeamMouse = function(...)
+        init(...)
+        local view = env.__views['WorldCamera']
+        if view and view.HandleEvent then
+            view:HandleEvent({ Type = 'MouseEnter', Modifiers = {} })
+        end
+    end
+
     return env, TeamMouse
 end
 
@@ -87,7 +101,7 @@ Section('cursor name parsing')
 --------------------------------------------------------------------------------
 do
     local env = Mock.CreateEnvironment({ armies = Armies(), clients = Clients() })
-    local CD = env.import(_G.TeamMousePath .. '/modules/cursordata.lua')
+    local CD = env.import('/mods/TeamMouse/modules/cursordata.lua')
     local root = '/textures/ui/common/game/cursors/'
 
     -- Animated cursors arrive with a trailing dash; the engine appends the
@@ -428,7 +442,7 @@ do
     -- Disabled: spectator excluded, enemy still excluded, ally still included.
     do
         local env, SM = NewSession({ armies = armies, clients = clients })
-        local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
+        local Config = env.import('/mods/TeamMouse/modules/config.lua')
         Config.Network.ShareWithObservers = false
         SM.InitTeamMouse(false)
         env.__mouseWorld = { 20, 0, 20 }
@@ -631,7 +645,7 @@ end
 do
     -- The same, with the full HUD silhouette.
     local env, SM = NewSession()
-    local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
+    local Config = env.import('/mods/TeamMouse/modules/config.lua')
     Config.Hud.Detail = 'full'
     SM.InitTeamMouse(false)
 
@@ -942,7 +956,7 @@ do
     -- Disabling the HUD feature must fall back to the plain cursor rather
     -- than leaving it frozen part-updated.
     local env, SM = NewSession()
-    local Config = env.import(_G.TeamMousePath .. '/modules/config.lua')
+    local Config = env.import('/mods/TeamMouse/modules/config.lua')
     Config.Hud.Enabled = false
     SM.InitTeamMouse(false)
 

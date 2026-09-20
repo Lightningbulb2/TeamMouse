@@ -20,7 +20,20 @@
 --**   2. Bitmaps with no texture and controls given invalid colours. The game
 --**      logs "GetResource: Invalid name" for the former and silently
 --**      mis-renders the latter; here they raise.
+--**
+--** and a third, added after it bit the cursor visuals:
+--**
+--**   3. Show() cascading to children. In the engine, showing a control shows
+--**      every child too, including ones hidden individually, unless the
+--**      child's OnHide(false) returns true. A mock where Show() only flips
+--**      its own flag cannot see code that hides a child, hides the parent,
+--**      then shows the parent and expects the child to stay hidden. Judge
+--**      what would be drawn with M.IsVisible, not IsHidden().
 --******************************************************************************
+
+-- The game's hook sets this in gamemain.lua; nothing in the tests does, and
+-- the mock's import() resolves paths relative to it.
+_G.TeamMousePath = _G.TeamMousePath or '/mods/TeamMouse'
 
 local M = {}
 
@@ -181,7 +194,21 @@ local Control = MakeClass() {
         end
     end,
     Hide = function(self) self._hidden = true end,
-    Show = function(self) self._hidden = false end,
+    -- Show() cascades into every child, exactly as the engine's does: a child
+    -- the mod hid individually is shown again along with its parent. The one
+    -- escape is the engine's own: a child whose OnHide(false) returns true is
+    -- left alone (FAF's UI code uses this to keep individually-hidden children
+    -- hidden). Hide() only needs to flip this control's own flag, because a
+    -- hidden ancestor already hides the whole subtree; see M.IsVisible.
+    Show = function(self)
+        self._hidden = false
+        for _, child in ipairs(self.children) do
+            local veto = child.OnHide and child:OnHide(false)
+            if not veto then
+                child:Show()
+            end
+        end
+    end,
     IsHidden = function(self) return self._hidden end,
     SetHidden = function(self, h) self._hidden = h end,
     SetAlpha = function(self, a)
@@ -582,6 +609,21 @@ function M.FindDriver(env)
         end
     end
     return nil
+end
+
+--- What the player would actually see: a control is drawn only if it and every
+--- ancestor are shown. Tests should use this rather than IsHidden(), which is
+--- just the control's own flag and says nothing about a hidden parent.
+---@param control table
+---@return boolean
+function M.IsVisible(control)
+    while control do
+        if control._hidden then
+            return false
+        end
+        control = control.parent
+    end
+    return true
 end
 
 --- Convenience: all remote cursor visuals in a given view.

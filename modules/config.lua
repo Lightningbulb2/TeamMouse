@@ -28,16 +28,16 @@ Network = {
     --- Throttle the beat callback to ~10 updates/second. Without this the
     --- callback fires on every sim beat, which at +10 sim speed or during
     --- replay fast-forward is a great deal of redundant traffic.
-    Throttle = true,
+    Throttle = false,
 
     --- Don't send an update until the mouse has moved at least this far in
     --- world units. Roughly a third of a build square.
-    MinMoveDistance = 0.35,
+    MinMoveDistance = 0.1,
 
     --- ...but always send at least this often anyway, so that a player who
     --- parks their mouse still refreshes their state (zoom, order, flags) and
     --- so that someone who joins the view late gets a position.
-    ForceResendInterval = 1.0,
+    ForceResendInterval = 0.5,
 
     --- Positions are rounded to this many decimal places before sending.
     --- One decimal is well below a pixel at any usable zoom level.
@@ -66,7 +66,7 @@ Smoothing = {
     --- If two consecutive samples are further apart than this (world units),
     --- treat it as a jump rather than movement and snap instead of sliding
     --- the cursor across the map.
-    SnapDistance = 40,
+    SnapDistance = 540,
 
     --- Seconds without an update before a cursor is considered stale and
     --- faded out entirely.

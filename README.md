@@ -40,6 +40,7 @@ modules/teammouse.lua             session setup, send, receive, view sync
 extras/mock_fa.lua                  mock game environment for tests (Lua 5.0 table semantics)
 extras/test_integration.lua         111+ tests over the whole pipeline, including regressions
 extras/test_replaycodec.lua         17 tests over the codec
+extras/test_visibility.lua          cursor pieces when a teammate enters or re-enters your view
 extras/test_fuzz.lua                randomised stress test; never raise, never log an error
 ```
 
@@ -100,6 +101,7 @@ aren't actually looking at.
 ```
 lua5.1 extras/test_integration.lua
 lua5.1 extras/test_replaycodec.lua
+lua5.1 extras/test_visibility.lua
 lua5.1 extras/test_fuzz.lua [seed] [iterations]
 ```
 
@@ -119,3 +121,9 @@ rather than through `table.remove`, it will pass under 5.1 and crash under
 extremes and unbalanced mouse events at the mod across many random seeds and
 asserts only that it never raises and never logs an error — run it with a new
 seed after any change that touches shared per-player state.
+
+`mock_fa.lua` also cascades `Show()` into children the way the engine does, so
+a child you hid individually comes back when its parent is shown. Judge what
+would actually be drawn with `Mock.IsVisible`, not `IsHidden()`, which is only
+one control's own flag. `test_visibility.lua` covers the cursor pieces that
+used to reappear this way.
