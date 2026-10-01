@@ -1,0 +1,494 @@
+TeamMouse -- TODO
+
+
+DONE in v7
+==========
+
+Per-frame cost: about a fifth of the garbage
+    - The mod's own garbage per frame with three busy teammates ~3340 ->
+      ~700 bytes, Lua instructions ~8860 -> ~7000 (extras/frame_report.lua;
+      a test holds it to a budget). Lua 5.0's collector stops the game.
+    - Interpolate searches from the newest sample; packing, decoding and
+      the extra samples no longer make tables or closures per number,
+      sample or packet; colour strings, the view outline and the name bar
+      are only worked out again when they change.
+    - Every frame drawn checked identical to before (positions, alpha,
+      visibility, every line, circle and box, every byte sent).
+
+Compact wire format: about a third of the bandwidth
+    - Each packet goes as one short string (modules/wirecodec.lua) that
+      decodes to exactly the same table: self-checked on every send, and a
+      packet it cannot carry exactly goes as the table. Per teammate: moving
+      ~1180 -> ~430 B/s, panning ~2440 -> ~660, at rest ~104 -> ~31; the
+      replay copy through the sim ~1980 -> ~860 (extras/bandwidth_report.lua).
+    - Older TeamMouse builds keep getting tables: clients say they read the
+      string (tmc) and only those are sent it. Old replays still play.
+    - Teammates and observers get one message when the packet is the same.
+    - The replay copy no longer carries From/To (nothing read them).
+    - Tests also run on a float build of Lua 5.0 (the game's number type).
+      UNVERIFIED in game: FAF's ReceiveChat routing a message by its key.
+
+DISTRIBUTE ORDERS action label
+    - Distributing orders (the 'spreadattack' keys and their shift/_context
+      variants) shows DISTRIBUTE ORDERS by the cursor, caught at
+      SimCallback { Func = 'DistributeOrders' } like COPY.
+      UNVERIFIED in game.
+
+Hiding a cursor stops it being sent
+    - Unticking a player tells them (tmo); they stop sending to you, and send
+      nothing at all if nobody is left. Re-said if their packets keep coming.
+
+
+
+Big selections: rectangles round the bunches
+    - More selected than TeamSelection.MaxSend: rectangles round units close
+      together (sr), instead of only the first 40 getting boxes.
+
+
+
+Live selection boxes: placed once, then fade
+    - Live, a teammate's selection shows where the units were when selected
+      and fades like other markers; observers and replays track the units.
+      No more streaming positions.
+
+
+
+Shift box drags, bunched boxes, no compatibility code
+    - A Shift box drag passing over an order no longer turns into dragging it.
+    - Selection boxes nearly on top of each other are drawn once.
+    - Positions always sent (a player cannot look teammates' units up live);
+      the request packets, the old position/selection formats, the follow
+      fallback for old recordings and o-on-every-packet are gone.
+    - Selection boxes a quarter opaque, 3 px.
+
+
+
+Positions only on request; right click is a move
+    - Selected units' positions are sent only while a teammate says it cannot
+      find them by id (np); otherwise only the ids, on change.
+    - A plain right click shows the move icon.
+    - Selection boxes back to a quarter opaque, 3 px lines.
+
+
+
+Selection boxes glide
+    - Positions in quarter units (sq), and boxes carried on at their unit's
+      speed between updates, eased: no more stepping on a grid. Lines 2 px,
+      a little less transparent.
+
+
+
+Selection boxes live, sized and drawn right; single-click pulses
+    - Live, a teammate's units apparently cannot be looked up by id: their
+      positions are now sent too (sp), with sizes from their blueprints (ss:
+      a factory's whole pad). UNVERIFIED: confirm with Config.Debug.
+    - Box and pulse lines are TeamSelection/ClickPulse.Thickness pixels wide
+      (the draw calls take world units).
+    - Single clicks that select now pulse (the release never reached us).
+
+
+
+Upgrades that show, quieter selection boxes, click pulses, COPY
+    - Upgrade markers did not show: the upgrade hotkey keeps its own copy of
+      the game's function. Recently selected structures are now watched for
+      an upgrade starting (GetFocus), however it was ordered.
+    - Teammates' selections: sent packed (base 36, one string, max 40) so they
+      reach live games; boxes very transparent, centred, sized to the unit's
+      footprint but never smaller than a strategic icon on screen.
+      UNVERIFIED: UI_DrawRect's anchor (TeamSelection.RectAnchoredAtCorner).
+    - Click pulses only for a left click that selects something.
+    - COPY action label for copying orders.
+
+
+
+Observers follow, upgrades, selections, clicks, panel "all"
+    - Live observers can follow a player (they are sent the camera; teammates
+      are not). In replays, following also copies the player's selection.
+    - The zoom bar has the name's white stroke.
+    - Panel: an "all" row above the players toggles every cursor / every view.
+    - Upgrading a building shows teammates the new building's icon on it in a
+      gold frame (the three IssueBlueprintCommand* globals are wrapped).
+    - A ring pulses at the tip of a teammate's cursor where they click.
+    - Teammates' selected units get light blue boxes (UI_DrawRect).
+    UNVERIFIED in game: UI_DrawCircle/UI_DrawRect orientation and thickness;
+    GetUnitById on allied units; SelectUnits on another army's units in a
+    replay.
+
+
+
+Bandwidth and performance
+    - Idle traffic ~71% lower, moving ~16%: 1 s keep-alive (was 0.5), the view
+      outline refreshed every 5 s at rest instead of with every keep-alive, and
+      a zoom change sent on its own.
+    - Still structure rows write nothing per frame; zoom limits read once a
+      second. See "Bandwidth and per-frame cost" in engine-gotchas.md.
+
+
+
+Following a player in replays; softer strokes and outlines
+    - Replays: a "follow" box per player in the panel makes your camera follow
+      theirs, gliding (Config.Follow.Rate) rather than stepping. Recorded as
+      cam in the replay's copy of each packet (SaveSettings). UNVERIFIED in
+      game: smoothness of RestoreSettings each frame; the viewer scrolling
+      while following.
+    - Name and action strokes more transparent (TextStrokeAlpha 0.6).
+    - A teammate's view outline fades further zoomed in (NearAlpha 0.2, from
+      NearStart 0.35).
+    - hook/lua/ui/game/unitview.lua removed again (left over from the
+      commander-name codec; nothing reads it).
+
+
+
+Text strokes, paused replays, zoom bar, teammates' views
+    - Names and indicator text (actions, TEMPLATE) have a white stroke (eight
+      offset copies: the game's text has no outline). Appearance.TextStroke*.
+      Replaced a faint white plate behind them.
+    - A paused replay no longer lets cursors go stale and fade.
+    - A bar in the player's colour, centred under their name, showing THEIR
+      zoom on a log scale: as wide as the name all the way in, shrinking as
+      they pull back, as much close in as far out.
+    - A "view" box per player in the panel (off by default) outlines that
+      teammate's camera on the map with UI_DrawLine: four lines in their
+      colour, thicker and fainter as you zoom in. Sent as vp when it moves.
+      UNVERIFIED in game: UI_DrawLine thickness units; a steeply tilted camera.
+
+
+
+Double-clicks, visibility, templates, replays, lobby option
+    - Double-clicking units sometimes did nothing: the first click's grid
+      (one 45px hole) was still up when the second came, because it only went
+      on the frame after the release. It now goes the moment the release
+      reaches the map (LowerGridNow). A first attempt, raising the grid only
+      once a press looked like a drag, broke drag tracking outright and was
+      reverted: the grid is raised at the press, as before. UNVERIFIED in
+      game: that double-clicks now always work.
+    - A build drag only gains a structure at the far end once the pointer
+      reaches that structure's centre (floor, as the game does); placed rows
+      still round between their real centres.
+    - Zoomed out, cursors no longer fade (to 25%) or shrink: they go fully
+      opaque and no smaller than normal (Zoom.FarStartZoom/FarEndZoom/
+      FarAlpha/FarMinScale). Names have their own Appearance.LabelAlpha, never
+      below the cursor's; your mouse coming near fades both.
+    - Templates show their first structure only, with TEMPLATE above it
+      (steady in hand, flashing once placed); no row for one. Wire: mot, bt.
+    - Replays record every packet teammates get, whole, through the sim (FAF's
+      query system), and play them back through the same receive code: all
+      of it (position with height, drags, HUD ghost, extra samples, orders,
+      structures, templates, actions), for every player, whichever army is
+      watched, with or without teammates. Replaced the commander-name codec
+      (missing cursors, offset, little data); hook/unitview.lua removed.
+      UNVERIFIED in game: that the queries come back up during playback.
+      Note: while on, the cursor reaches every player's interface, enemies
+      too -- why it is a lobby option, off by default.
+    - The replay codec is a lobby option (lua/AI/LobbyOptions/lobbyoptions.lua,
+      key TeamMouseReplay, Off by default); without it, Config decides.
+      UNVERIFIED: that FAF's lobby scans UI mods for it.
+    - Tests: replay tests now switch the codec on through the lobby option,
+      so they no longer depend on Config.ReplayCodec.Enabled.
+
+
+
+Swing stutter, rows of structures, refused placements
+    - Swinging the mouse stuttered, and the frame/TPS counter dropped. The
+      tracking grid was up permanently, so every 45px of an ordinary swing
+      was a cell crossing: a hit-test toggle and an event bubbled to the root
+      frame, with the view only hearing the pointer between crossings. The
+      grid is now down except for the length of a drag (SyncOverlays): raised
+      at the press, lowered on the frame after it ends. Selection.DebugGrid
+      was on in the uploaded config; it makes every cell a drawn bitmap.
+      UNVERIFIED in game: that raising it at the press tracks the whole drag.
+    - A build drag shows one framed icon per structure the row will hold,
+      where the game will put it (skirt size, longer axis, staircase on the
+      other), instead of one icon beside the cursor. Placed rows too.
+      Icons shrink when crowded (Line.MinStructureIcon), capped at
+      Line.MaxStructures. UNVERIFIED: the count rule beyond T1 power rows.
+    - A placement the game refuses is no longer shown. The release waits for
+      the game's build orders (hook/lua/ui/game/commandmode.lua,
+      OnCommandIssued) and announces where they really went, or nothing.
+      Orders.BuildConfirm / BuildConfirmTimeout / BuildSettle. UNVERIFIED:
+      that the engine calls OnCommandIssued once per structure in a row.
+    - Tests: test_integration.lua aborted at line 673 on hudghost's
+      dot -> hud rename, skipping ~480 checks while its last line read
+      "pass". Fixed. With DebugGrid on and ReplayCodec off (the uploaded
+      config) 8 checks fail by design; with both at defaults all pass.
+
+
+
+Extra samples between ticks
+    Config.Network.ExtraSamples. The pointer is sampled every ~33ms from the
+    frame driver; the samples since the last packet ride in the next one as
+    'e' (eight numbers each: age, x, y, z, hudX, hudY, boxX, boxZ). The receiver
+    places them at arrival - age, ahead of the packet's own sample. Additive on
+    the wire, no protocol bump. Needs Smoothing.InterpolationDelay >= one beat.
+    Buffer size raised 16 -> 48 to cover the same time span.
+
+Line while dragging structures
+    A left drag in build mode is sent as 'l' instead of 's' and drawn as a
+    dotted line from the anchor to the live end, from a lazily built pool of
+    Config.Line.MaxDots.
+
+Right-click move orders of other players
+    A right click with units selected (and no command mode) is queued on
+    release and sent once as 'mo' (kind, x, y, z, endX, endZ). Shown as a
+    fading marker, the order's cursor icon, and a line for a right-drag.
+    Config.Orders. Positions only; never which units.
+
+Right-click formations cancelled by the overlay
+    The grid is hidden from a right press until its release (with a 20s
+    backstop and a left-press escape), then shown with its hole under the
+    pointer. Cause not confirmed in the live game; see notes in the summary.
+
+Overlay covers the whole screen when resizing
+    Two causes: the grid was sized once, and its cells were positioned at the
+    screen origin rather than the view's (wrong for the right splitscreen view).
+    Both fixed; a footprint check on the beat rebuilds it once a new size has
+    held for two checks, never mid-drag. Debug tint: Selection.DebugGrid.
+
+After a drag the cursor continues from its end
+    The arrow used to drop back to the drag's anchor and slide to the end.
+    Cause: position is drawn InterpolationDelay in the past, but the flags
+    (dragging, on the HUD) took effect the moment a packet arrived. They now
+    ride on each sample (a 'flags' number; 1 hud, 2 box, 4 line, 8 order line)
+    and are read at render time. The first sample after a drag steps the
+    position instead of interpolating from the anchor.
+
+HUD image (hudghost self.dot) no longer slides; ghost fades
+    Entering the interface steps the image into place; a move of more than
+    Hud.JumpDistance while on it steps too and restarts the fade. The ghost
+    fades in/out at Hud.FadeSpeed, and stays put while fading out.
+
+Right-drag shown early, hidden when the sim has it
+    Streamed live as 'r' with the far end in bx/bz. After the release the
+    order's own line stays until the sender reports it applied ('oa' = the order's
+    sequence number, decided by the first selected unit's command queue changing,
+    or Orders.ApplyTimeout). Receiver backstop Orders.PreviewMax.
+    UNVERIFIED in game: whether the engine delivers pointer motion while a right
+    button is held (with the grid lifted, nothing else tracks it), and
+    UserUnit:GetCommandQueue()'s shape. With Config.Debug on, each right press logs
+    how many motion events reached the view and whether GetMouseWorldPos moved.
+
+Follow-up fixes
+    - A left click that never moved drew a box: the drag's far corner was only
+      updated when the pointer crossed into a new grid cell, so it held wherever
+      the pointer entered the cell it rests in (up to 45px away). It now starts
+      at the press. Receivers also ignore boxes under Selection.MinBoxSize.
+    - The ghost slid toward placeholder HUD coordinates for a moment before
+      fading out when leaving the interface; the first sample off the interface
+      now holds the image (hudSnap), like entering does.
+    - The order line waits Orders.LineDelay (0.5s) like the native one, and a
+      quicker right-drag is a plain order.
+    - Any right press is streamed as a drag (flag 16 'draw' until an order's
+      line is due): with nothing selected the pointer was frozen for teammates.
+      Only the arrow moves; no stroke is drawn. UNVERIFIED: that this is the
+      native draw feature the freeze came from, and that it is GetMouseWorldPos
+      that freezes (the fix works if MouseMotion events reach the view).
+
+Right-drag drawing, trail, and Shift-drag
+    - Right-drag with nothing selected still froze. Cause: the grid was lifted for
+      EVERY right press, and it is the only thing the engine does not freeze
+      during a native drag, so nothing could report the pointer. The grid now
+      stays up for a drawing press (Orders.TrackDrawing) and the moving end is
+      read from it; orders still lift it.
+    - Drawing leaves a fading dotted trail on the map for teammates (Draw).
+    - A Shift left-drag (queueing / dragging a queued order) is sent as
+      'follow' (d = 2): the arrow travels, no box. Selection.BoxWithShift.
+    - A change of state now forces a packet on its own (a drawing ending with the
+      pointer parked would otherwise not be sent until the heartbeat).
+    UNVERIFIED in game: that the grid up during a right-drag does not break the
+    native drawing (turn off Orders.TrackDrawing if it does), and that
+    event.Modifiers.Shift is set on a real ButtonPress. With Config.Debug on, every
+    left press logs its modifiers, and every right press logs what it was treated
+    as and how many grid crossings reached it.
+
+Waypoint drag, right release, codec, cleanup
+    - Dragging a waypoint flickered between the hand and the arrow for
+      teammates, because the game's own cursor does. A left drag pressed on a
+      waypoint (or showing the hand at any point) now reports the hand until
+      the release, and draws no box.
+    - The drawing trail only stopped at the next left click: the engine keeps
+      the right release to itself during a drag, like the left one. The button
+      is now checked every frame (IsKeyDown('RBUTTON')) while a right press is
+      open. UNVERIFIED: that 'RBUTTON' is the key name (the left one,
+      'LBUTTON', is confirmed); if IsKeyDown rejects it, the release event and
+      the old backstops still apply.
+    - Replay codec rewritten: the payload goes after the commander's own name,
+      in a small configurable alphabet, fixed width, invisible marker, prime
+      checksum. Old 'SM:' names still decode. Probe mode for finding which
+      characters FA really does not render. UNVERIFIED: the default alphabet.
+    - Cleanup: OnBeat split into named steps (worst upvalue count 30 -> 21),
+      right-release logic in one FinishRightPress, DragShape/ClearDrag in
+      remotecursor, HasFlag for the flags number, dead config removed
+      (Network.Throttle, Selection.PulseRate/PulseDepth,
+      Selection.DragOverlayMaxSeconds, Line.MaxDragSeconds), unused import.
+    - Found, not changed: hudghost's self.back has no texture or colour. It is
+      the cause of 2 of the pre-existing integration failures and all 5 fuzz
+      failures. Give it a colour (or remove it) when finishing the HUD image.
+
+Panel crash, INTERRUPT, bandwidth, off-screen drags
+    - Panel checkbox error (record nil): Lua 5.0 closure over a for-loop
+      variable. Fixed; the test suites now run on Lua 5.0 as well as 5.1,
+      and extras/check_loop_closures.py scans for the pattern.
+    - INTERRUPT label for "Interrupt pathfinding" (misckeyactions.AbortNavigation).
+    - Bandwidth: optional fields left out, zoom on change, extra samples
+      packed into a string (wirepack.lua), SharedMouse copy only to teammates
+      actually on SharedMouse. ~4.7 KB/s -> ~1.2 KB/s per recipient moving.
+    - A drag begun off screen is drawn once any of it reaches the view.
+
+Middle-drag, panel clicks, pause keys, grabbed orders, beat stutter
+    - Right-drag drawing confirmed working in game.
+    - Middle-drag pan: the grid is lifted for it (cell crossings ended it).
+    - Panel rows are FAF's own checkbox (UIUtil.CreateCheckbox '/CHECKBOX/')
+      instead of a hand-made clickable bitmap, which did not take clicks in
+      game. UNVERIFIED that the checkbox does (FAF's own panels use it).
+    - Pause keys hooked at construction.ToggleUnitPause(All/UnpauseAll); the
+      SetPaused global hook did not catch them.
+    - Dragging a waypoint shows the order's own icon in the teammate's hand,
+      a line back to where it was, and a marker where it lands
+      (GetHighlightCommand; Orders.ShowGrabs).
+    - Random stutter: FAF drops a throttled beat that arrives under 0.1s after
+      the last, leaving ~0.2s gaps. The frame driver sends when 0.11s pass
+      without a send (Network.MaxSendGap).
+    - HookViewEvents' left-press branch split out (HandleLeftPress): it was at
+      28 of 32 upvalues.
+
+Panel, versions, actions, patrol; HUD snapping, right release
+    - Player panel (panel.lua): left edge, FAF collapse arrow, one row per
+      visible player; click to hide/show everything of theirs. Per game only.
+    - Versions in chat at the start (version.lua): yours, each teammate's,
+      and after 5s who doesn't have it / is on SharedMouse. Config.ModVersion
+      must match mod_info.lua (tested).
+    - Action labels (actions.lua): STOP, REPEAT ON/OFF, PAUSED/RESUMED above a
+      teammate's arrow, fading. Hooks checked against FAF's keyactions.lua.
+    - Order-mode left clicks (patrol, attack-move, reclaim...) show on the
+      ground like right-click orders (Orders.ShowModeOrders).
+    - HUD ghost snapped while hovering the interface: last round's stutter fix
+      made cell crossings mean "the map", but the grid lies over the interface
+      too. Cell crossings now count as neither.
+    - Right release simplified as asked: a motion event without
+      Modifiers.Right ends it, like the left drag. UNVERIFIED that motion
+      carries Modifiers.Right while held.
+
+Drawing release from the Debug log; structures placed
+    - The Debug log of a real drawing showed: no release event, IsKeyDown
+      reads no right button under any name tried, GetMouseWorldPos not frozen,
+      and motion events keep reaching the view. The learned-IsKeyDown and
+      capture-watch mechanisms are removed; a right press now ends when motion
+      events stop saying Modifiers.Right (NoteRightMotion). UNVERIFIED that
+      the events carry Modifiers.Right.
+    - Structures a teammate places show on the ground like move orders: the
+      structure's icon on the spot, framed in their colour, with a line for a
+      row. Sent on the release of a build-mode left press (Orders.ShowBuilds).
+
+Swing stutter, drawing release, replay state
+    - Swinging the mouse stuttered for teammates. Grid cells bubble their
+      crossings to the root frame, which read two in a row as the pointer
+      leaving the map: a fast swing was reported on the HUD for a beat. Cells
+      now record the pointer as over the map before the event bubbles.
+    - Drawing still didn't end on release: GetMouseWorldPos is apparently not
+      frozen for a right drag, so the capture watch never fired. The IsKeyDown
+      name for the right button is now learned (read up while idle AND down in
+      a press) before being trusted. UNVERIFIED in game.
+    - Replays: the payload now carries the state flags and, during a drag or
+      on the HUD, the live end / interface position. Boxes, lines, trails and
+      the ghost play back; the cursor is no longer parked at a drag's start.
+      Replay cursors: ReplayCodec.CursorAlpha / CursorScale, no zoom or
+      proximity fade. The viewer's own army is shown in replays.
+    - Calibration no longer runs during a drag (the reading is frozen then).
+
+Right press cut off, split view, Shift box, HUD cleanup, V1
+    - Holding right (drawing, formations) was cut off on leaving a grid cell.
+      Cause: last round's per-frame IsKeyDown('RBUTTON') check read the button
+      as up while held, ending the press and bringing the grid back under a
+      held formation (which cancels it). Removed. Drawing now ends when the
+      engine's capture is seen to end (GetMouseWorldPos moves again after
+      being frozen while the grid saw the pointer move). The grid only ever
+      comes back on a release event, a left press, or the backstop. A left
+      press after a lost release announces the order (without its line).
+      Orders.TrackFormations removed: it cannot work.
+    - Split view shoved the pointer to the left edge of its view for teammates.
+      Cause: UnProject's convention was "decided" by a tie on the origin view;
+      with a screen-coordinate UnProject everything on the right view was a
+      view-width left, and the receiver's HUD clamp pinned it to the edge. Now
+      only an offset view settles the convention (UnProjectAt).
+    - Shift-drag selections are boxes again (waypoint drags are told apart by
+      the cursor). Selection.BoxWithShift removed.
+    - hudghost: self.back, Rect, BuildEdges, BuildChrome and the Hud Detail /
+      colour options removed. That was the untextured bitmap behind the old
+      test and fuzz failures.
+    - Treated as unreleased V1: Protocol = 1, the old 'SM:' replay format and
+      other compatibility with earlier builds of this mod removed (SharedMouse
+      support kept), write-only record fields removed.
+    - Replay alphabet: eight characters confirmed invisible with the probe.
+    - Tests: HoverHud now sends two events (the HUD debounce needs two), the
+      arrow-over-ghost expectation matches the deliberate design. Every suite
+      and the fuzz run are clean.
+
+Also: the leftover debug tint on the drag grid (a digit-derived colour) is now
+behind Selection.DebugGrid, off by default.
+
+
+DONE in v6 (hotfix)
+====================
+
+Crash on a large cursor jump
+    "attempt to perform arithmetic on field 't' (a nil value)" / "Attempt to
+    set attribute 't' on nil". Root cause: the sample buffer's jump-reset
+    cleared entries by assigning nil, which desyncs the hidden 'n' field that
+    Lua 5.0's table.insert/remove/getn maintain on a table -- table.getn then
+    reported a stale count, and table.remove handed back nil off an array it
+    still considered non-empty. Fixed by managing the buffer with an explicit
+    count and direct indexing, never those three functions. The test mock now
+    emulates 5.0's table semantics, so this class of bug is caught going
+    forward rather than only visible on 5.1.
+
+Team colour mode
+    ArmyInfo.color returning names like 'RoyalBlue' instead of hex now
+    resolves through the game's own colour parser and a nearest-match against
+    the shipped palette, rather than falling through to the neutral arrow.
+
+Hardening pass
+    OnReceive wrapped in pcall and every wire field validated (type, range,
+    NaN) so a single bad packet can no longer abort gamemain.ReceiveChat for
+    every mod. Local mouse position validated before transmit. Frame driver no
+    longer permanently disables itself after a handful of errors. Recipient
+    list checks both index and nickname before excluding a client as hostile.
+    Stuck selection-drag flag now self-clears. Zoom persists across a trip
+    into the HUD. A view smaller than the HUD panel no longer fights its own
+    clamp. The frame loop checks a visual's view is still the live one before
+    projecting against it. Disabling Hud.Enabled falls back to the plain
+    cursor cleanly.
+
+
+DONE in v5
+==========
+
+FIX splitscreen
+    Was caused by a `return` inside the inner loop of SyncViews, so only the
+    first view of the first player was ever handled. Now driven off
+    worldview.GetWorldViews(), which is the live registry, so it picks up any
+    number of views automatically. Cursors are culled to their own view's
+    bounds so they no longer bleed across the divider.
+
+improve smoothness and slowdown
+    Smoothness: timestamped sample buffer with a 130ms render delay,
+    interpolating between the two samples that bracket the target time,
+    instead of easing toward whatever arrived most recently.
+    Slowdown: the per-frame LayoutHelpers.AtLeftTopIn calls were the cost --
+    they rebuild closures on every call. Cursors are now pinned anchors whose
+    children are laid out once, and the whole mod runs on a single frame
+    callback rather than one per cursor.
+
+cursor scaling and transparency to indicate zoom level, as well as
+transparency when you get close to someone else's cursor
+    Scale is (their zoom / your zoom) ^ 0.5, clamped, so a teammate working
+    over a wider area than your view covers draws larger. Cursors also fade as
+    your own camera pulls back, and fade toward 12% as your mouse approaches
+    them. All of it is in Config.Zoom and Config.Proximity.
+
+show building schematic someone is holding or at least icon
+    The unit's build icon with a coloured ghost frame around it, next to their
+    cursor. Config.Build.
+
+Replay recording
+    Every packet recorded into the replay through the sim (replaycodec.lua).
+    Lobby option "TeamMouse: cursors in replay"; Config.ReplayCodec.

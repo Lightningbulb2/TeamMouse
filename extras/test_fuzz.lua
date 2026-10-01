@@ -68,14 +68,66 @@ local function WeirdValue()
     return WeirdNumber()
 end
 
+--- An extras / orders array of the right stride, mostly plausible, sometimes not.
+local function RandomArray(stride, maxItems)
+    if math.random(6) == 1 then return WeirdValue() end
+    local t = {}
+    for i = 1, math.random(0, maxItems) * stride do
+        if math.random(8) == 1 then
+            t[i] = WeirdValue()
+        elseif math.random(2) == 1 then
+            t[i] = math.random() * 0.6
+        else
+            t[i] = math.random() * 900
+        end
+    end
+    return t
+end
+
+--- The compact codec (wirecodec.lua), for making compact packets to send in.
+local Codec = Mock.CreateEnvironment({ armies = {}, clients = {} }).import(_G.TeamMousePath .. '/modules/wirecodec.lua')
+
+--- A compact packet ({ TeamMouse = string }): whole, cut short, with a
+--- character changed, or just noise.
+local function RandomCompact()
+    local m = { v = 1, a = math.random(1, 5),
+        p = { math.random(0, 9000) / 10, math.random(0, 500) / 10, math.random(0, 9000) / 10 },
+        o = math.random(0, 50) }
+    if math.random(2) == 1 then m.z = math.random(1, 400) end
+    if math.random(3) == 1 then m.w = false; m.hx = math.random(0, 1000) / 1000; m.hy = math.random(0, 1000) / 1000 end
+    if math.random(3) == 1 then m.s = true; m.bx = math.random(0, 9000) / 10; m.bz = math.random(0, 9000) / 10 end
+    if math.random(3) == 1 then m.mo = { 0, m.p[1], m.p[2], m.p[3], m.p[1], m.p[3], math.random(0, 9) } end
+    if math.random(3) == 1 then m.ac = { math.random(1, 8) } end
+    if math.random(4) == 1 then m.vp = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 } end
+    local s = Codec.Encode(m) or ''
+    local how = math.random(4)
+    if how == 2 and string.len(s) > 0 then
+        s = string.sub(s, 1, math.random(string.len(s)))
+    elseif how == 3 and string.len(s) > 0 then
+        local at = math.random(string.len(s))
+        s = string.sub(s, 1, at - 1) .. string.char(math.random(33, 126)) .. string.sub(s, at + 1)
+    elseif how == 4 then
+        local parts = {}
+        for i = 1, math.random(0, 40) do parts[i] = string.char(math.random(33, 126)) end
+        s = table.concat(parts)
+    end
+    if math.random(8) == 1 then
+        return { TeamMouse = WeirdValue() }
+    end
+    return { TeamMouse = s }
+end
+
 local function RandomMessage()
+    if math.random(5) == 1 then
+        return RandomCompact()
+    end
     local r = math.random(10)
 
     -- Mostly well-formed, so the interesting code paths actually get reached.
     if r <= 6 then
         return {
             Identifier = 'TeamMouse',
-            v = 5,
+            v = 1,
             a = math.random(1, 5),
             p = { math.random() * 900, math.random() * 50, math.random() * 900 },
             o = math.random(0, 50),
@@ -85,6 +137,16 @@ local function RandomMessage()
             b = (math.random(4) == 1) and 'ueb0101' or false,
             hx = math.random(),
             hy = math.random(),
+            l = math.random(4) == 1,
+            r = math.random(4) == 1,
+            d = ({ false, 1, 2, true })[math.random(4)],
+            oa = math.random(0, 5),
+            e = ({ RandomArray(9, 10), string.rep('AbC-_9', math.random(0, 8)), 'A', WeirdValue() })[math.random(4)],
+            mo = RandomArray(7, 6),
+            ac = RandomArray(1, 5),
+            gk = ({ false, 16, 46, WeirdValue() })[math.random(4)],
+            tmv = ({ nil, 1, WeirdValue() })[math.random(3)],
+            mob = ({ false, { 'ueb0101', false }, { WeirdValue(), 'x' }, WeirdValue() })[math.random(4)],
         }
     end
 
@@ -92,7 +154,7 @@ local function RandomMessage()
         -- Valid shape, hostile values.
         return {
             Identifier = 'TeamMouse',
-            v = 5,
+            v = 1,
             a = WeirdValue(),
             p = { WeirdNumber(), WeirdNumber(), WeirdNumber() },
             o = WeirdValue(),
@@ -102,11 +164,21 @@ local function RandomMessage()
             b = WeirdValue(),
             hx = WeirdValue(),
             hy = WeirdValue(),
+            l = WeirdValue(),
+            r = WeirdValue(),
+            d = WeirdValue(),
+            oa = WeirdValue(),
+            e = ({ RandomArray(9, 10), string.rep('AbC-_9', math.random(0, 8)), 'A', WeirdValue() })[math.random(4)],
+            mo = RandomArray(7, 6),
+            ac = RandomArray(1, 5),
+            gk = ({ false, 16, 46, WeirdValue() })[math.random(4)],
+            tmv = ({ nil, 1, WeirdValue() })[math.random(3)],
+            mob = ({ false, { 'ueb0101', false }, { WeirdValue(), 'x' }, WeirdValue() })[math.random(4)],
         }
     end
 
     if r == 8 then
-        return { v = 5, a = 2, p = WeirdValue() }
+        return { v = 1, a = 2, p = WeirdValue() }
     end
 
     if r == 9 then
@@ -134,6 +206,14 @@ local function RunSession(label, opts)
     Guard('init', function() SM.InitTeamMouse(opts.replay or false) end)
 
     local receive = env.__chatFuncs['TeamMouse']
+
+    -- Half the sessions' peers say they read the compact format
+    -- (wirecodec.lua), so both ways of sending get the same beating.
+    if receive and math.random(2) == 1 then
+        for _, name in ipairs(senders) do
+            Guard('hello', function() receive(name, { Identifier = 'TeamMouse', tmc = 1 }) end)
+        end
+    end
 
     for step = 1, iterations do
         env.__clock.t = env.__clock.t + math.random() * 0.2
@@ -163,11 +243,18 @@ local function RunSession(label, opts)
                     math.random() * 900, math.random() * 50, math.random() * 900,
                 }
             end
-            env.__mouseScreen = { math.random(0, 1920), math.random(0, 1080) }
             env.__setZoom(math.random(1, 500))
 
-            local view = env.__views['WorldCamera']
-            view.CursorOverWorld = math.random(2) == 1
+            -- Report the pointer the way the engine does: to the map view
+            -- when it is over the map, to the root frame when it is not.
+            local px, py = math.random(0, 1920), math.random(0, 1080)
+            Guard('hover', function()
+                if math.random(2) == 1 then
+                    Mock.HoverWorld(env, px, py)
+                else
+                    Mock.HoverHud(env, px, py)
+                end
+            end)
 
         elseif action == 10 then
             -- Command mode churn.
@@ -182,10 +269,16 @@ local function RunSession(label, opts)
             local view = env.__views['WorldCamera']
             local types = { 'ButtonPress', 'ButtonRelease', 'MouseExit', 'MouseMotion' }
             Guard('event', function()
-                view:HandleEvent({
+                local event = {
                     Type = types[math.random(4)],
                     Modifiers = { Left = math.random(2) == 1 },
-                })
+                }
+                -- Real events carry coordinates; keep some without, so the
+                -- tracker's handling of a bare event is exercised too.
+                if math.random(3) > 1 then
+                    event.MouseX, event.MouseY = math.random(0, 1920), math.random(0, 1080)
+                end
+                view:HandleEvent(event)
             end)
 
         else

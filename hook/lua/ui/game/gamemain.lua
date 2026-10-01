@@ -18,9 +18,9 @@ local function TeamMouseBeat()
     TeamMouse.OnBeat()
 end
 
-local TeamMouseOriginalCreateUI = CreateUI
+local OriginalCreateUI = CreateUI
 function CreateUI(isReplay)
-    TeamMouseOriginalCreateUI(isReplay)
+    OriginalCreateUI(isReplay)
 
     local ok, err = pcall(function()
         TeamMouse.InitTeamMouse(isReplay)

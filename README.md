@@ -1,7 +1,36 @@
+### Notice: Claude AI was used with this project.
+
 # TeamMouse
 
-Shows your teammates what you're doing: mouse position, order cursor, the
-building you have on your cursor, and your drag-selections.
+Built on top of the SharedMouse mod by Eternal- that was cleaned up by KasperAUS
+
+### Upgrades over shared mouse:
+
+• show Teammate building placements
+
+• show Teammate dragbox selection and current unit selection
+
+• show Teammate orders
+
+• show when Teammate is hovering HUD
+
+• Teammate cursor zoom indicator
+
+• better zoom scaling and opacity so things are visible, but not in the way
+
+• take extra samples between ticks for smoother movement
+
+• full replay support that allows you to see everyone's actions
+
+• (optional) toggle specific player's cursors
+
+• (optional) show camera perspective of your teammates
+
+• (optional) follow player perspective and selections --- (for observer and replays)
+
+• show drawings earlier before it's applied to the simulation
+
+• backwards compatible with SharedMouse
 
 ## Development
 
@@ -61,42 +90,108 @@ per-frame `LayoutHelpers.AtLeftTopIn` calls was the source of the slowdown.
 
 ```lua
 ReplayCodec = {
-    Enabled = false,   -- master switch, off by default
-    Write   = true,    -- write coordinates into the commander name during play
-    Read    = true,    -- read them back during replay playback
+    Enabled  = true,
+    Alphabet = { ... },   -- the invisible characters the position is written in
     ...
 }
 ```
 
-`Enabled = false` means the codec is compiled but never called — no sim
-traffic, no renaming, nothing. Set it to `true` on every client that should
-record. `Write` and `Read` let you split the two halves, so you can record
-without paying the playback polling cost or vice versa.
+Chat messages are not recorded into replays, but a unit's custom name is. So
+the pointer's position is appended to your commander's name in characters the
+game draws nothing for: the name still reads as yours. Every write re-reads the
+name, so renaming your commander mid-game is kept. Drags (box, line, drawing)
+and time on the interface are recorded too. In a replay, cursors are drawn
+more opaque and larger (`CursorAlpha`, `CursorScale`), and every player's is
+shown, including your own when watching your own game.
 
-Read the comment block above it before turning it on; the costs and the
-partial-coverage limitation are documented there.
+### HUD ghost
 
-### HUD detail
+While a teammate's pointer is on their interface, their cursor is shown over a
+small picture of the interface (`UICutout.png`), slid so that the spot they are
+pointing at is at its centre. It fades in and out (`Hud.FadeSpeed`) and jumps
+rather than slides across the screen (`Hud.JumpDistance`).
+
+### Extra samples
 
 ```lua
-Hud = {
-    Enabled = true,
-    Detail  = 'simple',   -- or 'full'
-    ...
-}
+Network.ExtraSamples = { Enabled = true, Interval = 0.033, MaxPerPacket = 8, MaxAge = 0.5 }
 ```
 
-`'simple'` draws the screen outline, the resource strip, the bottom command
-band, the minimap block and the cursor dot — six bitmaps, reads clearly at a
-glance. `'full'` adds the build grid, the order button row, the score panel
-and the side rail, about eighteen bitmaps per teammate per view.
+The packet rate stays at the beat rate. Between beats the pointer is also
+sampled about every 33ms, and those samples ride along in the next packet, each
+tagged with how long before the packet it was taken. The receiver places them
+on its own timeline, so a cursor follows the real path of the pointer instead of
+a straight line between two points 100ms apart. It costs bandwidth (nine
+numbers per sample), not packets.
 
-It's a silhouette, not a capture. We can't see another client's framebuffer.
-The point is only to make it unambiguous that someone has stepped off the map
-into their interface, rather than leaving their cursor frozen on a spot they
-aren't actually looking at.
+It only works because remote cursors are drawn `Smoothing.InterpolationDelay`
+in the past: an extra sample is older than the packet carrying it, and would be
+stale on arrival if the receiver drew the newest data. Keep the delay at or
+above one beat (0.1s).
+
+### Structure lines and right-click orders
+
+While a teammate drags in build mode, you see a dotted line from where the drag
+started to the cursor (`Line`). When they right-click with units selected you
+see a marker fade out at the destination in their colour, with the order's
+cursor beside it, plus a line for a right-drag formation (`Orders`).
+
+### Right-click drawing
+
+A right-drag is shown while it is being drawn, and stays up after the release
+until the order has reached the sim.
+
+### State is drawn from the moment being drawn
+
+Positions are drawn `Smoothing.InterpolationDelay` in the past. So is everything
+that decides how to draw them (on the interface, dragging a box / line / order):
+it rides on each sample and is read at render time.
+
+### Drag overlay
+
+The invisible grid that tracks your pointer during a native drag is lifted off
+the screen while the right mouse button is down (it used to cancel right-drag
+formations) and is rebuilt whenever its view is resized. Set
+`Selection.DebugGrid = true` to tint it and check its coverage.
+
+### Player panel
+
+A panel on the left edge lists every player whose cursor you can see. Untick a
+player to hide everything of theirs -- cursor, orders, lines, trails -- and
+tick them again to bring it back. It folds away to its tab with the arrow, and hides in
+screen capture mode. Position and starting state are under `Panel`.
+
+### Versions in chat
+
+At the start of a game TeamMouse says in your chat which version you and each
+teammate are on, and after a few seconds who doesn't have it or is only on the
+old SharedMouse (`VersionReport`). Only you see these lines.
+
+### Actions
+
+When a teammate stops units, toggles repeat build, pauses or resumes units,
+or copies or distributes orders, a short label (STOP, REPEAT ON, PAUSED,
+COPY, DISTRIBUTE ORDERS, ...) shows above their cursor and
+fades (`Actions`). Orders given by left-clicking in an order mode -- patrol,
+attack-move, reclaim -- show on the ground like right-click orders. A teammate
+dragging one of their orders to a new spot carries its icon in their hand,
+with a line back to where it was (`Orders.ShowGrabs`).
+
+### Bandwidth
+
+While your pointer moves, each teammate receives about 430 B/s from you
+(about 30 B/s while it's still; ~660 B/s panning the camera), estimated with
+extras/bandwidth_report.lua. Each packet travels as one short string
+(modules/wirecodec.lua) that decodes to exactly the packet it was, about a
+third of its size as a table; teammates on an older TeamMouse are sent the
+table instead. Fields with nothing to say are left out, and the old
+SharedMouse packet only goes to teammates who use it. With replays on, the
+copy that goes through the sim (to every player) is the same short string.
 
 ## Tests
+
+Run every suite on Lua 5.0 (the game's version) as well as 5.1; see
+extras/references/testing-workflow.md.
 
 ```
 lua5.1 extras/test_integration.lua

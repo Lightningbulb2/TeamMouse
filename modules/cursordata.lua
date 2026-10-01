@@ -20,7 +20,6 @@
 --** string.find(filename, ".dds") where the dot is a pattern wildcard.
 --******************************************************************************
 
-local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 local Color = import('/lua/shared/color.lua')
 
 --- Where the stock cursor textures live.
@@ -226,7 +225,7 @@ function TextureForIndex(index)
     end
 
     local key = OrderNames[index]
-    if not key then
+    if not key or key == 'selectable' then -- coloured arrow stands in for it
         textureCache[index] = false
         return nil
     end
@@ -343,10 +342,4 @@ function SafeUIColor(color)
         return color
     end
     return 'ffffffff'
-end
-
---- Ring texture used to show that a player is dragging a selection box.
----@return string
-function SelectionRingTexture()
-    return _G.TeamMousePath .. '/textures/focus/original.png'
 end

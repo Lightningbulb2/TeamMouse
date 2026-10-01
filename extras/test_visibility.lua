@@ -4,13 +4,12 @@
 --**     lua5.1 extras/test_visibility.lua
 --**
 --** Regression test for a teammate's cursor showing the wrong pieces when it
---** (re)appears in your view: the selection ring while they aren't selecting,
---** the HUD ghost while they're on the map, the arrow on top of the HUD ghost,
+--** (re)appears in your view: the HUD ghost while they're on the map, the arrow on top of the HUD ghost,
 --** a stale build ghost.
 --**
 --** Cause: SetVisible(true) calls Group:Show(), which the engine cascades to
 --** every child -- including children RemoteCursor had hidden individually.
---** The cached flags (ringShown, hudShown, buildShown) never heard about it,
+--** The cached flags (hudShown, buildShown) never heard about it,
 --** and the Apply* methods return early when their flag is unchanged, so the
 --** wrong pieces stayed up until the teammate's state next flipped.
 --**
@@ -148,8 +147,7 @@ local function NewPeer()
         local c = Mock.FindCursors(env, 'WorldCamera')[1]
         return {
             cursor = Mock.IsVisible(c),
-            arrow = Mock.IsVisible(c.icon),
-            ring = (c.ring and Mock.IsVisible(c.ring)) or false,
+            arrow = Mock.IsVisible(c.mouseIcon),
             hud = (c.hud and Mock.IsVisible(c.hud)) or false,
             build = (c.buildIcon and Mock.IsVisible(c.buildIcon)) or false,
             buildFrame = (c.buildFrame and Mock.IsVisible(c.buildFrame)) or false,
@@ -173,10 +171,11 @@ local function ExpectPlainArrow(name, s)
         Describe(s))
 end
 
---- Teammate is on their HUD: just the HUD ghost.
-local function ExpectHudOnly(name, s)
+--- Teammate is on their HUD: the HUD ghost, with their arrow drawn over it
+--- (deliberately: see RemoteCursor.ResyncChildren), and nothing of the map's.
+local function ExpectHud(name, s)
     Check(name,
-        s.cursor and s.hud and not s.arrow and not s.ring
+        s.cursor and s.hud and s.arrow and not s.ring
             and not s.build and not s.buildFrame,
         Describe(s))
 end
@@ -205,7 +204,7 @@ do
 
     peer.Settle(ON_SCREEN, true, false)
     peer.Settle(ON_SCREEN, false, false)
-    ExpectHudOnly('on their HUD: ghost shown, arrow gone', peer.Seen())
+    ExpectHud('on their HUD: ghost shown, arrow over it', peer.Seen())
 
     peer.Settle(ON_SCREEN, true, false)
     ExpectPlainArrow('back on the map: arrow shown, ghost gone', peer.Seen())
@@ -216,29 +215,6 @@ do
     peer.Settle(ON_SCREEN, true, false)
     ExpectPlainArrow('re-entering after a HUD visit does not bring the ghost back',
         peer.Seen())
-end
-
---------------------------------------------------------------------------------
-Section('selection ring')
---------------------------------------------------------------------------------
-do
-    local peer = NewPeer()
-
-    peer.Settle(ON_SCREEN, true, true)
-    Check('ring shows while they are selecting', peer.Seen().ring)
-
-    peer.Settle(OFF_SCREEN, true, true)
-    peer.Settle(ON_SCREEN, true, true)
-    Check('ring is still there after re-entering mid-selection', peer.Seen().ring,
-        Describe(peer.Seen()))
-
-    peer.Settle(ON_SCREEN, true, false)
-    Check('ring goes when they stop selecting', not peer.Seen().ring)
-
-    peer.Settle(OFF_SCREEN, true, false)
-    peer.Settle(ON_SCREEN, true, false)
-    Check('ring stays away after re-entering when not selecting',
-        not peer.Seen().ring, Describe(peer.Seen()))
 end
 
 --------------------------------------------------------------------------------
@@ -289,7 +265,7 @@ do
     peer.Settle(ON_SCREEN, false, false)
     peer.GoQuiet()
     peer.Settle(ON_SCREEN, false, false)
-    ExpectHudOnly('resuming on their HUD shows the ghost with no arrow over it',
+    ExpectHud('resuming on their HUD shows the ghost with the arrow over it',
         peer.Seen())
 end
 
