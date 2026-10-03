@@ -178,6 +178,12 @@ local sendState = {
     -- however it was ordered (CheckUpgrades): entity id -> { unit, t, announced }.
     watch = {},
     watchCount = 0,
+    -- Upgrades already told, by the entity id of the building being built:
+    -- outlives the watch above, which lets a structure go once it has not
+    -- been selected for a while. (Selecting it again mid-upgrade used to
+    -- tell -- flash -- the same upgrade again.)
+    upgradeTold = {},
+    upgradeToldCount = 0,
 
     -- Our selection's unit ids (NoteSelection), whether it changed since it
     -- was last sent, and when that was; whether it is being watched, and
@@ -1068,6 +1074,10 @@ local function ProcessMessage(sender, msg)
     -- A teammate saying which version they're on. Before the format check:
     -- a teammate on an incompatible build is exactly who to report.
     if type(msg) == 'table' and msg.tmv ~= nil then
+        -- From a replay there is no sender: the recorded copy names its army.
+        if not sender and type(msg.a) == 'number' and peersByArmy[msg.a] then
+            sender = peersByArmy[msg.a].name
+        end
         Version.Heard(sender, msg.tmv)
         NoteTeamMouse(sender)
         return
@@ -1122,7 +1132,7 @@ local function ProcessMessage(sender, msg)
     -- A repeat of the same selection (the periodic resend) changes nothing:
     -- in particular it does not bring faded boxes back.
     local sel = msg.sel
-    if type(sel) == 'string' and Config.TeamSelection.Enabled and sel ~= record.selText then
+    if type(sel) == 'string' and sel ~= record.selText then
         record.selText = sel
         local ids = record.sel
         for i = table.getn(ids), 1, -1 do
@@ -1201,7 +1211,7 @@ local function ProcessMessage(sender, msg)
     -- Clicks: a pulse each at the tip of their cursor, where it is in this
     -- packet, shown when the cursor is (after the interpolation delay).
     local clicks = SafeNumber(msg.ck, 0, 0, 9)
-    if clicks >= 1 and Config.ClickPulse.Enabled then
+    if clicks >= 1 then
         local pulses = record.pulses
         local at = now + Config.Smoothing.InterpolationDelay
         for i = 1, math.floor(clicks) do
@@ -1295,14 +1305,14 @@ local function ProcessMessage(sender, msg)
         record.zoom = SafeNumber(msg.z, record.zoom, 0, 100000)
     end
 
-    if Config.Orders.Enabled then
-        AddRemoteOrders(record, msg.mo, now, msg.mob, msg.mot, msg.mou)
-        MarkOrdersApplied(record, msg.oa, now)
-    end
+    -- Kept whether or not we show orders (Orders.Enabled is ours to switch
+    -- at any time; RemoteCursor decides what is drawn).
+    AddRemoteOrders(record, msg.mo, now, msg.mob, msg.mot, msg.mou)
+    MarkOrdersApplied(record, msg.oa, now)
 
     -- Actions: the last one in the packet is the one shown. Drawn when the
     -- samples it belongs with are, like an order.
-    if Config.Actions.Enabled and type(msg.ac) == 'table' then
+    if type(msg.ac) == 'table' then
         local code = false
         for i = 1, Config.Actions.MaxPerPacket do
             local c = SafeNumber(msg.ac[i], nil, 1, table.getn(Actions.Labels))
@@ -2495,9 +2505,10 @@ local function HandleRightButton(t, event, view)
         -- Streamed as a drag from the press: with nothing selected it is a
         -- drawing.
         rc.live = rc.startOk
-        rc.order = rc.startOk and rc.hasSel and not rc.inMode
-            and Config.Orders.Enabled and Config.Orders.Share
-        rc.drawing = rc.startOk and not rc.hasSel and not rc.inMode and Config.Draw.Enabled
+        -- (What WE show -- Orders.Enabled, Draw.Enabled, ... -- never
+        -- changes what teammates are sent: they choose what they show.)
+        rc.order = rc.startOk and rc.hasSel and not rc.inMode and Config.Orders.Share
+        rc.drawing = rc.startOk and not rc.hasSel and not rc.inMode
         rc.sig0 = (rc.hasSel and not rc.inMode) and QueueSignature() or false
         rc.view = view or rc.view
         rc.cellEvents = 0
@@ -2542,9 +2553,6 @@ end
 --- The blueprint on the cursor in build mode, or false.
 ---@return string | boolean
 local function CurrentBuildId()
-    if not Config.Build.Enabled then
-        return false
-    end
     local mode, data = unpack(CommandMode.GetCommandMode())
     if mode == 'build' and data and data.name then
         return data.name
@@ -2578,7 +2586,7 @@ end
 local function AnnounceBuild()
     local bp = sendState.buildBp
     if not localSelecting or not sendState.line or not bp or not pinnedAnchor
-        or not Config.Orders.Enabled or not Config.Orders.Share or not Config.Orders.ShowBuilds then
+        or not Config.Orders.Share then
         return
     end
     local x, y, z = pinnedAnchor[1], pinnedAnchor[2], pinnedAnchor[3]
@@ -2707,7 +2715,7 @@ end
 --- A waypoint drag was released: the order now sits where it was dropped.
 local function AnnounceGrab()
     if not localSelecting or not sendState.waypoint or sendState.grabKind == 0
-        or not Config.Orders.Enabled or not Config.Orders.Share or not Config.Orders.ShowGrabs then
+        or not Config.Orders.Share then
         return
     end
     local x, z = ResolveDragBox()
@@ -2740,7 +2748,7 @@ local MODE_CURSORS = {
 --- own cursor as the icon.
 ---@param mode table   # CommandMode.GetCommandMode()
 local function AnnounceModeOrder(mode)
-    if not Config.Orders.Enabled or not Config.Orders.Share or not Config.Orders.ShowModeOrders
+    if not Config.Orders.Share or not Config.Orders.ShowModeOrders
         or mode[1] ~= 'order' or not HasSelection() then
         return
     end
@@ -3348,8 +3356,8 @@ local function Transmit(now, state)
         outgoing.mot = Opt(beat.templates, beat.templates)
         outgoing.mou = Opt(beat.upgrades, beat.upgrades)
         outgoing.ac = Opt(beat.actions, beat.actions)
-        outgoing.gk = Opt(localSelecting and sendState.waypoint and sendState.grabKind > 0
-            and Config.Orders.ShowGrabs, sendState.grabKind)
+        outgoing.gk = Opt(localSelecting and sendState.waypoint and sendState.grabKind > 0,
+            sendState.grabKind)
         outgoing.oa = Opt(beat.applied > 0, beat.applied)
 
         -- Clicks since the last packet, for a pulse at the cursor's tip.
@@ -3362,7 +3370,6 @@ local function Transmit(now, state)
         local selChanged = sendState.selDue or not sendState.selT
         local sendSel = sendState.selWatch and (selChanged
             or (now - sendState.selT) >= Config.TeamSelection.ResendInterval)
-        sendSel = sendSel and Config.TeamSelection.Enabled
         outgoing.sel = Opt(sendSel, sendSel and PackIds(sendState.sel))
         -- Their sizes go with the ids (doubled, base 36).
         local sizes = false
@@ -3550,7 +3557,117 @@ end
 --- Where the followed camera is now, on its way to the player's (replays).
 --- army: whose it is following (false: nobody), so a new choice starts from
 --- where the camera already is rather than jumping.
-local follow = { army = false, fx = 0, fy = 0, fz = 0, heading = 0, pitch = 0, zoom = 1, selVersion = -1 }
+local follow = { army = false, fx = 0, fy = 0, fz = 0, heading = 0, pitch = 0, zoom = 1, selVersion = -1,
+    fitPt = { 0, 0, 0 }, scrollT = false, scrolls = 0 }
+
+--- Our screen position of the point halfway between corners a and b of
+--- their view outline (vp: four corners, x/y/z, clockwise from top left).
+---@param view WorldView
+---@param vp number[]
+---@param a number
+---@param b number
+---@return number | nil, number | nil
+local function ProjectMidEdge(view, vp, a, b)
+    local p = follow.fitPt
+    local ia, ib = (a - 1) * 3, (b - 1) * 3
+    p[1] = (vp[ia + 1] + vp[ib + 1]) * 0.5
+    p[2] = (vp[ia + 2] + vp[ib + 2]) * 0.5
+    p[3] = (vp[ia + 3] + vp[ib + 3]) * 0.5
+    local ok, proj = pcall(view.Project, view, p)
+    if ok and proj and type(proj.x) == 'number' and proj.x == proj.x and proj.y == proj.y then
+        return proj.x, proj.y
+    end
+end
+
+--- Following: how much further out (or in) than their zoom our camera has to
+--- be for their whole view to fit ours by its LARGER axis. Their window and
+--- ours rarely have the same shape: a narrow (tall) one of theirs is matched in
+--- height, and we see more to the sides; a wider one is matched in width.
+---
+--- Measured by projecting the middle of each edge of their view outline (vp)
+--- through our camera, and compared with our view's size. That measurement is
+--- absolute -- the zoom it calls for does not depend on the zoom it was taken
+--- at -- so it is used as it is, with no easing of its own: the camera's one
+--- ordinary glide (Follow.Rate) takes it there. It is only taken while our
+--- camera looks where theirs does (anywhere else it means nothing); meanwhile
+--- the last one for this player is used (kept on their record).
+---@param target table   # the record being followed
+---@param tzoom number   # their zoom
+---@return number        # the zoom multiplier
+local function FollowFit(target, tzoom)
+    local cfg = Config.Follow
+    local vp = target.vp
+    if not cfg.FitView then
+        return 1
+    end
+    local fit = target.followFit or 1
+    if type(vp) ~= 'table' or not vp[12] then
+        return fit
+    end
+    -- Looking where they look: the same spot, angle and turn.
+    local cam = target.cam
+    local dx, dz = follow.fx - cam[1], follow.fz - cam[3]
+    local near = tzoom * 0.05
+    local turn = math.abs(follow.heading - cam[4])
+    if turn > math.pi then turn = 2 * math.pi - turn end
+    if dx * dx + dz * dz > near * near or math.abs(follow.pitch - cam[5]) > 0.05 or turn > 0.05 then
+        return fit
+    end
+    local view = WorldViewManager.GetWorldViews()['WorldCamera']
+    if not view then
+        return fit
+    end
+    local w, h = view.Width(), view.Height()
+    local lx, ly = ProjectMidEdge(view, vp, 1, 4)
+    local rx, ry = ProjectMidEdge(view, vp, 2, 3)
+    local tx, ty = ProjectMidEdge(view, vp, 1, 2)
+    local bx, by = ProjectMidEdge(view, vp, 4, 3)
+    if not (lx and rx and tx and bx) or w <= 0 or h <= 0 then
+        return fit
+    end
+    local across = math.sqrt((rx - lx) * (rx - lx) + (ry - ly) * (ry - ly)) / w
+    local down = math.sqrt((bx - tx) * (bx - tx) + (by - ty) * (by - ty)) / h
+    local need = math.max(across, down)
+    if need <= 0 or need ~= need then
+        return fit
+    end
+    -- Spans shrink as the camera pulls back: the zoom that makes the larger
+    -- one exactly fill our view, as a share of theirs.
+    fit = need * follow.zoom / tzoom
+    if fit < cfg.FitMin then fit = cfg.FitMin end
+    if fit > cfg.FitMax then fit = cfg.FitMax end
+    target.followFit = fit
+    return fit
+end
+
+--- A wheel notch on a world view. Following someone, a strong scroll (at
+--- least Follow.BreakScrolls notches within Follow.BreakWindow seconds) means
+--- the viewer wants the camera back: stop following, and untick the box. One
+--- or two stray notches do nothing (the follow puts the camera back).
+---@param event table
+local function NoteFollowScroll(event)
+    local cfg = Config.Follow
+    if not follow.army or not cfg.BreakScrolls or cfg.BreakScrolls <= 0 then
+        return
+    end
+    local now = GetSystemTimeSeconds()
+    if not follow.scrollT or now - follow.scrollT > cfg.BreakWindow then
+        follow.scrollT, follow.scrolls = now, 0
+    end
+    -- One event can carry several notches (120 a notch, as Windows sends them).
+    local notches = math.floor(math.abs(event.WheelRotation or 0) / 120 + 0.5)
+    if notches < 1 then notches = 1 end
+    follow.scrolls = follow.scrolls + notches
+    if follow.scrolls >= cfg.BreakScrolls then
+        local record = peersByArmy[follow.army]
+        follow.army, follow.scrollT, follow.scrolls = false, false, 0
+        if record then
+            record.follow = false
+            Debug('stopped following ' .. tostring(record.name) .. ': scrolled')
+        end
+        pcall(Panel.SyncFollow)
+    end
+end
 
 --- Replays: the viewer's camera follows the player whose "follow" box is
 --- ticked in the panel. Each frame it moves part of the way to where theirs
@@ -3597,6 +3714,7 @@ local function FollowPass(delta)
         follow.fx, follow.fy, follow.fz = mine.Focus[1], mine.Focus[2], mine.Focus[3]
         follow.heading, follow.pitch, follow.zoom = mine.Heading, mine.Pitch, math.max(mine.Zoom, 1)
         follow.selVersion = -1
+        follow.scrollT, follow.scrolls = false, 0
     end
 
     -- In a replay, their selection is ours too while we follow them.
@@ -3622,6 +3740,8 @@ local function FollowPass(delta)
     follow.heading = follow.heading + turn * k
     follow.pitch = follow.pitch + (tp - follow.pitch) * k
     if tzoom < 1 then tzoom = 1 end
+    -- Their whole view in ours, by its larger axis.
+    tzoom = tzoom * FollowFit(target, tzoom)
     follow.zoom = math.exp(math.log(follow.zoom) + (math.log(tzoom) - math.log(follow.zoom)) * k)
 
     pcall(function()
@@ -3636,6 +3756,10 @@ end
 local function ReplayFrame(delta)
     HoldWhilePaused(delta)
     FollowPass(delta)
+    -- A player's row appears as soon as their recorded data does.
+    if isReplay then
+        pcall(Panel.Sync)
+    end
 end
 
 local function UpdateFrame(delta)
@@ -3797,7 +3921,7 @@ local function HandleLeftPress(self, event)
     -- neither.
     local buildDrag = false
     local inMode = CommandMode.InCommandMode()
-    if inMode and Config.Line.Enabled then
+    if inMode then
         buildDrag = IsBuildMode()
     end
     local mods = event.Modifiers
@@ -3880,7 +4004,7 @@ local upgradeOriginals = {}
 ---@param bp any
 local function NoteUpgrade(units, bp)
     local cfg = Config.Orders
-    if not (cfg.Enabled and cfg.Share and cfg.ShowBuilds and cfg.ShowUpgrades)
+    if not cfg.Share
         or type(bp) ~= 'string' or type(units) ~= 'table' then
         return
     end
@@ -4081,10 +4205,14 @@ local function NoteSelection(units)
             if sendState.clickT and (now - sendState.clickT) <= Config.ClickPulse.SelectWindow then
                 CountClick()
             end
-        else
-            -- The click selected nothing (the ground): no pulse for it.
-            sendState.clickT = false
         end
+        -- An empty selection does NOT cancel the click. Clicking another unit
+        -- with something already selected can pass through an empty selection
+        -- on its way to the new one; cancelling there lost the pulse
+        -- (reported: no pulse when changing selection). A click that only
+        -- deselects is simply never followed by a selection in the window.
+        Debug('selection changed: ' .. table.getn(ids) .. ' unit(s), click '
+            .. (sendState.clickT and string.format('%.2fs ago', GetSystemTimeSeconds() - sendState.clickT) or 'none'))
 
         -- What to tell teammates beyond the ids: each unit's size (its own
         -- blueprint: skirt, footprint or body, whichever is biggest), and
@@ -4161,14 +4289,30 @@ function CheckUpgrades(now)
             end
             if okCat and structure then
                 -- Upgrading: told once, whether here or already by
-                -- NoteUpgrade when it was ordered.
+                -- NoteUpgrade when it was ordered -- and once only for the
+                -- whole upgrade, however often the structure is selected again
+                -- (the new building's own id says which upgrade it is).
                 w.busy = true
-                if not w.announced then
+                local okFid, fid = pcall(focus.GetEntityId, focus)
+                fid = okFid and fid ~= nil and tostring(fid) or false
+                local told = sendState.upgradeTold
+                if fid and told[fid] then
+                    w.announced = true
+                elseif not w.announced then
                     local okBp, bp = pcall(focus.GetUnitId, focus)
                     if okBp and type(bp) == 'string' then
                         NoteUpgrade({ unit }, bp)
                     end
                     w.announced = true
+                end
+                if fid and not told[fid] then
+                    -- A long game's worth is still small; start over past that.
+                    if sendState.upgradeToldCount >= 200 then
+                        sendState.upgradeTold, sendState.upgradeToldCount = {}, 0
+                        told = sendState.upgradeTold
+                    end
+                    told[fid] = true
+                    sendState.upgradeToldCount = sendState.upgradeToldCount + 1
                 end
             elseif w.busy then
                 -- That upgrade is over (cancelled): the next one is news.
@@ -4250,10 +4394,6 @@ end
 ---@param t string
 ---@param event table
 local function NoteClick(t, event)
-    local cfg = Config.ClickPulse
-    if not cfg.Enabled then
-        return
-    end
     local m = event.Modifiers
     if t == 'ButtonPress' and m and m.Left then
         sendState.pressX, sendState.pressY = event.MouseX or 0, event.MouseY or 0
@@ -4300,6 +4440,9 @@ local function HookViewEvents(view)
     view.HandleEvent = function(self, event)
         local t = event.Type
 
+        if t == 'WheelRotation' then
+            NoteFollowScroll(event)
+        end
         if t == 'MouseMotion' or t == 'MouseEnter' or t == 'ButtonPress' then
             if event.MouseX then
                 localMouse.x = event.MouseX
@@ -4553,6 +4696,44 @@ local function HookRootFrame()
     end
 end
 
+--- Versions: sent to teammates and observers by a player who has any; into the replay, for a
+--- player recording one, so a replay's panel can show them. Out of
+--- InitTeamMouse for the upvalue limit.
+---@param listed table[]
+local function StartVersions(listed)
+    if not isObserver and not isReplay and table.getn(recipients) > 0 then
+        local names = {}
+        for _, record in ipairs(listed) do
+            table.insert(names, record.name)
+        end
+        Version.Start(names, function(msg)
+            SessionSendChatMessage(recipients, msg)
+        end, GetSystemTimeSeconds())
+    end
+    if sendState.recording then
+        Version.SetRecorder(function(msg)
+            msg.a = myArmy
+            ReplayCodec.Record(msg, myArmy)
+        end)
+    end
+end
+
+--- Throw every cursor away and build them again, for settings only read
+--- when a cursor is made (names, their size, the zoom bar). Called by
+--- modules/options.lua (ReUI) through _G.TeamMouseRebuild.
+function RebuildVisuals()
+    if not initialised then
+        return
+    end
+    for _, record in pairs(peers) do
+        for viewKey, visual in pairs(record.visuals) do
+            pcall(visual.Destroy, visual)
+            record.visuals[viewKey] = nil
+        end
+    end
+    SyncViews()
+end
+
 ---@param replay boolean
 function InitTeamMouse(replay)
     if initialised then
@@ -4594,6 +4775,8 @@ function InitTeamMouse(replay)
                 local visible = isObserver or isReplay or IsAlly(myArmy, index)
                 if visible then
                     local record = CreateRecord(army.nickname, index, army.color)
+                    -- For the colours of their interface ghost (hudghost.lua).
+                    record.faction = army.faction
                     peers[army.nickname] = record
                     peersByArmy[index] = record
                 end
@@ -4672,21 +4855,11 @@ function InitTeamMouse(replay)
             table.insert(listed, record)
         end
         table.sort(listed, function(a, b) return a.army < b.army end)
-        Panel.Create(listed, OnPanelToggle, isReplay or isObserver)
-
-        -- Versions in chat, for a player with teammates.
-        if not isObserver and not isReplay and table.getn(recipients) > 0 then
-            local names = {}
-            for _, record in ipairs(listed) do
-                table.insert(names, record.name)
-            end
-            Version.Start(names, function(msg)
-                SessionSendChatMessage(recipients, msg)
-            end, GetSystemTimeSeconds())
-        end
+        -- In a replay, a player is only listed once their data turns up.
+        Panel.Create(listed, OnPanelToggle, isReplay or isObserver, isReplay)
 
         -- Stop, repeat build and pause, for teammates to see.
-        if Config.Actions.Enabled and Config.Actions.Share and not isObserver and not isReplay then
+        if Config.Actions.Share and not isObserver and not isReplay then
             local hooked = Actions.Install(QueueAction)
             Debug('actions hooked: ' .. table.concat(hooked, ', '))
         end
@@ -4695,6 +4868,8 @@ function InitTeamMouse(replay)
         -- option). Players only; with or without teammates.
         sendState.recording = not isObserver and not isReplay
             and Config.ReplayCodec.Write and ReplayCodec.IsEnabled()
+
+        StartVersions(listed)
 
         sampleBuf.active = Config.Network.ExtraSamples.Enabled
             and not isObserver and not isReplay
@@ -4735,6 +4910,7 @@ function InitTeamMouse(replay)
 
         initialised = true
         SyncViews()
+        rawset(_G, 'TeamMouseRebuild', RebuildVisuals)
 
         if isReplay and Config.ReplayCodec.Read and ReplayCodec.IsEnabled() then
             StartReplayPlayback()
@@ -4762,8 +4938,10 @@ end
 function Destroy()
     initialised = false
     rawset(_G, 'TeamMouseOnCommandIssued', nil)
+    rawset(_G, 'TeamMouseRebuild', nil)
     UnhookUpgrades()
     sendState.selWatch = false
+    sendState.upgradeTold, sendState.upgradeToldCount = {}, 0
     ReplayCodec.ResetOption()
     buildWatch.armed = false
     buildWatch.pending = false

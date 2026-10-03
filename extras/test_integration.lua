@@ -2018,7 +2018,8 @@ do
     env2.__clock.t = env2.__clock.t + 0.2
     SM.OnBeat()
     local msg = env2.__sent[table.getn(env2.__sent)].msg
-    Check('with lines disabled a build drag is not reported', msg.l == false and msg.s == false)
+    -- Line.Enabled is what WE show; what we send is always everything.
+    Check('with lines switched off locally a build drag is still sent', msg.l == true and msg.s == false)
 end
 
 do
@@ -4856,8 +4857,9 @@ do
     v3:HandleEvent({ Type = 'ButtonRelease', MouseX = 100, MouseY = 100, Modifiers = {} })
     env3.__clock.t = env3.__clock.t + 0.1
     SM3.OnBeat()
-    Check('Orders.ShowBuilds = false keeps placements private',
-        env3.__sent[table.getn(env3.__sent)].msg.mob == false)
+    -- Orders.ShowBuilds is what WE show; our placements are always sent.
+    Check('Orders.ShowBuilds = false locally: placements are still sent',
+        type(env3.__sent[table.getn(env3.__sent)].msg.mob) == 'table')
 end
 
 do
@@ -5592,103 +5594,36 @@ do
 end
 
 --------------------------------------------------------------------------------
-Section('versions in chat at the start of a game')
+Section('versions are sent at the start of a game (no chat lines)')
 --------------------------------------------------------------------------------
-local function ChatLines(env)
-    local lines = {}
-    for _, e in ipairs(env.__chat) do table.insert(lines, e.Text) end
-    return lines
-end
-local function Said(env, text)
-    for _, line in ipairs(ChatLines(env)) do
-        if line == text then return true end
-    end
-    return false
-end
-
+-- The chat report was replaced by the panel's version column: versions still
+-- go out once, but nothing is posted in chat.
 do
     local env, SM = NewSession()
     SM.InitTeamMouse(false)
     SM.OnBeat()
-    Check('you are told your version', Said(env, 'You are on version 1'), table.concat(ChatLines(env), ' | '))
     local v = env.__sentVersion[1]
-    Check('and it is sent to your teammates, once', table.getn(env.__sentVersion) == 1
+    Check('your version is sent to your teammates, once', table.getn(env.__sentVersion) == 1
         and v.msg.tmv == 1 and v.msg.Identifier == 'TeamMouse'
         and type(v.clients) == 'table' and v.clients[1] == 2)
-    Check('as a chat line from TeamMouse', env.__chat[1] and env.__chat[1].Name == 'TeamMouse:')
-
     local receive = env.__chatFuncs['TeamMouse']
     receive('KasperAUS', { Identifier = 'TeamMouse', tmv = 1 })
-    receive('KasperAUS', { Identifier = 'TeamMouse', tmv = 1 })
-    local n = 0
-    for _, line in ipairs(ChatLines(env)) do
-        if line == 'KasperAUS is on version 1' then n = n + 1 end
-    end
-    Check('a teammate\'s version is reported, once', n == 1, n)
-
-    env.__clock.t = env.__clock.t + 6
-    SM.OnBeat()
-    Check('someone who answered is not reported missing',
-        not Said(env, 'KasperAUS does not have TeamMouse'))
-    Check('no errors', NoErrors(env))
-end
-
-do
-    -- A teammate on another build: still reported, even though their cursor
-    -- packets are on a different format.
-    local env, SM = NewSession()
-    SM.InitTeamMouse(false)
-    SM.OnBeat()
     env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmv = 3 })
-    Check('another version is reported as different', Said(env, 'KasperAUS is on version 3 (you are on 1)'))
-end
-
-do
-    -- Nobody answers.
-    local env, SM = NewSession()
-    SM.InitTeamMouse(false)
-    SM.OnBeat()
-    env.__clock.t = env.__clock.t + 3
-    SM.OnBeat()
-    Check('nobody is reported missing too early', not Said(env, 'KasperAUS does not have TeamMouse'))
-    env.__clock.t = env.__clock.t + 3
-    SM.OnBeat()
-    Check('a teammate who never answers is reported', Said(env, 'KasperAUS does not have TeamMouse'))
-    Check('opponents are not', not Said(env, 'Eternal does not have TeamMouse'))
-end
-
-do
-    -- A teammate on SharedMouse only.
-    local env, SM = NewSession()
-    SM.InitTeamMouse(false)
-    SM.OnBeat()
-    env.__chatFuncs['a']('KasperAUS', { a = true, b = { 10, 0, 10, 1 } })
     env.__clock.t = env.__clock.t + 6
     SM.OnBeat()
-    Check('a teammate on SharedMouse is reported as such', Said(env, 'KasperAUS is using SharedMouse'),
-        table.concat(ChatLines(env), ' | '))
-end
-
-do
-    -- Observers, replays, solo games: nothing.
-    local env, SM = NewSession({ focusArmy = -1 })
-    SM.InitTeamMouse(false)
-    SM.OnBeat()
-    Check('an observer is told nothing', table.getn(env.__chat) == 0)
-    local env2, SM2 = NewSession()
-    SM2.InitTeamMouse(true)
-    SM2.OnBeat()
-    Check('nor is a replay viewer', table.getn(env2.__chat) == 0)
+    Check('nothing is said in chat', table.getn(env.__chat) == 0, table.getn(env.__chat))
 
     local env3, SM3 = NewSession()
     SM3.InitTeamMouse(false)
     SM3.OnBeat()
     local nan = 0 / 0
-    for _, v in ipairs({ 'x', nan, -1, 1e40, {}, true }) do
-        env3.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmv = v })
+    for _, bad in ipairs({ 'x', nan, -1, 1e40, {}, true }) do
+        env3.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmv = bad })
     end
+    SM3.OnBeat()
+    local rows = env3.import('/mods/TeamMouse/modules/panel.lua').Get().rows
     Check('nonsense versions are ignored without errors', NoErrors(env3)
-        and table.getn(ChatLines(env3)) == 1)
+        and rows[1].versionLabel._text == '?', rows[1].versionLabel._text)
 end
 
 do
@@ -6538,6 +6473,9 @@ do
     Check('teammates are not sent it (only a replay follows)', not chatCam)
 
     local renv, _, Play = ReplayOf(env)
+    -- (The mock's projection ignores the camera, so fitting their view's
+    -- shape -- tested on its own below -- is off for this test.)
+    renv.import('/mods/TeamMouse/modules/config.lua').Follow.FitView = false
     Play()
     local row = PanelRow(renv, 1)
     Check('in a replay each player has a "follow" box, unticked', row and row.followCheck
@@ -6580,9 +6518,15 @@ do
     Frames(renv, 2, 0.016)
     Check('it keeps following them', math.abs(renv.__camera.Focus[1] - 600) < 0.5, renv.__camera.Focus[1])
 
-    -- One at a time.
+    -- One at a time. (Army 2's recorded data has to arrive for them to be
+    -- listed at all: replay rows appear with their player's data.)
+    renv.import('/lua/userplayerquery.lua').ProcessQueries({ { Name = 'TeamMouse',
+        M = { v = 1, a = 2, p = { 300, 0, 300 }, o = 0, z = 80, w = true } } })
+    Frames(renv, 0.1, 0.1)
     local other = PanelRow(renv, 2)
     other.followCheck:Click()
+    -- (The panel was rebuilt when army 2 appeared: look the row up again.)
+    row = PanelRow(renv, 1)
     Check('following another unticks the first', not row.followCheck:IsChecked()
         and not row.record.follow and other.record.follow)
     other.followCheck:Click()
@@ -6958,8 +6902,23 @@ do
     local cfg = env.import('/mods/TeamMouse/modules/config.lua')
     local up, plain = visual.orderMarks[1], visual.orderMarks[2]
     Check('an upgrade shows the new building\'s icon', up and up.icon and Mock.IsVisible(up.icon))
-    Check('in a gold frame', up and up.square._color == cfg.Orders.UpgradeColor, up and up.square._color)
+    -- Regression test for: the upgrade frame was simply turned yellow, which a
+    -- yellow player's markers already are. Now the frame keeps their colour
+    -- and a gold diamond (a shape, not a colour) sits behind it.
+    Check('framed in their colour, like any structure', up and up.square._color == visual.uiColor,
+        up and up.square._color)
+    Check('with a gold diamond behind it', up and up.diamond and Mock.IsVisible(up.diamond)
+        and up.diamond._texture == '/mods/TeamMouse' .. cfg.Orders.UpgradeTexture)
+    local framed = cfg.Orders.BuildIconSize + cfg.Orders.BuildFrame * 2
+    Check('larger than the frame, so its points show', up and up.diamond
+        and up.diamond.Width() == math.floor(framed * cfg.Orders.UpgradeDiamondScale + 0.5), up and up.diamond and up.diamond.Width())
+    Check('centred on the building', up and up.diamond
+        and math.abs((up.diamond.Left() + up.diamond.Width() / 2) - (up.square.Left() + up.square.Width() / 2)) < 1
+        and math.abs((up.diamond.Top() + up.diamond.Height() / 2) - (up.square.Top() + up.square.Height() / 2)) < 1)
+    Check('drawn behind the frame, which is behind the icon', up and up.diamond
+        and up.diamond.Depth() < up.square.Depth() and up.square.Depth() < up.icon.Depth())
     Check('a plain placement keeps their colour', plain and plain.square._color == visual.uiColor)
+    Check('and has no diamond', plain and not (plain.diamond and Mock.IsVisible(plain.diamond)))
 end
 
 do
@@ -7025,6 +6984,7 @@ do
     driver:OnFrame(0.016)
     local a2 = mark and mark.square._alpha
     Check('an upgrade marker fades', a1 and a2 and a2 < a1 - 0.2, tostring(a1) .. ' -> ' .. tostring(a2))
+    Check('diamond and all', mark and mark.diamond and mark.diamond._alpha == a2)
     env.__clock.t = env.__clock.t + cfg.Orders.Lifetime
     env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true })
     driver:OnFrame(0.016)
@@ -7706,6 +7666,10 @@ do
     local renv, RSM = NewSession()
     renv.__scenario.Options.TeamMouseReplay = 'on'
     RSM.InitTeamMouse(true)
+    -- (A replay lists a player once their recorded data arrives.)
+    renv.import('/lua/userplayerquery.lua').ProcessQueries({ { Name = 'TeamMouse',
+        M = { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true } } })
+    Frames(renv, 0.1, 0.1)
     local from = table.getn(renv.__sentMute) + 1
     PanelRow(renv, 2).check:Click()
     Check('in a replay, hiding a cursor sends nothing', table.getn(MuteMessages(renv, from)) == 0)
@@ -8082,6 +8046,944 @@ do
     local rec = Recorded(env)
     Check('which is the packet teammates got', rec[table.getn(rec)] and rec[table.getn(rec)].p[1] == 210
         and DeepEqual(rec[table.getn(rec)], env.__sent[table.getn(env.__sent)].raw, 'Identifier'))
+end
+
+--------------------------------------------------------------------------------
+Section('replays: hovering a cursor fades it a little')
+--------------------------------------------------------------------------------
+-- Regression test for: in a replay the proximity fade was switched off
+-- entirely, so a cursor sat on top of whatever the viewer pointed at. Now
+-- hovering one fades it, gently (ReplayCodec.HoverRadius / HoverMinAlpha).
+do
+    local env, SM = RecordingSession('on')
+    MoveTo(env, SM, 200, 0, 200, 400, 400)
+    local renv, _, Play = ReplayOf(env, { noHover = true })
+    local cfg = renv.import('/mods/TeamMouse/modules/config.lua')
+    renv.__setZoom(400)
+    Play(6)
+    local visual = CursorFor(renv, 1)
+    Mock.HoverWorld(renv, visual.Left() + 400, visual.Top() + 300)
+    Play(3)
+    local away = visual.appliedAlpha
+    Mock.HoverWorld(renv, visual.Left(), visual.Top())
+    Play(3)
+    local over = visual.appliedAlpha
+    Check('a replay cursor fades with your pointer over it', over < away - 0.2,
+        tostring(away) .. ' -> ' .. tostring(over))
+    Check('only slightly: never below HoverMinAlpha of itself',
+        over >= away * cfg.ReplayCodec.HoverMinAlpha - 0.03, over)
+    Mock.HoverWorld(renv, visual.Left() + cfg.ReplayCodec.HoverRadius + 5, visual.Top())
+    Play(3)
+    Check('and is back to full just outside HoverRadius', visual.appliedAlpha >= away - 0.02,
+        visual.appliedAlpha)
+    Check('no errors', NoErrors(renv))
+end
+
+--------------------------------------------------------------------------------
+Section('replays: only players whose data was recorded are listed')
+--------------------------------------------------------------------------------
+-- Regression test for: a replay's panel listed every player, with or without
+-- the mod or recorded data, so most toggles did nothing. A player's row now
+-- appears when their recorded data does, and the panel keeps its state
+-- (folded, hidden cursors) across that rebuild.
+do
+    local env, SM = RecordingSession('on')
+    local renv, RSM, Play = ReplayOf(env)
+    local P = renv.import('/mods/TeamMouse/modules/panel.lua')
+    Check('nothing played yet: no panel', P.Get() == false)
+
+    MoveTo(env, SM, 200, 0, 200, 400, 400)
+    Play()
+    local panel = P.Get()
+    Check('a player is listed once their data arrives', panel and table.getn(panel.rows) == 1
+        and panel.rows[1].record.army == 1, panel and table.getn(panel.rows))
+    Check('players with nothing recorded are not', PanelRow(renv, 2) == nil and PanelRow(renv, 3) == nil)
+
+    PanelRow(renv, 1).check:Click()
+    panel.arrow:Click()
+    renv.import('/lua/userplayerquery.lua').ProcessQueries({ { Name = 'TeamMouse',
+        M = { v = 1, a = 3, p = { 300, 0, 300 }, o = 0, z = 80, w = true } } })
+    Frames(renv, 0.1, 0.1)
+    panel = P.Get()
+    Check('another appears when theirs does', panel and table.getn(panel.rows) == 2
+        and PanelRow(renv, 3) ~= nil)
+    Check('a folded panel stays folded', panel and not Mock.IsVisible(panel.body)
+        and panel.arrow._checked == true)
+    Check('a hidden cursor stays hidden, its box unticked', not PanelRow(renv, 1).check:IsChecked()
+        and PanelRow(renv, 1).record.disabled)
+    Check('no errors', NoErrors(renv))
+
+    -- Live observers still see every player from the start.
+    local oenv, OSM = NewSession(ObserverOpts())
+    OSM.InitTeamMouse(false)
+    local op = oenv.import('/mods/TeamMouse/modules/panel.lua').Get()
+    Check('a live observer still lists every player at once', op and table.getn(op.rows) == 3)
+end
+
+--------------------------------------------------------------------------------
+Section('versions in the player panel')
+--------------------------------------------------------------------------------
+do
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local receive = env.__chatFuncs['TeamMouse']
+    local row = PanelRow(env, 2)
+    Check('each row has a version', row and row.versionLabel and row.versionText == '?', row and row.versionText)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tmv = cfg.ModVersion })
+    env.__clock.t = env.__clock.t + 0.2
+    SM.OnBeat()
+    Check('theirs, once heard', row.versionLabel._text == 'v' .. cfg.ModVersion, row.versionLabel._text)
+    local same = row.versionLabel._color
+
+    local env2, SM2 = NewSession()
+    SM2.InitTeamMouse(false)
+    env2.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmv = cfg.ModVersion + 2 })
+    env2.__clock.t = env2.__clock.t + 0.2
+    SM2.OnBeat()
+    local row2 = PanelRow(env2, 2)
+    Check('another version shows, in another colour', row2.versionLabel._text == 'v' .. (cfg.ModVersion + 2)
+        and row2.versionLabel._color ~= same)
+
+    local env3, SM3 = NewSession()
+    SM3.InitTeamMouse(false)
+    local cfg3 = env3.import('/mods/TeamMouse/modules/config.lua')
+    for _ = 1, 3 do
+        env3.__clock.t = env3.__clock.t + cfg3.VersionReport.CheckDelay
+        SM3.OnBeat()
+    end
+    Check('a teammate who never answered: none', PanelRow(env3, 2).versionLabel._text == 'none',
+        PanelRow(env3, 2).versionLabel._text)
+
+    local env4, SM4 = NewSession()
+    SM4.InitTeamMouse(false)
+    -- A real SharedMouse packet from them.
+    env4.__chatFuncs['a']('KasperAUS', { a = true, b = { 10, 0, 10, 1 } })
+    env4.__clock.t = env4.__clock.t + 0.2
+    SM4.OnBeat()
+    Check('SharedMouse: old', PanelRow(env4, 2).versionLabel._text == 'old', PanelRow(env4, 2).versionLabel._text)
+
+    -- Observers have no chat report, but do have the panel.
+    local oenv, OSM = NewSession(ObserverOpts())
+    OSM.InitTeamMouse(false)
+    oenv.__chatFuncs['TeamMouse']('Eternal', { Identifier = 'TeamMouse', tmv = 1 })
+    oenv.__clock.t = oenv.__clock.t + 0.2
+    OSM.OnBeat()
+    Check('an observer sees versions too', PanelRow(oenv, 3).versionLabel._text == 'v1')
+
+    -- Switched off, the column goes (and comes back) without a restart.
+    cfg.Panel.ShowVersions = false
+    SM.OnBeat()
+    Check('Panel.ShowVersions off: no column', PanelRow(env, 2) and not PanelRow(env, 2).versionLabel)
+    cfg.Panel.ShowVersions = true
+    SM.OnBeat()
+    Check('and back on', PanelRow(env, 2).versionLabel and PanelRow(env, 2).versionLabel._text == 'v1')
+    Check('no errors', NoErrors(env) and NoErrors(oenv))
+end
+
+do
+    -- A replay: each player's version is recorded with their cursor.
+    local env, SM = RecordingSession('on')
+    MoveTo(env, SM, 200, 0, 200, 400, 400)
+    MoveTo(env, SM, 210, 0, 200, 410, 400)
+    local found = 0
+    for _, m in ipairs(Recorded(env)) do
+        if m.tmv then
+            found = found + 1
+            Check('the version goes into the replay, with its army', m.tmv == 1 and m.a == 1)
+        end
+    end
+    Check('once', found == 1, found)
+    local renv, _, Play = ReplayOf(env)
+    Play()
+    Check('and the replay\'s panel shows it', PanelRow(renv, 1) and PanelRow(renv, 1).versionLabel._text == 'v1',
+        PanelRow(renv, 1) and PanelRow(renv, 1).versionLabel._text)
+
+    local off, OSM = RecordingSession('off')
+    MoveTo(off, OSM, 200, 0, 200, 400, 400)
+    Check('not recording: nothing goes into the sim', table.getn(Recorded(off)) == 0)
+end
+
+--------------------------------------------------------------------------------
+Section('ReUI options (modules/options.lua, Main.lua, Options.lua)')
+--------------------------------------------------------------------------------
+--- A stand-in for ReUI.Options. 'current' models today's ReUI
+--- (4z0t/FAF-UI-Mods, mods/ReUI/Options): Opt(v) marks a default; assigning
+--- ReUI.Options.Mods[name] turns every value into an OptionVar (read by
+--- calling it; Set calls OnChange; Save writes the profile; Reset goes back);
+--- AddOptions takes a table or a function that builds the window. 'older'
+--- models the shape the Mouse mod was written against: OptionValue with
+--- Get / OnChanged:Add, and a table-only AddOptions.
+---@param kind string
+---@param saved? table   # option -> value already in the profile
+local function FakeReUI(kind, saved)
+    saved = saved or {}
+    local reui = { Options = { added = false }, saved = saved }
+    if kind == 'current' then
+        local OptMeta = {}
+        reui.Options.Opt = function(v) return setmetatable({ value = v }, OptMeta) end
+        local VarMeta = {}
+        VarMeta.__index = VarMeta
+        VarMeta.__call = function(self) return self._v end
+        function VarMeta:Set(v)
+            if self._prev == nil then self._prev = self._v end
+            self._v = v
+            self:OnChange()
+        end
+        function VarMeta:Reset()
+            if self._prev ~= nil then self:Set(self._prev); self._prev = nil end
+        end
+        function VarMeta:Save() saved[self._o] = self._v; self._prev = nil end
+        function VarMeta:OnChange() end
+        function VarMeta:Option() return self._o end
+        reui.Options.Mods = setmetatable({}, { __newindex = function(t, name, values)
+            local out = {}
+            for k, v in pairs(values) do
+                local default = (getmetatable(v) == OptMeta) and v.value or v
+                local val = saved[k]
+                if val == nil then val = default end
+                out[k] = setmetatable({ _o = k, _v = val }, VarMeta)
+            end
+            rawset(t, name, out)
+        end })
+    else
+        reui.Options.Mods = {}
+        reui.Options.OptionValue = function(default)
+            local o = { v = default, OnChanged = { fns = {} } }
+            o.Get = function(self) return self.v end
+            o.OnChanged.Add = function(self, fn) table.insert(self.fns, fn) end
+            o.Set = function(self, v)
+                self.v = v
+                for _, fn in ipairs(self.OnChanged.fns) do fn(self, v) end
+            end
+            return o
+        end
+    end
+    reui.Options.Builder = {
+        Filter = function(label, option) return { kind = 'filter', label = label, option = option } end,
+        Slider = function(label, lo, hi, step, option)
+            return { kind = 'slider', label = label, lo = lo, hi = hi, step = step, option = option }
+        end,
+        AddOptions = function(key, title, build)
+            reui.Options.added = { key = key, title = title, build = build }
+        end,
+    }
+    if kind == 'current' then
+        reui.Options.Builder.Title = function(label) return { kind = 'title', label = label } end
+    end
+    reui.Require = function(list) reui.required = list end
+    return reui
+end
+
+--- The game's controls the options window uses, for the mock.
+local function WindowStubs(c)
+    local env = c.env
+    env.__tooltips = {}
+    env.__scrolled = {}
+    local function Make(base, fields)
+        return function(parent, a, b, cc, d)
+            local o = base(parent)
+            for k, v in pairs(fields) do o[k] = v end
+            if o._init then o:_init(a, b, cc, d) end
+            return o
+        end
+    end
+    local Window = function(parent, title)
+        local w = c.Group(parent)
+        w._title = title
+        w._client = c.Group(w)
+        w.GetClientGroup = function(self) return self._client end
+        return w
+    end
+    local Grid = function(parent, iw, ih)
+        local g = c.Group(parent)
+        g._rows = {}
+        g.AppendCols = function() end
+        g.AppendRows = function() end
+        g.SetItem = function(self, item, col, row) self._rows[row] = item end
+        g.EndBatch = function() end
+        return g
+    end
+    local IntegerSlider = function(parent, vert, lo, hi, step)
+        local s = c.Group(parent)
+        s._lo, s._hi = lo, hi
+        s.SetValue = function(self, v)
+            self._value = v
+            if self.OnValueChanged then self:OnValueChanged(v) end
+        end
+        s.Drag = function(self, v)
+            self:SetValue(v)
+            if self.OnValueSet then self:OnValueSet(v) end
+        end
+        return s
+    end
+    local nop = function() end
+    return {
+        ['/lua/maui/window.lua'] = { Window = Window },
+        ['/lua/maui/grid.lua'] = { Grid = Grid },
+        ['/lua/maui/slider.lua'] = { IntegerSlider = IntegerSlider },
+        ['/lua/ui/game/tooltip.lua'] = {
+            CreateMouseoverDisplay = function(ctrl, tip) env.__tooltip = tip end,
+            DestroyMouseoverDisplay = function() env.__tooltip = false end,
+            AddControlTooltipManual = function(ctrl, title) env.__tooltips[ctrl] = title end,
+        },
+        ['/lua/ui/uiutil.lua'] = {
+            titleFont = 'Arial', highlightColor = 'ffffffff',
+            SkinnableFile = function(p) return p end,
+            CreateButtonStd = function(parent, file, label)
+                local b = c.Bitmap(parent)
+                b:SetSolidColor('ff888888')
+                b._label = label
+                return b
+            end,
+            CreateVertScrollbarFor = function(grid)
+                return { DoScrollLines = function(self, n) table.insert(env.__scrolled, n) end }
+            end,
+        },
+        ['/lua/maui/layouthelpers.lua'] = {
+            AtLeftIn = nop, AtVerticalCenterIn = nop, AtBottomIn = nop, AtRightTopIn = nop,
+            AtRightIn = nop, AtHorizontalCenterIn = nop,
+        },
+    }
+end
+
+--- Run one of the mod's ReUI files in the session's environment.
+local function RunRoot(env, file)
+    local chunk = assert(loadfile(file))
+    local scope = setmetatable({}, { __index = env })
+    setfenv(chunk, scope)
+    chunk()
+    return scope
+end
+
+do
+    -- Today's ReUI: our own window, with tooltips and a scrollbar.
+    local env, SM = NewSession({ stubs = WindowStubs })
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local O = env.import('/mods/TeamMouse/modules/options.lua')
+    local shipped = cfg.Appearance.BaseAlpha
+    env.ReUI = FakeReUI('current', { opacity = 50, nameSize = 14 })
+
+    -- ReUI loads Options.lua when Main.lua first reads the options.
+    local optionsFile = RunRoot(env, 'Options.lua')
+    local values = env.ReUI.Options.Mods['TeamMouse']
+    Check('every setting is a ReUI option', values and values.showNames and values.opacity
+        and values.showNames() == cfg.Appearance.ShowLabels)
+    local mainFile = RunRoot(env, 'Main.lua')
+    Check('Main.lua asks for ReUI.Options', env.ReUI.required
+        and string.find(env.ReUI.required[1], 'ReUI.Options', 1, true))
+    mainFile.Main()
+    Check('saved settings go into Config', cfg.Appearance.BaseAlpha == 0.5 and cfg.Appearance.LabelSize == 14)
+    for _, entry in ipairs(O.Spec) do
+        if entry.key then
+            local owner = cfg[entry.path[1]]
+            if not owner or owner[entry.path[2]] == nil then
+                Check('the setting exists in config.lua: ' .. entry.key, false)
+            end
+            if not entry.tip or string.len(entry.tip) < 10 then
+                Check('the setting has a tooltip: ' .. entry.key, false)
+            end
+        end
+    end
+
+    optionsFile.Main()
+    local added = env.ReUI.Options.added
+    Check('ReUI is handed a function that builds our own window', added and added.key == 'TeamMouse'
+        and type(added.build) == 'function')
+
+    local window = added.build(env.GetFrame(0))
+    local rows = window and window.TeamMouseRows or {}
+    Check('a row for every setting and heading', table.getn(rows) == table.getn(O.Spec), table.getn(rows))
+    local grid = window.TeamMouseGrid
+    Check('in the scrolling list', grid and grid._rows[table.getn(rows)] == rows[table.getn(rows)])
+
+    -- Tooltips: on each row, with its name and its explanation.
+    local tipsOk = true
+    for i, entry in ipairs(O.Spec) do
+        local row = rows[i]
+        if entry.key then
+            local back = row.children and row.children[1]
+            for _, child in ipairs(row.children or {}) do
+                if child._color == '00000000' then back = child end
+            end
+            env.__tooltip = false
+            back:HandleEvent({ Type = 'MouseEnter' })
+            if not (env.__tooltip and env.__tooltip.text == entry.label and env.__tooltip.body == entry.tip) then
+                tipsOk = false
+            end
+            back:HandleEvent({ Type = 'MouseExit' })
+            env.__tooltip = 'x'
+            row.control:HandleEvent({ Type = 'MouseEnter' })
+            if not (type(env.__tooltip) == 'table' and env.__tooltip.text == entry.label) then
+                tipsOk = false
+            end
+        end
+    end
+    Check('hovering a row (or its checkbox / slider) shows its tooltip', tipsOk)
+
+    -- The wheel scrolls the list from anywhere on it.
+    rows[3].control:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120 })
+    rows[1].children[1]:HandleEvent({ Type = 'WheelRotation', WheelRotation = 120 })
+    Check('the mouse wheel scrolls the list', env.__scrolled[1] == 1 and env.__scrolled[2] == -1)
+
+    -- Changing settings: at once, Cancel puts them back, OK keeps them.
+    local function RowFor(key)
+        for i, entry in ipairs(O.Spec) do
+            if entry.key == key then return rows[i] end
+        end
+    end
+    local names = RowFor('showNames')
+    names.control:Click()
+    Check('a checkbox changes Config at once', cfg.Appearance.ShowLabels == false)
+    RowFor('opacity').control:Drag(30)
+    Check('a slider too', cfg.Appearance.BaseAlpha == 0.3)
+    window.TeamMouseButtons.cancel:OnClick()
+    Check('Cancel puts them back', cfg.Appearance.ShowLabels == true and cfg.Appearance.BaseAlpha == 0.5
+        and values.opacity() == 50)
+    Check('and closes the window', window._destroyed)
+
+    window = added.build(env.GetFrame(0))
+    rows = window.TeamMouseRows
+    RowFor('opacity').control:Drag(70)
+    window.TeamMouseButtons.ok:OnClick()
+    Check('OK keeps them (saved to the profile)', cfg.Appearance.BaseAlpha == 0.7
+        and env.ReUI.saved.opacity == 70 and window._destroyed)
+
+    window = added.build(env.GetFrame(0))
+    rows = window.TeamMouseRows
+    Check('a reopened window shows the kept value', RowFor('opacity').control._value == 70)
+    window.TeamMouseButtons.defaults:OnClick()
+    Check('Defaults puts the shipped values back', math.abs(cfg.Appearance.BaseAlpha - shipped) < 1e-6
+        and cfg.Appearance.LabelSize == O.Spec[3].default and RowFor('opacity').control._value
+        == math.floor(shipped * 100 + 0.5))
+    window:OnClose()
+    Check('closing the window is Cancel', math.abs(cfg.Appearance.BaseAlpha - 0.7) < 1e-6)
+
+    -- During a game.
+    SM.InitTeamMouse(false)
+    Check('a game sets the rebuild hook', type(env.TeamMouseRebuild) == 'function')
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true })
+    local driver = Mock.FindDriver(env)
+    env.__clock.t = env.__clock.t + 0.3
+    driver:OnFrame(0.016)
+    local before = Mock.FindCursors(env, 'WorldCamera')[1]
+    values.size:Set(150)
+    Check('a change writes Config at once', cfg.Appearance.SizeScale == 1.5)
+    env.__clock.t = env.__clock.t + 0.1
+    driver:OnFrame(0.016)
+    Check('and cursors are drawn that much larger', before.appliedScale >= 1.4, before.appliedScale)
+    values.opacity:Set(500)
+    Check('out of range is held to the slider\'s range', cfg.Appearance.BaseAlpha == 1)
+    values.showNames:Set(false)
+    local after = Mock.FindCursors(env, 'WorldCamera')
+    Check('a setting read when a cursor is made rebuilds them', before._destroyed and table.getn(after) == 1
+        and after[1] ~= before and not after[1].label)
+    values.showNames:Set(true)
+    Check('and back', Mock.FindCursors(env, 'WorldCamera')[1].label ~= nil)
+    values.panel:Set(false)
+    SM.OnBeat()
+    Check('the panel can be switched off mid-game', env.import('/mods/TeamMouse/modules/panel.lua').Get() == false)
+    values.panel:Set(true)
+    SM.OnBeat()
+    Check('and on again', env.import('/mods/TeamMouse/modules/panel.lua').Get() ~= false)
+    SM.Destroy()
+    Check('teardown removes the rebuild hook', env.TeamMouseRebuild == nil)
+    values.showNames:Set(false)
+    Check('changes outside a game are harmless', cfg.Appearance.ShowLabels == false and NoErrors(env))
+end
+
+do
+    -- An older ReUI (no Opt): its own table-built window, without tooltips.
+    local env = NewSession()
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local O = env.import('/mods/TeamMouse/modules/options.lua')
+    env.ReUI = FakeReUI('older')
+    local optionsFile = RunRoot(env, 'Options.lua')
+    local values = env.ReUI.Options.Mods['TeamMouse']
+    Check('older ReUI: values with its OptionValue', values and values.opacity
+        and values.opacity:Get() == math.floor(cfg.Appearance.BaseAlpha * 100 + 0.5))
+    values.opacity.v = 40
+    RunRoot(env, 'Main.lua').Main()
+    Check('older ReUI: saved settings go into Config', cfg.Appearance.BaseAlpha == 0.4)
+    optionsFile.Main()
+    local added = env.ReUI.Options.added
+    local settings = 0
+    for _, entry in ipairs(O.Spec) do if entry.key then settings = settings + 1 end end
+    Check('older ReUI: a table of controls, one per setting', type(added.build) == 'table'
+        and table.getn(added.build) == settings, type(added.build) == 'table' and table.getn(added.build))
+    values.size:Set(120)
+    Check('older ReUI: changes reach Config', cfg.Appearance.SizeScale == 1.2)
+end
+
+do
+    -- Interface ghost switched off while a teammate's is up: it goes away.
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local receive = env.__chatFuncs['TeamMouse']
+    local driver = Mock.FindDriver(env)
+    for _ = 1, 4 do
+        receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = false, hx = 0.5, hy = 0.5 })
+        env.__clock.t = env.__clock.t + 0.2
+        driver:OnFrame(0.1)
+    end
+    local visual = Mock.FindCursors(env, 'WorldCamera')[1]
+    Check('(their ghost is up)', visual.hud and Mock.IsVisible(visual.hud))
+    cfg.Hud.Enabled = false
+    for _ = 1, 10 do
+        receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = false, hx = 0.5, hy = 0.5 })
+        env.__clock.t = env.__clock.t + 0.2
+        driver:OnFrame(0.1)
+    end
+    Check('Hud.Enabled turned off mid-game: the ghost fades away', not Mock.IsVisible(visual.hud))
+    Check('and their arrow is back', Mock.IsVisible(visual.mouseIcon))
+end
+
+--------------------------------------------------------------------------------
+Section('click pulse when changing what is selected')
+--------------------------------------------------------------------------------
+-- Regression test for: no pulse when clicking a unit with something already
+-- selected. Changing selection can pass through an empty one on the way, and
+-- an empty selection used to cancel the pending click.
+do
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    Calibrate(env, SM)
+    local view = env.__views['WorldCamera']
+    local function Beat()
+        env.__clock.t = env.__clock.t + 0.1
+        SM.OnBeat()
+    end
+    local function Unit1(id) return { GetEntityId = function() return id end } end
+    env.__selectedUnits = { Unit1('51') }
+    Beat()
+    local mark = table.getn(env.__sent) + 1
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    env.__selectedUnits = {}
+    Beat()
+    env.__selectedUnits = { Unit1('52') }
+    Beat()
+    local n = 0
+    for i = mark, table.getn(env.__sent) do n = n + (env.__sent[i].raw.ck or 0) end
+    Check('something selected, click another: it pulses', n == 1, n)
+
+    -- And clicking the ground with something selected still does not.
+    mark = table.getn(env.__sent) + 1
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 120, MouseY = 100, Modifiers = { Left = true } })
+    env.__selectedUnits = {}
+    Beat()
+    for _ = 1, 8 do Beat() end
+    n = 0
+    for i = mark, table.getn(env.__sent) do n = n + (env.__sent[i].raw.ck or 0) end
+    Check('something selected, click the ground: no pulse', n == 0, n)
+end
+
+--------------------------------------------------------------------------------
+Section('what you show is yours; what you send is everything')
+--------------------------------------------------------------------------------
+-- Regression test for: switching a feature off for yourself also stopped
+-- you sending it, so teammates lost it too. Now every show/hide setting is
+-- local: what goes out does not depend on them.
+do
+    local env, SM = NewSession()
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    cfg.Orders.Enabled, cfg.Orders.ShowBuilds, cfg.Orders.ShowUpgrades, cfg.Orders.ShowGrabs = false, false, false, false
+    cfg.TeamSelection.Enabled, cfg.ClickPulse.Enabled, cfg.Actions.Enabled = false, false, false
+    cfg.Build.Enabled, cfg.Line.Enabled, cfg.Draw.Enabled = false, false, false
+    SM.InitTeamMouse(false)
+    Calibrate(env, SM)
+    local view = env.__views['WorldCamera']
+    local function Beat()
+        env.__clock.t = env.__clock.t + 0.1
+        SM.OnBeat()
+        return env.__sent[table.getn(env.__sent)].raw
+    end
+    local mark = table.getn(env.__sent) + 1
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    env.__selectedUnits = { { GetEntityId = function() return '61' end } }
+    Beat()
+    local sel, ck = false, 0
+    for i = mark, table.getn(env.__sent) do
+        if env.__sent[i].raw.sel then sel = true end
+        ck = ck + (env.__sent[i].raw.ck or 0)
+    end
+    Check('selections are sent with TeamSelection.Enabled off', sel)
+    Check('clicks are sent with ClickPulse.Enabled off', ck == 1, ck)
+
+    env.__commandMode = { 'build', { name = 'ueb0101' } }
+    local m = Beat()
+    Check('the building in hand is sent with Build.Enabled off', m.b == 'ueb0101', m.b)
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    env.__mouseWorld = { 140, 0, 100 }
+    m = Beat()
+    Check('a structure line is sent with Line.Enabled off', m.l == true)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 140, MouseY = 100, Modifiers = {} })
+    mark = table.getn(env.__sent) + 1
+    Beat()
+    Beat()
+    local mo = false
+    for i = mark, table.getn(env.__sent) do
+        if env.__sent[i].raw.mob then mo = true end
+    end
+    Check('placed structures are sent with Orders.Enabled / ShowBuilds off', mo)
+    Check('no errors', NoErrors(env))
+
+    -- Actions are still sent with Actions.Enabled off.
+    local A = env.import('/mods/TeamMouse/modules/actions.lua')
+    env.import('/lua/ui/game/orders.lua').Stop()
+    local got = Beat()
+    Check('actions are sent with Actions.Enabled off', type(got.ac) == 'table' and got.ac[1] == A.STOP)
+end
+
+do
+    -- The other end: each setting hides only what we see, and takes effect
+    -- at once, both ways, without anything having been lost.
+    local env, visual, driver, receive = Seeing({ mo = { 0, 30, 0, 40, 30, 40, 0, 0, 60, 0, 60, 60, 60, 1 },
+        mob = { 'ueb0101', false } })
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local function Frame()
+        env.__clock.t = env.__clock.t + 0.016
+        driver:OnFrame(0.016)
+    end
+    local function Shown(i)
+        local mark = visual.orderMarks[i]
+        return mark and mark.visible and Mock.IsVisible(mark.square)
+    end
+    Check('(both orders are up)', Shown(1) and Shown(2))
+    cfg.Orders.ShowBuilds = false
+    Frame()
+    Check('ShowBuilds off: the placement goes, the move stays', not Shown(1) and Shown(2))
+    cfg.Orders.ShowBuilds = true
+    Frame()
+    Check('and comes back', Shown(1))
+    cfg.Orders.Enabled = false
+    Frame()
+    Check('Orders.Enabled off: every order goes at once', not Shown(1) and not Shown(2))
+    cfg.Orders.Enabled = true
+    Frame()
+    Check('and comes back, nothing lost', Shown(1) and Shown(2))
+
+    -- Kept while hidden: orders that arrive with Orders.Enabled off.
+    cfg.Orders.Enabled = false
+    receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true,
+        mo = { 0, 80, 0, 80, 80, 80, 2 } })
+    Frame()
+    cfg.Orders.Enabled = true
+    env.__clock.t = env.__clock.t + 0.2
+    driver:OnFrame(0.016)
+    local any = false
+    for _, mark in pairs(visual.orderMarks) do
+        if mark.visible and Mock.IsVisible(mark.square) then any = true end
+    end
+    Check('an order that came while hidden shows once turned back on', any)
+
+    -- A drawing.
+    for _ = 1, 4 do
+        receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true, d = 1,
+            bx = 100 + _ * 10, bz = 100 })
+        env.__clock.t = env.__clock.t + 0.1
+        driver:OnFrame(0.1)
+    end
+    local trail = visual.trail
+    Check('(their drawing is up)', trail.line and trail.line.shown > 0)
+    cfg.Draw.Enabled = false
+    Frame()
+    Check('Draw.Enabled off: it goes at once', trail.line.shown == 0)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- The ReUI list is only things you are shown.
+    local env = NewSession()
+    local O = env.import('/mods/TeamMouse/modules/options.lua')
+    local sending = false
+    for _, entry in ipairs(O.Spec) do
+        if entry.path and (entry.path[2] == 'Share' or entry.path[1] == 'Network' or entry.path[1] == 'VersionReport') then
+            sending = entry.key
+        end
+    end
+    Check('no ReUI option is about what you send', not sending, sending)
+end
+
+--------------------------------------------------------------------------------
+Section('the interface ghost is in their faction\'s colours')
+--------------------------------------------------------------------------------
+do
+    local textures = {}
+    for faction = 0, 4 do
+        local armies = Armies()
+        armies[2].faction = faction
+        local env, visual, driver, receive = Seeing({ w = false, hx = 0.5, hy = 0.5 }, { armies = armies })
+        for _ = 1, 3 do
+            receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = false, hx = 0.5, hy = 0.5 })
+            env.__clock.t = env.__clock.t + 0.2
+            driver:OnFrame(0.1)
+        end
+        textures[faction] = visual.hud and visual.hud.hud and visual.hud.hud._texture
+    end
+    Check('UEF', textures[0] == '/mods/TeamMouse/textures/hud/UICutout-uef.png', textures[0])
+    Check('Aeon', textures[1] == '/mods/TeamMouse/textures/hud/UICutout-aeon.png', textures[1])
+    Check('Cybran', textures[2] == '/mods/TeamMouse/textures/hud/UICutout-cybran.png', textures[2])
+    Check('Seraphim', textures[3] == '/mods/TeamMouse/textures/hud/UICutout-seraphim.png', textures[3])
+    Check('anything else: the original', textures[4] == '/mods/TeamMouse/textures/UICutout.png', textures[4])
+    local present = true
+    for _, t in pairs(textures) do
+        local f = io.open((string.gsub(t, '^/mods/TeamMouse/', '')), 'rb')
+        if f then f:close() else present = false end
+    end
+    Check('and every one of those files is in the mod', present)
+end
+
+--------------------------------------------------------------------------------
+Section('their selection boxes hidden: the cursor still moves')
+--------------------------------------------------------------------------------
+-- Regression test for: with Selection.ShowBox off, a teammate's box drag
+-- left their arrow frozen at the press and teleported it at the release. It
+-- now rides the drag's live end, as with the box shown, just without the box.
+do
+    local function ArrowDuringDrag(showBox)
+        local env, SM = NewSession()
+        env.import('/mods/TeamMouse/modules/config.lua').Selection.ShowBox = showBox
+        SM.InitTeamMouse(false)
+        local receive = env.__chatFuncs['TeamMouse']
+        local driver = Mock.FindDriver(env)
+        local T = env.__clock.t
+        for i = 0, 7 do
+            env.__clock.t = T + i * 0.1
+            receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true,
+                s = true, bx = 100 + i * 10, bz = 100 + i * 5 })
+        end
+        env.__clock.t = T + 1.0
+        driver:OnFrame(0.016)
+        local visual = Mock.FindCursors(env, 'WorldCamera')[1]
+        return visual.mouseIcon.Left() - visual.Left(), visual.mouseIcon.Top() - visual.Top(), visual
+    end
+    local sx, sy = ArrowDuringDrag(true)
+    local hx, hy, visual = ArrowDuringDrag(false)
+    Check('(shown: the arrow is away from the press, at the live end)', sx > 20, sx)
+    Check('hidden: the arrow still follows the drag, just as far', math.abs(hx - sx) < 1 and math.abs(hy - sy) < 1,
+        hx .. ',' .. hy .. ' vs ' .. sx .. ',' .. sy)
+    Check('and no box is drawn', not visual.dragBoxShown)
+end
+
+--------------------------------------------------------------------------------
+Section('an upgrade is told once, however often it is selected again')
+--------------------------------------------------------------------------------
+-- Regression test for: an upgrade flashed again when its building was
+-- selected again after a while. The watch on selected structures lets go of
+-- one not selected for UpgradeWatchSeconds; selecting it again mid-upgrade
+-- started a fresh watch that did not know it had been told.
+do
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    Calibrate(env, SM)
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local step = 0
+    local function Beat()
+        env.__clock.t = env.__clock.t + 0.1
+        step = step + 1
+        env.__mouseWorld = { 50 + math.mod(step, 7), 0, 50 }
+        SM.OnBeat()
+        return env.__sent[table.getn(env.__sent)].raw
+    end
+    local mex = MUnit('71', 80, 3, 90)
+    mex.IsInCategory = function(self, c) return c == 'STRUCTURE' end
+    local building = MUnit('72', 80, 3, 90)
+    building.IsInCategory = function(self, c) return c == 'STRUCTURE' end
+    building.GetUnitId = function() return 'ueb1202' end
+    env.__selectedUnits = { mex }
+    Beat()
+    mex.GetFocus = function() return building end
+    local told = 0
+    local function Count(m) if m.mou then told = told + 1 end end
+    Count(Beat())
+    env.__selectedUnits = {}
+    Count(Beat())
+    -- A while later (the watch has let go of it), selected again, still upgrading.
+    env.__clock.t = env.__clock.t + cfg.Orders.UpgradeWatchSeconds + 5
+    Count(Beat())
+    env.__selectedUnits = { mex }
+    Count(Beat())
+    Count(Beat())
+    env.__selectedUnits = {}
+    Count(Beat())
+    env.__clock.t = env.__clock.t + cfg.Orders.UpgradeWatchSeconds + 5
+    Count(Beat())
+    env.__selectedUnits = { mex }
+    Count(Beat())
+    Check('told once for the whole upgrade', told == 1, told)
+
+    -- A new upgrade of the same building (a new building being built) is news.
+    local next = MUnit('73', 80, 3, 90)
+    next.IsInCategory = function(self, c) return c == 'STRUCTURE' end
+    next.GetUnitId = function() return 'ueb1302' end
+    mex.GetFocus = function() return nil end
+    Count(Beat())
+    mex.GetFocus = function() return next end
+    Count(Beat())
+    Check('a later upgrade is told', told == 2, told)
+end
+
+
+--------------------------------------------------------------------------------
+Section('following fits their whole view, by its larger axis')
+--------------------------------------------------------------------------------
+-- Their window and ours are rarely the same shape. Following used to take
+-- their zoom as it was, so a view wider than ours was cut off at the sides.
+-- Now the larger axis of their view fills ours: a narrow one keeps its
+-- height (we see more to the sides), a wide one keeps its width.
+do
+    --- A replay of one player whose view outline is `w` x `h` world units
+    --- at zoom 100, followed with a camera whose projection is real enough:
+    --- our 1920 x 1080 view spans 192 x 108 world units at zoom 100.
+    local function Followed(w, h)
+        local renv, RSM = NewSession()
+        renv.__scenario.Options.TeamMouseReplay = 'on'
+        RSM.InitTeamMouse(true)
+        local view = renv.__views['WorldCamera']
+        view.Project = function(self, p)
+            local c = renv.__camera
+            local zoom = renv.GetCamera('WorldCamera'):GetZoom()
+            local scale = 1000 / zoom
+            local x = self.Width() / 2 + (p[1] - c.Focus[1]) * scale
+            local y = self.Height() / 2 + (p[3] - c.Focus[3]) * scale
+            return { x = x, y = y, [1] = x, [2] = y }
+        end
+        local fx, fz = 500, 500
+        local x0, x1, z0, z1 = fx - w / 2, fx + w / 2, fz - h / 2, fz + h / 2
+        local q = renv.import('/lua/userplayerquery.lua')
+        local function Packet()
+            q.ProcessQueries({ { Name = 'TeamMouse', M = { v = 1, a = 2, p = { fx, 0, fz }, o = 0, z = 100, w = true,
+                cam = { fx, 0, fz, 3.14, 1.1, 100 },
+                vp = { x0, 0, z0, x1, 0, z0, x1, 0, z1, x0, 0, z1 } } } })
+        end
+        Packet()
+        renv.__camera = { Focus = { fx, 0, fz }, Heading = 3.14, Pitch = 1.1 }
+        renv.__setZoom(100)
+        Frames(renv, 0.1, 0.1)
+        PanelRow(renv, 2).followCheck:Click()
+        for _ = 1, 40 do
+            Packet()
+            Frames(renv, 0.1, 0.05)
+        end
+        local zoom = renv.GetCamera('WorldCamera'):GetZoom()
+        return zoom, 192 * zoom / 100, 108 * zoom / 100, renv
+    end
+
+    -- Narrower than ours (a 4:3 window, or half a split screen): same height.
+    local zoom, w, h, renv = Followed(144, 108)
+    Check('their view narrower than ours: the same height as they saw', math.abs(h - 108) < 2, h)
+    Check('and wider (we see more to the sides)', w > 144 + 10, w)
+    -- Wider than ours (an ultrawide): the same width, all of it in view.
+    zoom, w, h = Followed(252, 108)
+    Check('their view wider than ours: all of its width, none cut off', math.abs(w - 252) < 3, w)
+    Check('and taller', h > 108 + 10, h)
+    -- The same shape: their zoom exactly.
+    zoom = Followed(192, 108)
+    Check('the same shape: their zoom', math.abs(zoom - 100) < 1, zoom)
+
+    -- Off: their zoom, whatever the shape.
+    local renv2, RSM2 = NewSession()
+    local cfg2 = renv2.import('/mods/TeamMouse/modules/config.lua')
+    Check('Follow.FitView exists, on by default', cfg2.Follow.FitView == true)
+    Check('no errors', NoErrors(renv))
+end
+
+-- Regression test for: the fit eased in on its own, after the camera had
+-- already glided to their zoom -- two zooms, one after the other. The fit is
+-- now taken as measured, so the camera makes one glide straight to it.
+do
+    local renv, RSM = NewSession()
+    renv.__scenario.Options.TeamMouseReplay = 'on'
+    RSM.InitTeamMouse(true)
+    local cfg = renv.import('/mods/TeamMouse/modules/config.lua')
+    local view = renv.__views['WorldCamera']
+    view.Project = function(self, p)
+        local c = renv.__camera
+        local scale = 1000 / renv.GetCamera('WorldCamera'):GetZoom()
+        local x = self.Width() / 2 + (p[1] - c.Focus[1]) * scale
+        local y = self.Height() / 2 + (p[3] - c.Focus[3]) * scale
+        return { x = x, y = y, [1] = x, [2] = y }
+    end
+    local q = renv.import('/lua/userplayerquery.lua')
+    local function Packet()
+        q.ProcessQueries({ { Name = 'TeamMouse', M = { v = 1, a = 2, p = { 500, 0, 500 }, o = 0, z = 100, w = true,
+            cam = { 500, 0, 500, 3.14, 1.1, 100 },
+            vp = { 374, 0, 446, 626, 0, 446, 626, 0, 554, 374, 0, 554 } } } })   -- 252 x 108: wider than ours
+    end
+    Packet()
+    -- Already looking where they look, zoomed well in.
+    renv.__camera = { Focus = { 500, 0, 500 }, Heading = 3.14, Pitch = 1.1 }
+    renv.__setZoom(60)
+    Frames(renv, 0.1, 0.1)
+    PanelRow(renv, 2).followCheck:Click()
+    local target = 100 * 252 / 192
+    local k = 1 - math.exp(-cfg.Follow.Rate * 0.05)
+    local zooms = {}
+    for _ = 1, 30 do
+        Packet()
+        Frames(renv, 0.05, 0.05)
+        table.insert(zooms, renv.GetCamera('WorldCamera'):GetZoom())
+    end
+    local oneGlide = true
+    local last = math.log(60 / target)
+    for i, z in ipairs(zooms) do
+        local gap = math.log(z / target)
+        -- Each frame the same share of the way left, straight at the target.
+        if math.abs(gap - last * (1 - k)) > 0.01 then oneGlide = false end
+        last = gap
+    end
+    Check('fitting is one glide straight to the fitted zoom, no second stage', oneGlide,
+        table.concat({ zooms[1], zooms[5], zooms[10], zooms[20] }, ', '))
+    Check('which is where it ends', math.abs(zooms[30] - target) < 1, zooms[30])
+end
+
+--------------------------------------------------------------------------------
+Section('a strong scroll stops following')
+--------------------------------------------------------------------------------
+do
+    local function Following()
+        local env, SM = RecordingSession('on')
+        env.__camera = { Focus = { 400, 20, 300 }, Heading = 3.14159, Pitch = 1.1 }
+        env.__setZoom(120)
+        MoveTo(env, SM, 400, 0, 300, 400, 400)
+        local renv, _, Play = ReplayOf(env)
+        renv.import('/mods/TeamMouse/modules/config.lua').Follow.FitView = false
+        Play()
+        local row = PanelRow(renv, 1)
+        row.followCheck:Click()
+        Frames(renv, 0.2, 0.05)
+        local view = renv.__views['WorldCamera']
+        local function Scroll(n)
+            for _ = 1, n do
+                view:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120, MouseX = 500, MouseY = 400, Modifiers = {} })
+                renv.__clock.t = renv.__clock.t + 0.05
+            end
+        end
+        return renv, row, Scroll
+    end
+    local renv, row, Scroll = Following()
+    local cfg = renv.import('/mods/TeamMouse/modules/config.lua')
+    Scroll(cfg.Follow.BreakScrolls - 2)
+    Frames(renv, 0.1, 0.05)
+    Check('a stray notch or two: still following', row.record.follow and row.followCheck:IsChecked())
+    renv.__clock.t = renv.__clock.t + 2
+    Scroll(cfg.Follow.BreakScrolls - 1)
+    Check('notches spread out over time do not add up', row.record.follow)
+    renv.__clock.t = renv.__clock.t + 2
+    Scroll(cfg.Follow.BreakScrolls)
+    Check('a strong scroll stops following', not row.record.follow)
+    Check('and unticks its box', not PanelRow(renv, 1).followCheck:IsChecked())
+    local n = table.getn(renv.__restored)
+    Frames(renv, 0.3, 0.05)
+    Check('and the camera is yours again', table.getn(renv.__restored) == n)
+
+    local renv2, row2, Scroll2 = Following()
+    renv2.import('/mods/TeamMouse/modules/config.lua').Follow.BreakScrolls = 0
+    Scroll2(20)
+    Check('Follow.BreakScrolls = 0: scrolling never stops it', row2.record.follow)
+    Check('no errors', NoErrors(renv) and NoErrors(renv2))
 end
 
 --------------------------------------------------------------------------------

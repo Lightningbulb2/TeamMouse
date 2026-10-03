@@ -916,6 +916,19 @@ function M.CreateEnvironment(opts)
         },
     }
 
+    -- A test's own stubs: opts.stubs(classes) -> { path = table }. A table
+    -- for a path the mock already stubs is merged into it (adds functions).
+    if type(opts.stubs) == 'function' then
+        local extra = opts.stubs({ Group = Group, Bitmap = Bitmap, Text = Text, Control = Control, env = env })
+        for path, stub in pairs(extra) do
+            if stubs[path] then
+                for k, v in pairs(stub) do stubs[path][k] = v end
+            else
+                stubs[path] = stub
+            end
+        end
+    end
+
     env.import = function(path)
         if cache[path] then return cache[path] end
         if stubs[path] then

@@ -846,3 +846,126 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   players the same way. Not in replays (nobody to tell); the replay copy is
   recorded regardless. Lets anyone switch the mod's traffic off for
   themselves, both ends, if it is ever a strain.
+
+### ReUI options (checked against ReUI's source; UNVERIFIED in game)
+
+Read from 4z0t/FAF-UI-Mods (mods/ReUI): ReUI's gamemain hook loads every
+`ui_only` mod whose mod_info has a `ReUI` field (`"TeamMouse=1.0.0"`), finds
+`/mods/TeamMouse/TeamMouse.lua` or else `Main.lua`, and calls its `Main` before
+the interface is built. `ReUI.Options.Mods['TeamMouse']`, first read, imports
+`/mods/TeamMouse/Options.lua`, whose assignment to `Mods['TeamMouse']` turns
+every value (an `Opt(v)` or a plain value) into an **OptionVar**: read by
+**calling** it, `:Set(v)` (calls `self:OnChange()`), `:Save()` (profile),
+`:Reset()` (back to the saved value). It has **no** `:Get()` and **no**
+`OnChanged:Add` -- the shape the Mouse mod (Mouse-main) was written against,
+and the previous TeamMouse copy of it, which would have failed on the current
+ReUI (`OptionValue` is nil there). options.lua reads and watches both shapes
+(`Read`, and OnChange chained, keeping any earlier one).
+
+`Builder.AddOptions(key, title, build)` takes a table (ReUI's own window: no
+tooltips, no scrollbar) or a function `(parent) -> window`, called when the
+mod is picked in ReUI's list (Selector.lua: `iscallable(self.data[2])`). With
+`Opt` present TeamMouse passes a function: modules/optionswindow.lua builds a
+game `Window` with a `Grid` of rows and `UIUtil.CreateVertScrollbarFor` (as
+FAF's own lua/ui/dialogs/options.lua), and `Tooltip.CreateMouseoverDisplay(ctrl,
+{ text, body }, delay, true)` on each row. Rows pass the wheel to the
+scrollbar. OK saves each OptionVar, Cancel / the close button reset them,
+Defaults sets config.lua's shipped values (taken when options.lua first
+loads, before ReUI's are written in). Settings read only when a cursor is
+built still go through `_G.TeamMouseRebuild`. **Needs confirming in game:**
+the window's look and layout, and the scrollbar.
+
+### The panel in a replay; versions
+
+- A replay's panel only lists a player once their recorded data has arrived
+  (`record.hasData`, which never goes back to false): Panel.Create keeps its
+  source list, and `Panel.Sync` (each replay frame, and each beat) rebuilds
+  when the count changes. Folded state and per-record choices survive the
+  rebuild; any row reference held across one is stale (look it up again).
+- `{ tmv }` is also recorded into the replay once, with `a` (the army), by a
+  recording player (`Version.SetRecorder`); playback has no sender, so
+  ProcessMessage names it from `msg.a`. Older replays show `?`.
+- `Version.Heard` keeps every version it hears (observers too) for the panel's
+  column. The chat report is gone; `Version.Start` still sends our version to
+  teammates and observers and starts the `none` timer (`VersionReport.CheckDelay`).
+  A teammate seen sending SharedMouse packets shows as `old`.
+
+### Upgrade markers
+
+The frame stays in the player's colour; a gold diamond texture
+(`textures/upgrade_diamond.png`, `Orders.UpgradeDiamondScale` of the frame's
+width) is drawn behind it, so an upgrade differs by shape, not only colour
+(a yellow player's frame was indistinguishable from the old gold one). The
+frame's Depth is raised above the diamond's when the diamond is first built.
+
+### Showing is local; sending is everything
+
+Every show/hide setting (`Orders.Enabled`, `ShowBuilds`, `ShowUpgrades`,
+`ShowGrabs`, `TeamSelection.Enabled`, `ClickPulse.Enabled`, `Actions.Enabled`,
+`Build.Enabled`, `Line.Enabled`, `Draw.Enabled`, ...) gates only what is DRAWN.
+The sender never reads them (only the config-level `Share` flags, which ReUI
+does not offer), and the receiver stores what arrives either way, so a setting
+switched on mid-game shows what is already there. `RemoteCursor` always calls
+ApplyOrders/ApplyTrail and each hides what is up when its setting is off.
+Still sender-side, deliberately: `Orders.ShowModeOrders`, `Orders.ShowLiveLine`,
+`Selection.Enabled` (the drag grid), `Viewport.Share`, `Hud.FollowPointer`.
+
+### Click pulse on a change of selection (HYPOTHESIS, needs confirming)
+
+Reported: no pulse when clicking a unit with something already selected. Taken
+to be the selection passing through empty on its way to the new one (an empty
+selection used to cancel the pending click; with nothing selected before, there
+is no empty step to see). An empty selection no longer cancels it; the
+`SelectWindow` ends it. With `Config.Debug` each selection change logs its size
+and how long after the click it came -- if it still fails, read those lines: a
+change logged BEFORE the press would mean the press reaches Lua late instead.
+
+### Interface ghost per faction
+
+`GetArmiesTable().armiesTable[i].faction` (0 UEF, 1 Aeon, 2 Cybran,
+3 Seraphim) picks `textures/hud/UICutout-<faction>.png`; anything else
+(Nomads, missing) gets the original `textures/UICutout.png`. UNVERIFIED that
+the field is present for every army in a live game (it is in FAF's lobby
+data and scoreboard code).
+
+### Upgrades told once (by the building being built)
+
+The watch on selected structures (`sendState.watch`) lets one go after
+`Orders.UpgradeWatchSeconds` without being selected (selection changes only),
+so selecting it again mid-upgrade made a fresh watch and told the upgrade
+again (reported: upgrades flashing again on reselecting). Told upgrades are now
+kept by the entity id of the unit being built (`GetFocus():GetEntityId()`) in
+`sendState.upgradeTold`, which outlives the watch; a later upgrade builds a
+new unit and is told. Cleared at 200 entries and on teardown.
+
+### A hidden selection box still moves the arrow
+
+`DragShape` returns `follow` (not false) for a box drag when
+`Selection.ShowBox` is off: the arrow rides the live end without a box. False
+meant no drag at all, so the arrow sat at the press point and jumped at the
+release.
+
+### Following fits their view by its larger axis (UNVERIFIED in game)
+
+Their window and ours rarely have the same shape, so their zoom alone cut a
+wider view of theirs off at the sides. `FollowFit` projects the middle of each
+edge of their view outline (`vp`) through our camera and compares the spans
+with our view's size. Spans shrink in proportion as the camera pulls back, so
+`need * ourZoom / theirZoom` is the multiplier that makes the larger axis fill
+our view, whatever zoom it was measured at: it is used as is, NOT eased
+(an earlier version eased it in once the camera had arrived at their plain
+zoom -- reported as a weird second zoom). It is only measured while our
+camera looks where theirs does (focus within 5% of their zoom, pitch and
+heading within 0.05); otherwise the last value for that player
+(`record.followFit`) is used, so following them again is right at once.
+`Follow.FitView = false`: their zoom as before. Needs `vp` in the recording.
+
+### Scrolling out of a follow
+
+FAF's WorldView.HandleEvent sees `WheelRotation` (lua/ui/controls/worldview.lua
+sets `self.zoomed` from it), and so does our view hook: `NoteFollowScroll`
+counts notches (|WheelRotation| / 120, at least 1 per event) while following;
+`Follow.BreakScrolls` of them within `Follow.BreakWindow` seconds stop the
+follow and untick its box (`Panel.SyncFollow`). Fewer are undone by the
+follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
+(120) on every system.

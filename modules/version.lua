@@ -1,50 +1,39 @@
 --******************************************************************************
 --** TeamMouse -- modules/version.lua
 --**
---** Says in chat, at the start of a game, which version of TeamMouse you and
---** each of your teammates are on, and which teammates don't have it (or only
---** have the old SharedMouse). Local chat lines only; nothing is posted to
---** anyone else.
+--** Which version of TeamMouse each player is on, for the version column of
+--** the player panel (panel.lua): theirs, "old" for a teammate on the older
+--** SharedMouse, "none" for a teammate who never answered.
 --**
---** Each client sends its version once, on the mod's own chat channel, to the
---** same recipients as the cursor data. It is handled before the wire-format
---** check, so a teammate on an incompatible build is still reported -- which is
---** exactly when it matters.
+--** Each player sends its version once, on the mod's own chat channel, to the
+--** same recipients as the cursor data (teammates and observers), and records
+--** it into the replay when recording one. It is handled before the
+--** wire-format check, so a teammate on an incompatible build still shows --
+--** which is exactly when it matters.
+--**
+--** (This used to post lines in chat as well. The panel says it now.)
 --******************************************************************************
 
 local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 
 local state = {
     started = false,   -- Start has been called this session
-    announced = false, -- our own line posted and our version sent
-    checked = false,   -- the missing ones reported
+    announced = false, -- our version sent
+    checked = false,   -- VersionReport.CheckDelay has passed: silence means "none"
     startT = 0,
     expect = {},       -- names of the teammates we expect to hear from
-    heard = {},        -- name -> version
     legacy = {},       -- name -> true: SharedMouse packets seen from them
     send = false,      -- function(msg): sends to our recipients
+    seen = {},         -- name -> version, from anyone (observers and replays too)
+    record = false,    -- function(msg): records our version into the replay (SetRecorder)
+    recorded = false,
 }
 
---- A line in the local chat, from "TeamMouse".
----@param text string
-local function Say(text)
-    local ok, Chat = pcall(import, '/lua/ui/game/chat/ChatController.lua')
-    if ok and type(Chat) == 'table' and Chat.AppendEntry then
-        local posted = pcall(Chat.AppendEntry, {
-            Name = 'TeamMouse:',
-            Text = text,
-            Color = 'ffffffff',
-            BodyColor = 'ffffffff',
-            ArmyID = 0,
-            Recipient = GetFocusArmy(),
-        })
-        if posted then
-            return
-        end
-    end
-    -- An older FAF without ChatController: the plain on-screen print.
-    pcall(print, 'TeamMouse: ' .. text)
-end
+--- Colours for the panel's version column.
+local SAME_COLOR = 'ff8fd18f'
+local OTHER_COLOR = 'ffffb040'
+local NONE_COLOR = 'ffcc6666'
+local UNKNOWN_COLOR = 'ff808080'
 
 --- Begin: who to expect, and how to reach them.
 ---@param expect string[]   # teammates' names (not our own)
@@ -52,9 +41,6 @@ end
 ---@param now number
 function Start(expect, send, now)
     Reset()
-    if not Config.VersionReport.Enabled then
-        return
-    end
     state.started = true
     state.startT = now
     state.send = send
@@ -63,64 +49,71 @@ function Start(expect, send, now)
     end
 end
 
---- Called every beat. Posts our own line and sends our version on the first,
---- and reports who hasn't answered once CheckDelay has passed.
+--- Called every beat. Sends our version on the first (and records it into
+--- the replay), and notes when CheckDelay has passed.
 ---@param now number
 function Tick(now)
+    if state.record and not state.recorded then
+        state.recorded = true
+        pcall(state.record, { Identifier = Config.ChatIdentifier, tmv = Config.ModVersion })
+    end
+
     if not state.started then
         return
     end
 
     if not state.announced then
         state.announced = true
-        if next(state.expect) then
-            Say(string.format('You are on version %d', Config.ModVersion))
-        end
         pcall(state.send, { Identifier = Config.ChatIdentifier, tmv = Config.ModVersion })
     end
 
     if not state.checked and (now - state.startT) >= Config.VersionReport.CheckDelay then
         state.checked = true
-        local names = {}
-        for name in pairs(state.expect) do
-            if not state.heard[name] then
-                table.insert(names, name)
-            end
-        end
-        table.sort(names)
-        for _, name in ipairs(names) do
-            if state.legacy[name] then
-                Say(string.format('%s is using SharedMouse', name))
-            else
-                Say(string.format('%s does not have TeamMouse', name))
-            end
-        end
     end
 end
 
---- A teammate's version arrived.
+--- A player's version arrived (a teammate, or anyone, for an observer).
 ---@param sender string
 ---@param version any   # off the wire
 function Heard(sender, version)
-    if not state.started or type(sender) ~= 'string' or type(version) ~= 'number'
-        or version ~= version or version < 0 or version > 1e6 or state.heard[sender] then
+    if type(sender) ~= 'string' or type(version) ~= 'number'
+        or version ~= version or version < 0 or version > 1e6 then
         return
     end
-    version = math.floor(version)
-    state.heard[sender] = version
-    if version == Config.ModVersion then
-        Say(string.format('%s is on version %d', sender, version))
-    else
-        Say(string.format('%s is on version %d (you are on %d)', sender, version, Config.ModVersion))
-    end
+    state.seen[sender] = math.floor(version)
 end
 
---- SharedMouse packets came from this teammate.
+--- SharedMouse packets came from this player.
 ---@param sender string
 function NoteLegacy(sender)
     if type(sender) == 'string' then
         state.legacy[sender] = true
     end
+end
+
+--- Record our version into the replay as well (once, on the next Tick).
+---@param fn function   # fn(msg)
+function SetRecorder(fn)
+    state.record = fn or false
+    state.recorded = false
+end
+
+--- What the panel shows for a player: their version, or why there is none.
+---@param name string
+---@return string text
+---@return string color
+function Describe(name)
+    local v = state.seen[name]
+    if v then
+        return 'v' .. v, (v == Config.ModVersion) and SAME_COLOR or OTHER_COLOR
+    end
+    if state.legacy[name] then
+        return 'old', OTHER_COLOR
+    end
+    if state.checked and state.expect[name] then
+        return 'none', NONE_COLOR
+    end
+    return '?', UNKNOWN_COLOR
 end
 
 function Reset()
@@ -129,7 +122,9 @@ function Reset()
     state.checked = false
     state.startT = 0
     state.expect = {}
-    state.heard = {}
     state.legacy = {}
     state.send = false
+    state.seen = {}
+    state.record = false
+    state.recorded = false
 end

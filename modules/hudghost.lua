@@ -16,12 +16,31 @@ local LayoutHelpers = import('/lua/maui/layouthelpers.lua')
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 local Group = import('/lua/maui/group.lua').Group
 
+--- The interface picture for each faction, as the armies table numbers them
+--- (FAF: 0 UEF, 1 Aeon, 2 Cybran, 3 Seraphim). Anything else (Nomads, an
+--- unknown faction) gets the original picture.
+FactionTextures = {
+    [0] = '/textures/hud/UICutout-uef.png',
+    [1] = '/textures/hud/UICutout-aeon.png',
+    [2] = '/textures/hud/UICutout-cybran.png',
+    [3] = '/textures/hud/UICutout-seraphim.png',
+}
+DefaultTexture = '/textures/UICutout.png'
+
+--- The picture for a faction.
+---@param faction any
+---@return string
+function TextureFor(faction)
+    return _G.TeamMousePath .. (FactionTextures[faction] or DefaultTexture)
+end
+
 ---@class HudGhost : Group
 HudGhost = Class(Group) {
 
     ---@param self HudGhost
     ---@param parent Control
-    __init = function(self, parent)
+    ---@param faction? number   # their faction (armies table), for the picture's colours
+    __init = function(self, parent, faction)
         Group.__init(self, parent, 'TeamMouseHudGhost')
 
         local w = Config.Hud.Width
@@ -33,7 +52,8 @@ HudGhost = Class(Group) {
         self:DisableHitTest(true)
 
         self.hud = Bitmap(self)
-        self.hud:SetTexture("/mods/TeamMouse/textures/UICutout.png")
+        -- Their own faction's interface, as they see it.
+        self.hud:SetTexture(TextureFor(faction))
         LayoutHelpers.SetDimensions(self.hud, w, h)
         LayoutHelpers.AtLeftTopIn(self.hud, self, 0, 0)
         self.hud:DisableHitTest(true)

@@ -475,7 +475,9 @@ local function DragShape(drag)
         return false
     end
     if drag == 1 then
-        return (Config.Selection.Enabled and Config.Selection.ShowBox) and 'box' or false
+        -- Not showing their boxes: the arrow still rides the drag's live end
+        -- (it used to freeze at the press and jump at the release).
+        return (Config.Selection.Enabled and Config.Selection.ShowBox) and 'box' or 'follow'
     end
     if drag == 2 then
         return Config.Line.Enabled and 'line' or 'follow'
@@ -1377,6 +1379,17 @@ RemoteCursor = Class(Group) {
         local cfg = Config.Draw
         local trail = self.trail
 
+        if not cfg.Enabled then
+            if trail.n > 0 then
+                trail.n = 0
+                trail.endT = false
+            end
+            if trail.line and trail.line.shown > 0 then
+                HideDotLine(trail.line)
+            end
+            return
+        end
+
         if record.renderDrag == 4 and not viewInfo.hidden then
             -- A new stroke starts from nothing.
             if trail.endT then
@@ -1488,9 +1501,48 @@ RemoteCursor = Class(Group) {
 
         mark = { square = square, squareColor = self.uiColor, icon = false, iconTexture = false, line = false,
             alpha = -1, visible = false, iconShown = false, lineShown = false,
-            row = false, rowShown = false, tlabel = false, tstroke = false, tlabelShown = false }
+            row = false, rowShown = false, tlabel = false, tstroke = false, tlabelShown = false,
+            diamond = false, diamondShown = false, diamondSize = -1 }
         self.orderMarks[i] = mark
         return mark
+    end,
+
+    --- An upgrade's gold diamond, behind the marker's frame: built on first
+    --- use, sized from the frame (Orders.UpgradeDiamondScale), hidden for any
+    --- other kind of marker.
+    ---@param self RemoteCursor
+    ---@param mark table
+    ---@param show boolean
+    ---@param ax number
+    ---@param ay number
+    ---@param squareSize number
+    ApplyUpgradeDiamond = function(self, mark, show, ax, ay, squareSize)
+        if not show then
+            if mark.diamond and mark.diamondShown then
+                mark.diamond:Hide()
+                mark.diamondShown = false
+            end
+            return
+        end
+        if not mark.diamond then
+            local diamond = Bitmap(self:GetMapRoot(), _G.TeamMousePath .. Config.Orders.UpgradeTexture)
+            diamond:DisableHitTest(true)
+            diamond.Left:SetValue(0)
+            diamond.Top:SetValue(0)
+            -- Behind the frame, which is behind the icon.
+            mark.square.Depth:Set(diamond.Depth() + 1)
+            mark.diamond = diamond
+            mark.alpha = -1
+        end
+        local size = math.floor(squareSize * Config.Orders.UpgradeDiamondScale + 0.5)
+        if mark.diamondSize ~= size then
+            mark.diamondSize = size
+            LayoutHelpers.SetDimensions(mark.diamond, size, size)
+        end
+        mark.diamond.Left:SetValue(ax - size * 0.5)
+        mark.diamond.Top:SetValue(ay - size * 0.5)
+        mark.diamond:SetHidden(false)
+        mark.diamondShown = true
     end,
 
     ---@param self RemoteCursor
@@ -1501,6 +1553,10 @@ RemoteCursor = Class(Group) {
         end
         mark.visible = false
         mark.square:Hide()
+        if mark.diamond and mark.diamondShown then
+            mark.diamond:Hide()
+            mark.diamondShown = false
+        end
         if mark.icon and mark.iconShown then
             mark.icon:Hide()
             mark.iconShown = false
@@ -1527,12 +1583,13 @@ RemoteCursor = Class(Group) {
     ---@param now number
     ApplyOrders = function(self, viewInfo, now)
         local record = self.record
-        local count = record.orderCount
+        local cfg = Config.Orders
+        -- Not shown at all: as if there were none (any up are hidden below).
+        local count = cfg.Enabled and record.orderCount or 0
         if count == 0 and self.orderShown == 0 then
             return
         end
 
-        local cfg = Config.Orders
         local margin = Config.Appearance.CullMargin
 
         for i = 1, count do
@@ -1541,8 +1598,16 @@ RemoteCursor = Class(Group) {
             local age = now - order.t
 
             local proj = nil
+            -- A kind we do not show: placed structures (ShowBuilds), upgrades
+            -- (ShowUpgrades). Sent regardless; the choice is ours.
+            local shown = true
+            if order.upgrade then
+                shown = cfg.ShowUpgrades
+            elseif order.bp then
+                shown = cfg.ShowBuilds
+            end
             -- Not yet due: its release has not been drawn yet.
-            if not viewInfo.hidden and age >= 0 then
+            if shown and not viewInfo.hidden and age >= 0 then
                 local p = self.projIn
                 p[1], p[2], p[3] = order.x, order.y, order.z
                 proj = self.view:Project(p)
@@ -1585,16 +1650,11 @@ RemoteCursor = Class(Group) {
                         end
                     end
 
-                    -- An upgrade: the frame is gold, not their colour, so it
-                    -- reads as "this building is becoming that".
-                    local frameColor = self.uiColor
-                    if buildIcon and order.upgrade then
-                        frameColor = Config.Orders.UpgradeColor
-                    end
-                    if mark.squareColor ~= frameColor then
-                        mark.squareColor = frameColor
-                        mark.square:SetSolidColor(frameColor)
-                    end
+                    -- An upgrade: a gold diamond behind the frame (which
+                    -- stays in their colour, like any structure's), so it
+                    -- reads as "this building is becoming that" by its shape
+                    -- -- a yellow player's frame is near gold already.
+                    local upgrade = buildIcon and order.upgrade and true or false
 
                     if buildIcon then
                         texture = buildIcon
@@ -1615,6 +1675,7 @@ RemoteCursor = Class(Group) {
                     local half = squareSize * 0.5
                     mark.square.Left:SetValue(ax - half)
                     mark.square.Top:SetValue(ay - half)
+                    self:ApplyUpgradeDiamond(mark, upgrade, ax, ay, squareSize)
 
                     if texture then
                         if not mark.icon then
@@ -1719,6 +1780,7 @@ RemoteCursor = Class(Group) {
                     if math.abs(alpha - mark.alpha) >= Config.Appearance.AlphaEpsilon then
                         mark.alpha = alpha
                         mark.square:SetAlpha(alpha)
+                        if mark.diamond then mark.diamond:SetAlpha(alpha) end
                         if mark.icon then mark.icon:SetAlpha(alpha) end
                         if mark.line then SetDotLineAlpha(mark.line, alpha) end
                         if mark.row then SetIconRowAlpha(mark.row, alpha, alpha) end
@@ -1768,12 +1830,14 @@ RemoteCursor = Class(Group) {
     ---@param ny number
     ---@param dt? number   # seconds since the last frame; without it the fade holds
     ApplyHud = function(self, onHud, nx, ny, dt)
+        -- Switched off (it can be, mid-game, from ReUI): never on the
+        -- interface, so a ghost already up fades out like any other time.
         if not Config.Hud.Enabled then
-            return
+            onHud = false
         end
 
         if onHud and not self.hud then
-            self.hud = HudGhost(self)
+            self.hud = HudGhost(self, self.record.faction)
             self.hudFade = 0
             self.appliedHudAlpha = -1
             self.hudBound = false
@@ -1971,15 +2035,13 @@ RemoteCursor = Class(Group) {
 
         -- Orders first, and unconditionally: they are pinned to the map, not to
         -- the cursor, and outlive it being culled or gone stale.
-        if Config.Orders.Enabled then
-            self:ApplyOrders(viewInfo, now)
-        end
+        -- Each decides for itself whether it is shown (Orders.Enabled,
+        -- Draw.Enabled, ...): switched off mid-game, what is up goes away.
+        self:ApplyOrders(viewInfo, now)
         self:ApplyViewport(viewInfo)
         self:ApplyClickPulses(now)
         self:ApplySelection(now, viewInfo)
-        if Config.Draw.Enabled then
-            self:ApplyTrail(viewInfo, now)
-        end
+        self:ApplyTrail(viewInfo, now)
 
         if viewInfo.hidden or not record.hasData then
             self:SetVisible(false)
@@ -2105,6 +2167,7 @@ RemoteCursor = Class(Group) {
             if viewInfo.replay then
                 scale = scale * Config.ReplayCodec.CursorScale
             end
+            scale = scale * (Config.Appearance.SizeScale or 1)
 
             -- Quantise so a smooth zoom doesn't re-layout on every frame.
             local q = Config.Appearance.ScaleQuantum
@@ -2186,15 +2249,19 @@ RemoteCursor = Class(Group) {
         -- name and all -- never sits on top of what you are trying to click).
         local shared = record.fade
 
-        if Config.Proximity.Enabled and viewInfo.mouseX and not viewInfo.replay then
+        -- In a replay nothing is being clicked, so only a gentle fade, and
+        -- only right over the cursor (ReplayCodec.HoverRadius / HoverMinAlpha).
+        if Config.Proximity.Enabled and viewInfo.mouseX then
             local dx = viewInfo.mouseX - absX
             local dy = viewInfo.mouseY - absY
             local dist = math.sqrt(dx * dx + dy * dy)
-            local r = Config.Proximity.FadeRadius
+            local r, minAlpha = Config.Proximity.FadeRadius, Config.Proximity.MinAlpha
+            if viewInfo.replay then
+                r, minAlpha = Config.ReplayCodec.HoverRadius, Config.ReplayCodec.HoverMinAlpha
+            end
             if dist < r then
                 local t = dist / r
-                shared = shared * (Config.Proximity.MinAlpha
-                    + t * (1 - Config.Proximity.MinAlpha))
+                shared = shared * (minAlpha + t * (1 - minAlpha))
             end
         end
 

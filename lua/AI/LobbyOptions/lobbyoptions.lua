@@ -16,7 +16,7 @@ AIOpts = {
     {
         default = 2,
         label = "TeamMouse: cursors in replay",
-        help = "Record TeamMouse players' cursors into the replay, hidden in each commander's name, "
+        help = "Record TeamMouse players' cursors into the replay, through the sim, "
             .. "so they can be watched back. Adds a small amount of replay data.",
         key = 'TeamMouseReplay',
         values = {

@@ -15,13 +15,11 @@ ChatIdentifier = 'TeamMouse'
 
 --- The mod's version, as reported in chat at the start of a game. Keep in
 --- step with `version` in mod_info.lua (a test checks).
-ModVersion = 1
+ModVersion = 2
 
---- Say in chat which version you and each teammate are on, and which
---- teammates don't have the mod (or only the old SharedMouse), once CheckDelay
---- seconds in. Local lines only.
+--- Each player's version shows in the player panel (Panel.ShowVersions).
+--- A teammate not heard from CheckDelay seconds in shows as "none".
 VersionReport = {
-    Enabled = true,
     CheckDelay = 5,
 }
 
@@ -36,6 +34,11 @@ Panel = {
 
     --- Start folded away to its tab.
     StartCollapsed = false,
+
+    --- A column with each player's TeamMouse version: green when it is
+    --- yours, orange when it differs, "old" for the old SharedMouse, "none" for
+    --- a teammate who never answered, ? while unknown (or an older replay).
+    ShowVersions = true,
 
     Depth = 60,
     BackColor = 'cc0a0e14',
@@ -165,6 +168,10 @@ Appearance = {
 
     --- Base opacity before zoom and proximity fading are applied.
     BaseAlpha = 0.85,
+
+    --- Every teammate's cursor drawn this much larger (or smaller), on top of
+    --- the zoom scaling. 1 is the textures' own size.
+    SizeScale = 1.0,
 
     --- Opacity of a teammate's name. Never drawn fainter than their cursor,
     --- so it stays readable; your own mouse coming near fades it like the
@@ -425,10 +432,14 @@ Orders = {
     --- Also send them. Turn off to receive without ever revealing your own.
     Share = true,
 
-    --- Show upgrades: the upgraded building's icon, in a gold frame, on the
-    --- building being upgraded.
+    --- Show upgrades: the upgraded building's icon on the building being
+    --- upgraded, framed in the player's colour like any structure, with a gold
+    --- diamond behind it -- a shape, not just a colour, so it still stands out
+    --- for a yellow player. Its width as a share of the framed icon's (2 would
+    --- take the frame's corners fully inside it).
     ShowUpgrades = true,
-    UpgradeColor = 'ffffc020',
+    UpgradeTexture = '/textures/upgrade_diamond.png',
+    UpgradeDiamondScale = 1.75,
     --- Structures you selected are watched this many seconds after, at most
     --- this many, for an upgrade starting (however it was ordered).
     UpgradeWatchSeconds = 20,
@@ -586,7 +597,8 @@ Hud = {
 -- Drawn by the game (UI_DrawRect), sized in pixels whatever the zoom.
 --
 TeamSelection = {
-    --- Send your selection, and show theirs.
+    --- Show teammates' selections. (Yours is always sent: each player picks
+    --- what they show.)
     Enabled = true,
     --- Most unit ids sent (and boxes drawn) for one player.
     MaxSend = 60,
@@ -636,7 +648,7 @@ TeamSelection = {
 -- pixels whatever the zoom.
 --
 ClickPulse = {
-    --- Send your clicks, and show theirs.
+    --- Show teammates' click pulses. (Yours are always sent.)
     Enabled = true,
     --- Seconds a pulse lasts, and how wide it grows, in pixels.
     Duration = 0.45,
@@ -702,6 +714,22 @@ Follow = {
     --- In a replay, while you follow a player, select what they select.
     CopySelection = true,
 
+    --- Fit their whole view into yours by its larger axis: their window and
+    --- yours are rarely the same shape. Theirs narrower than yours: the same
+    --- height as they saw, and wider. Theirs wider: the same width, and taller.
+    --- Off: your camera simply takes their zoom. FitMin/FitMax bound how far
+    --- from their zoom this may take yours.
+    FitView = true,
+    FitMin = 0.5,
+    FitMax = 3,
+
+    --- Scroll the mouse wheel hard enough while following and you take the
+    --- camera back: following stops and its box is unticked. At least
+    --- BreakScrolls notches within BreakWindow seconds; fewer (a stray notch
+    --- or two) are undone by the follow. 0: scrolling never stops it.
+    BreakScrolls = 4,
+    BreakWindow = 0.75,
+
     --- How quickly your camera catches up with theirs: the share of the way
     --- it moves each second is about 1 - e^-Rate. Higher is tighter but
     --- shows their camera's updates as small steps; lower is smoother but
@@ -744,4 +772,11 @@ ReplayCodec = {
     --- and don't fade near your own pointer.
     CursorAlpha = 1.0,
     CursorScale = 1.2,
+
+    --- Your pointer over (or right by) a cursor in a replay fades it a little,
+    --- so it never hides what you are looking at -- gentler than in a game
+    --- (Proximity), and over a smaller area: HoverRadius pixels, down to
+    --- HoverMinAlpha at the centre. Needs Proximity.Enabled.
+    HoverRadius = 60,
+    HoverMinAlpha = 0.10,
 }

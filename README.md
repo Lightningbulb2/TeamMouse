@@ -161,11 +161,18 @@ player to hide everything of theirs -- cursor, orders, lines, trails -- and
 tick them again to bring it back. It folds away to its tab with the arrow, and hides in
 screen capture mode. Position and starting state are under `Panel`.
 
-### Versions in chat
+### Versions
 
-At the start of a game TeamMouse says in your chat which version you and each
-teammate are on, and after a few seconds who doesn't have it or is only on the
-old SharedMouse (`VersionReport`). Only you see these lines.
+The player panel has a column with the version of TeamMouse each player is on:
+green for yours, orange for another, "old" for a teammate on SharedMouse,
+"none" for a teammate who never answered (`Panel.ShowVersions`). Nothing is
+posted in chat.
+
+### Settings (ReUI)
+
+With ReUI installed, TeamMouse's settings are in its options window. Every one
+of them is about what YOU are shown. What you send never depends on them:
+teammates always get everything and choose for themselves what they see.
 
 ### Actions
 
