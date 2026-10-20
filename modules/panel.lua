@@ -13,6 +13,12 @@
 --** then), so players without the mod, or without recording on, are not listed.
 --** Each row also shows the version of TeamMouse that player is on (version.lua).
 --** Choices last for the game only.
+--**
+--** While TeamMouse's options window is open (optionswindow.lua -> SetEditing)
+--** the panel shows even with nobody to list (a solo game), and its tab can be
+--** dragged to anywhere along the left, right or top edge of the screen (FAF's
+--** collapse tabs come in those three). Where it is put is kept in the game's
+--** profile; "Reset position" under it puts it back where config.lua says.
 --******************************************************************************
 
 local Config = import(_G.TeamMousePath .. '/modules/config.lua')
@@ -41,6 +47,15 @@ local source = false
 
 --- Folded or not, carried across a rebuild (nil: Panel.StartCollapsed).
 local collapsedPref = nil
+
+--- editing: TeamMouse's options window is open (SetEditing). place: false
+--- for config.lua's spot (Panel.X / Panel.Y), or { edge, along }: the edge
+--- ('l', 'r' or 't') and how far along it, 0..1 of the room there is.
+--- loaded: place has been read from the profile.
+local layout = { editing = false, place = false, loaded = false }
+
+local PREF_KEY = 'TeamMousePanelPlace'
+local HINT_COLOR = 'ffffd24a'
 
 --- Whether the game's interface is hidden (screen capture mode).
 ---@return boolean
@@ -105,6 +120,361 @@ end
 
 local Build
 
+--- A name cut short with "..." so it fits in `room` (unscaled) beside its
+--- label, never splitting a UTF-8 character. Whole if it fits, or if the
+--- label cannot measure text.
+---@param label Text
+---@param name string
+---@param room number
+---@return string
+local function FitName(label, name, room)
+    if not label.GetStringAdvance then
+        return name
+    end
+    room = LayoutHelpers.ScaleNumber and LayoutHelpers.ScaleNumber(room) or room
+    if label:GetStringAdvance(name) <= room then
+        return name
+    end
+    local n = string.len(name)
+    while n > 1 do
+        n = n - 1
+        -- Not in the middle of a character: the next byte starts one.
+        local nextByte = string.byte(name, n + 1)
+        if not (nextByte >= 128 and nextByte < 192)
+            and label:GetStringAdvance(string.sub(name, 1, n) .. '...') <= room then
+            break
+        end
+    end
+    return string.sub(name, 1, n) .. '...'
+end
+
+--- The edge the panel is on.
+---@return 'l' | 'r' | 't'
+local function Edge()
+    return layout.place and layout.place.edge or 'l'
+end
+
+--- The saved spot, read from the profile once.
+local function LoadPlace()
+    if layout.loaded then
+        return
+    end
+    layout.loaded = true
+    pcall(function()
+        local saved = import('/lua/user/prefs.lua').GetFromCurrentProfile(PREF_KEY)
+        if type(saved) == 'table' and (saved.edge == 'l' or saved.edge == 'r' or saved.edge == 't')
+            and type(saved.along) == 'number' and saved.along == saved.along then
+            layout.place = { edge = saved.edge, along = math.max(0, math.min(1, saved.along)) }
+        end
+    end)
+end
+
+--- Keep the spot in the profile (none: config.lua's).
+local function SavePlace()
+    pcall(function()
+        local place = layout.place
+        import('/lua/user/prefs.lua').SetToCurrentProfile(PREF_KEY,
+            place and { edge = place.edge, along = place.along } or nil)
+        SavePreferences()
+    end)
+end
+
+--- Put the panel's root where layout.place says.
+---@param root Group
+local function Place(root)
+    local frame = GetFrame(0)
+    local place = layout.place
+    if not place then
+        local cfg = Config.Panel
+        root.Left:Set(function() return frame.Left() + frame.Width() * cfg.X end)
+        root.Top:Set(function() return frame.Top() + frame.Height() * cfg.Y end)
+        return
+    end
+    local along = place.along
+    if place.edge == 't' then
+        root.Left:Set(function() return frame.Left() + (frame.Width() - root.Width()) * along end)
+        root.Top:Set(function() return frame.Top() end)
+        return
+    end
+    if place.edge == 'r' then
+        root.Left:Set(function() return frame.Left() + frame.Width() - root.Width() end)
+    else
+        root.Left:Set(function() return frame.Left() end)
+    end
+    root.Top:Set(function() return frame.Top() + (frame.Height() - root.Height()) * along end)
+end
+
+--- Show or take down the tooltip on the tab while it can be dragged.
+---@param control? Control
+---@param tip? table   # { text, body }; none: the tab's
+local function Tip(control, tip)
+    pcall(function()
+        local Tooltip = import('/lua/ui/game/tooltip.lua')
+        if control then
+            Tooltip.CreateMouseoverDisplay(control, tip or { text = 'Move the panel',
+                body = 'Drag this tab along the left, right or top edge of the screen. Click it to fold the panel.' },
+                0.3, true)
+        else
+            Tooltip.DestroyMouseoverDisplay()
+        end
+    end)
+end
+
+--- A player's name on their row, cut to fit `room`; when it is cut, hovering
+--- it shows the whole name.
+---@param label Text
+---@param name string
+---@param room number
+local function ShowName(label, name, room)
+    local shown = FitName(label, name, room)
+    label:SetText(shown)
+    if shown == name then
+        label:DisableHitTest()
+        return
+    end
+    label.HandleEvent = function(self, event)
+        if event.Type == 'MouseEnter' then
+            Tip(self, { text = name })
+        elseif event.Type == 'MouseExit' then
+            Tip()
+        end
+        return false
+    end
+end
+
+--- A small solid triangle pointing 'u', 'd', 'l' or 'r', from lines of
+--- bitmaps (no texture to go missing).
+---@param parent Control
+---@param dir string
+---@return Group
+local function Triangle(parent, dir)
+    local tri = Group(parent)
+    if dir == 'u' or dir == 'd' then
+        LayoutHelpers.SetDimensions(tri, 7, 4)
+    else
+        LayoutHelpers.SetDimensions(tri, 4, 7)
+    end
+    tri:DisableHitTest()
+    for i = 0, 3 do
+        local line = Bitmap(tri)
+        line:SetSolidColor(HINT_COLOR)
+        line:DisableHitTest()
+        if dir == 'u' or dir == 'd' then
+            LayoutHelpers.AtLeftTopIn(line, tri, 3 - i, dir == 'u' and i or 3 - i)
+            LayoutHelpers.SetDimensions(line, 2 * i + 1, 1)
+        else
+            LayoutHelpers.AtLeftTopIn(line, tri, dir == 'l' and i or 3 - i, 3 - i)
+            LayoutHelpers.SetDimensions(line, 1, 2 * i + 1)
+        end
+    end
+    return tri
+end
+
+--- Little arrows either side of the tab, the ways it can be dragged.
+---@param root Group
+---@param arrow Control
+---@param edge string
+---@return Group[]
+local function DragHints(root, arrow, edge)
+    local function Hang(tri, left, top)
+        tri.Left:Set(left)
+        tri.Top:Set(top)
+        tri.Depth:Set(function() return arrow.Depth() + 1 end)
+        return tri
+    end
+    if edge == 't' then
+        local a, b = Triangle(root, 'l'), Triangle(root, 'r')
+        local function Middle(tri)
+            return function() return arrow.Top() + (arrow.Height() - tri.Height()) / 2 end
+        end
+        return {
+            Hang(a, function() return arrow.Left() - a.Width() - 2 end, Middle(a)),
+            Hang(b, function() return arrow.Left() + arrow.Width() + 2 end, Middle(b)),
+        }
+    end
+    local a, b = Triangle(root, 'u'), Triangle(root, 'd')
+    local function Centre(tri)
+        return function() return arrow.Left() + (arrow.Width() - tri.Width()) / 2 end
+    end
+    return {
+        Hang(a, Centre(a), function() return arrow.Top() - a.Height() - 2 end),
+        Hang(b, Centre(b), function() return arrow.Top() + arrow.Height() + 2 end),
+    }
+end
+
+--- A small "Reset position" button under the panel (over it, if there is no
+--- room under it), while the options window is open. Folds away with it.
+---@param body Group
+---@param edge string
+---@return Bitmap
+local function ResetButton(body, edge)
+    local frame = GetFrame(0)
+    local back = Bitmap(body)
+    back:SetSolidColor(Config.Panel.BackColor)
+    LayoutHelpers.SetDimensions(back, 96, 18)
+    if edge == 'r' then
+        back.Left:Set(function() return body.Left() + body.Width() - back.Width() end)
+    elseif edge == 't' then
+        back.Left:Set(function() return body.Left() + (body.Width() - back.Width()) / 2 end)
+    else
+        back.Left:Set(function() return body.Left() end)
+    end
+    back.Top:Set(function()
+        local below = body.Top() + body.Height() + 2
+        if below + back.Height() > frame.Top() + frame.Height() then
+            return body.Top() - back.Height() - 2
+        end
+        return below
+    end)
+
+    local text = UIUtil.CreateText(back, 'Reset position', 10, UIUtil.bodyFont, true)
+    text:SetColor('ffaaaaaa')
+    text:DisableHitTest()
+    text.Left:Set(function() return back.Left() + (back.Width() - text.Width()) / 2 end)
+    text.Top:Set(function() return back.Top() + (back.Height() - text.Height()) / 2 end)
+
+    back.HandleEvent = function(self, event)
+        if event.Type == 'MouseEnter' then
+            text:SetColor('ffffffff')
+        elseif event.Type == 'MouseExit' then
+            text:SetColor('ffaaaaaa')
+        elseif event.Type == 'ButtonPress' then
+            Play('UI_Menu_MouseDown_Sml')
+            ResetPlace()
+            return true
+        end
+        return false
+    end
+    return back
+end
+
+--- How far v is through room, 0..1.
+---@param v number
+---@param room number
+---@return number
+local function Fraction(v, room)
+    if room <= 0 then
+        return 0
+    end
+    return math.max(0, math.min(1, v / room))
+end
+
+--- The tab dragged to (x, y): onto the nearest of the three edges, with the
+--- tab under the pointer. A new edge needs a new tab: rebuilt.
+---@param x number
+---@param y number
+function DragTo(x, y)
+    local frame = GetFrame(0)
+    if not panel or not frame then
+        return
+    end
+    local fl, ft, fw, fh = frame.Left(), frame.Top(), frame.Width(), frame.Height()
+    local edge, nearest = 'l', x - fl
+    if fl + fw - x < nearest then
+        edge, nearest = 'r', fl + fw - x
+    end
+    if y - ft < nearest then
+        edge = 't'
+    end
+    local w, h = panel.root.Width(), panel.root.Height()
+    local along
+    if edge == 't' then
+        along = Fraction(x - fl - w / 2, fw - w)
+    else
+        along = Fraction(y - ft - h / 2, fh - h)
+    end
+    local was = Edge()
+    layout.place = { edge = edge, along = along }
+    if edge ~= was then
+        Build()
+    else
+        Place(panel.root)
+    end
+end
+
+--- A press on the tab while the options window is open: a drag moves the
+--- panel, a click without moving folds or opens it as usual.
+---@param event table
+---@return boolean   # whether a drag was started
+local function StartDrag(event)
+    local ok, DraggerModule = pcall(import, '/lua/maui/dragger.lua')
+    local post = rawget(_G, 'PostDragger')
+    if not ok or type(DraggerModule) ~= 'table' or not DraggerModule.Dragger or not post then
+        return false
+    end
+    local drag = DraggerModule.Dragger()
+    local startX, startY = event.MouseX or 0, event.MouseY or 0
+    local moved = false
+    drag.OnMove = function(self, x, y)
+        if not moved and math.abs(x - startX) + math.abs(y - startY) < 4 then
+            return
+        end
+        moved = true
+        DragTo(x, y)
+    end
+    drag.OnRelease = function(self, x, y)
+        if moved then
+            SavePlace()
+        elseif panel and panel.arrow then
+            panel.arrow:SetCheck(not panel.collapsed)
+        end
+        if self.Destroy then self:Destroy() end
+    end
+    drag.OnCancel = function(self)
+        if moved then
+            SavePlace()
+        end
+        if self.Destroy then self:Destroy() end
+    end
+    post(GetFrame(0), event.KeyCode, drag)
+    return true
+end
+
+--- The tab: just past the screen's edge as FAF puts its own, folds the panel,
+--- and while the options window is open drags it (with arrows to say so).
+---@param root Group
+---@param arrow Checkbox
+---@param edge string
+---@param height number
+local function SetUpTab(root, arrow, edge, height)
+    if edge == 't' then
+        arrow.Left:Set(function() return root.Left() + (root.Width() - arrow.Width()) / 2 end)
+        arrow.Top:Set(function() return root.Top() - 3 end)
+    else
+        LayoutHelpers.AtLeftTopIn(arrow, root, -3, (height - 24) / 2)
+        if edge == 'r' then
+            arrow.Left:Set(function() return root.Left() + root.Width() - arrow.Width() + 3 end)
+        end
+    end
+    arrow.Depth:Set(function() return root.Depth() + 10 end)
+    arrow.OnCheck = function(self, checked)
+        SetCollapsed(checked)
+        Play(checked and 'UI_Score_Window_Close' or 'UI_Score_Window_Open')
+    end
+    local handle = arrow.HandleEvent
+    arrow.HandleEvent = function(self, event)
+        if layout.editing then
+            local t = event.Type
+            if (t == 'ButtonPress' or t == 'ButtonDClick')
+                and not (event.Modifiers and event.Modifiers.Right) and StartDrag(event) then
+                return true
+            elseif t == 'MouseEnter' then
+                Tip(self)
+            elseif t == 'MouseExit' then
+                Tip()
+            end
+        end
+        if handle then
+            return handle(self, event)
+        end
+        return false
+    end
+    panel.arrow = arrow
+    if layout.editing then
+        panel.hints = DragHints(root, arrow, edge)
+    end
+end
+
 --- Build the panel.
 ---@param records table[]   # the players, in the order to list them; each a peer record
 ---@param onToggle? function   # called with a record after its cursor is hidden or shown
@@ -123,7 +493,9 @@ Build = function()
     end
     local records = Listed()
     local onToggle, replay = source.onToggle, source.replay
-    if not Config.Panel.Enabled or table.getn(records) == 0 then
+    -- Nobody to list (a solo game): none, unless the options window is open,
+    -- so the panel can be seen and placed.
+    if not Config.Panel.Enabled or (table.getn(records) == 0 and not layout.editing) then
         return
     end
 
@@ -131,8 +503,12 @@ Build = function()
     if not frame then
         return
     end
+    LoadPlace()
 
     local cfg = Config.Panel
+    local edge = Edge()
+    -- What is drawn keeps clear of the tab: it is on the left, right or top.
+    local shift = (edge == 'r' and -14) or (edge == 't' and -7) or 0
     -- In a replay, a second column of boxes: follow that player's camera.
     local FOLLOW = replay and Config.Follow.Enabled and 44 or 0
     -- Each player's TeamMouse version, in a column of its own.
@@ -143,21 +519,36 @@ Build = function()
     if FOLLOW > 0 then
         versionLeft = WIDTH - PAD - CHECK * 2 - 22 - VERSION_WIDTH
     end
-    -- The title, a row of "all" boxes, then a row per player.
-    local height = TITLE_HEIGHT + (table.getn(records) + 1) * ROW_HEIGHT + PAD * 2
+    -- Room for a name: up to the version column, or else the first column of boxes.
+    local nameLeft = PAD + 14 + CHECK + 5 + SWATCH + 5
+    local nameRight = (VERSIONS > 0 and versionLeft)
+        or (FOLLOW > 0 and WIDTH - PAD - CHECK * 2 - 12) or (WIDTH - PAD - CHECK)
+    local nameRoom = nameRight - 4 - nameLeft
+    -- The title, a row of "all" boxes, then a row per player (or one saying
+    -- there is nobody).
+    local height = TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT + PAD * 2
 
     local root = Group(frame, 'TeamMousePanel')
-    root.Left:Set(function() return frame.Left() + frame.Width() * cfg.X end)
-    root.Top:Set(function() return frame.Top() + frame.Height() * cfg.Y end)
     LayoutHelpers.SetDimensions(root, WIDTH, height)
+    Place(root)
     root.Depth:Set(cfg.Depth)
     root:DisableHitTest()
 
-    -- Everything that collapses away.
+    -- FAF's own tab, on the edge the panel is on (placed below, once the rows
+    -- are in). Checked means collapsed, as for its panels.
+    local okArrow, arrow = pcall(UIUtil.CreateCollapseArrow, root, edge)
+    if not okArrow then
+        arrow = false
+    end
+
+    -- Everything that collapses away. On the top edge, under the tab.
     local body = Group(root, 'TeamMousePanelBody')
     LayoutHelpers.AtLeftTopIn(body, root, 0, 0)
     LayoutHelpers.SetDimensions(body, WIDTH, height)
     body:DisableHitTest()
+    if edge == 't' and arrow then
+        body.Top:Set(function() return root.Top() + arrow.Height() - 6 end)
+    end
 
     local back = Bitmap(body)
     back:SetSolidColor(cfg.BackColor)
@@ -165,31 +556,47 @@ Build = function()
     LayoutHelpers.SetDimensions(back, WIDTH, height)
     back:DisableHitTest()
 
+    -- What the rows are laid out in: the body, moved clear of the tab.
+    local inner = Group(body)
+    LayoutHelpers.AtLeftTopIn(inner, body, shift, 0)
+    LayoutHelpers.SetDimensions(inner, WIDTH, height)
+    inner:DisableHitTest()
+
     local title = UIUtil.CreateText(body, 'TeamMouse cursors', 10, UIUtil.bodyFont, true)
     title:SetColor('ffaaaaaa')
     title:DisableHitTest(true)
-    LayoutHelpers.AtLeftTopIn(title, body, PAD + 14, PAD - 2)
+    LayoutHelpers.AtLeftTopIn(title, inner, PAD + 14, PAD - 2)
 
     -- Over the right-hand column of boxes: their view's outline (Viewport).
     local viewHeader = UIUtil.CreateText(body, 'view', 9, UIUtil.bodyFont, true)
     viewHeader:SetColor('ffaaaaaa')
     viewHeader:DisableHitTest(true)
-    LayoutHelpers.AtLeftTopIn(viewHeader, body, WIDTH - PAD - CHECK - 4, PAD - 1)
+    LayoutHelpers.AtLeftTopIn(viewHeader, inner, WIDTH - PAD - CHECK - 4, PAD - 1)
     if FOLLOW > 0 then
         local followHeader = UIUtil.CreateText(body, 'follow', 9, UIUtil.bodyFont, true)
         followHeader:SetColor('ffaaaaaa')
         followHeader:DisableHitTest(true)
-        LayoutHelpers.AtLeftTopIn(followHeader, body, WIDTH - PAD - CHECK * 2 - 18, PAD - 1)
+        LayoutHelpers.AtLeftTopIn(followHeader, inner, WIDTH - PAD - CHECK * 2 - 18, PAD - 1)
     end
 
     if VERSIONS > 0 then
         local versionHeader = UIUtil.CreateText(body, 'ver', 9, UIUtil.bodyFont, true)
         versionHeader:SetColor('ffaaaaaa')
         versionHeader:DisableHitTest(true)
-        LayoutHelpers.AtLeftTopIn(versionHeader, body, versionLeft, PAD - 1)
+        LayoutHelpers.AtLeftTopIn(versionHeader, inner, versionLeft, PAD - 1)
     end
 
-    panel = { root = root, body = body, rows = {}, collapsed = false, versions = VERSIONS > 0 }
+    panel = { root = root, body = body, rows = {}, collapsed = false, versions = VERSIONS > 0,
+        edge = edge, editing = layout.editing }
+
+    if table.getn(records) == 0 then
+        local none = UIUtil.CreateText(body, 'no other players', 12, UIUtil.bodyFont, true)
+        none:SetColor('ff777777')
+        none:DisableHitTest()
+        LayoutHelpers.AtLeftTopIn(none, inner, PAD + 14 + CHECK + 5 + SWATCH + 5,
+            PAD + TITLE_HEIGHT + ROW_HEIGHT + 3)
+        panel.placeholder = none
+    end
 
     -- The "all" row: its boxes set every player's box in their column, and
     -- show ticked while every player's is.
@@ -197,13 +604,13 @@ Build = function()
     local allLabel = UIUtil.CreateText(body, 'all', 12, UIUtil.bodyFont, true)
     allLabel:SetColor('ffaaaaaa')
     allLabel:DisableHitTest()
-    LayoutHelpers.AtLeftTopIn(allLabel, body, PAD + 14 + CHECK + 5 + SWATCH + 5, allTop + 3)
+    LayoutHelpers.AtLeftTopIn(allLabel, inner, PAD + 14 + CHECK + 5 + SWATCH + 5, allTop + 3)
 
     local allCursors = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-    LayoutHelpers.AtLeftTopIn(allCursors, body, PAD + 14, allTop + (ROW_HEIGHT - CHECK) / 2)
+    LayoutHelpers.AtLeftTopIn(allCursors, inner, PAD + 14, allTop + (ROW_HEIGHT - CHECK) / 2)
     LayoutHelpers.SetDimensions(allCursors, CHECK, CHECK)
     local allViews = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-    LayoutHelpers.AtLeftTopIn(allViews, body, WIDTH - PAD - CHECK, allTop + (ROW_HEIGHT - CHECK) / 2)
+    LayoutHelpers.AtLeftTopIn(allViews, inner, WIDTH - PAD - CHECK, allTop + (ROW_HEIGHT - CHECK) / 2)
     LayoutHelpers.SetDimensions(allViews, CHECK, CHECK)
     panel.allCursors, panel.allViews = allCursors, allViews
 
@@ -244,23 +651,23 @@ Build = function()
         -- FAF's own checkbox, as its panels use (multifunction.lua): it does
         -- its own clicks, hover and sound. Ticked = shown.
         local check = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-        LayoutHelpers.AtLeftTopIn(check, body, PAD + 14, top + (ROW_HEIGHT - CHECK) / 2)
+        LayoutHelpers.AtLeftTopIn(check, inner, PAD + 14, top + (ROW_HEIGHT - CHECK) / 2)
         LayoutHelpers.SetDimensions(check, CHECK, CHECK)
 
         local swatch = Bitmap(body)
-        LayoutHelpers.AtLeftTopIn(swatch, body, PAD + 14 + CHECK + 5, top + (ROW_HEIGHT - SWATCH) / 2)
+        LayoutHelpers.AtLeftTopIn(swatch, inner, PAD + 14 + CHECK + 5, top + (ROW_HEIGHT - SWATCH) / 2)
         LayoutHelpers.SetDimensions(swatch, SWATCH, SWATCH)
         swatch:DisableHitTest()
 
         local label = UIUtil.CreateText(body, record.name or '?', 12, UIUtil.bodyFont, true)
         label:SetColor('ffffffff')
-        label:DisableHitTest()
-        LayoutHelpers.AtLeftTopIn(label, body, PAD + 14 + CHECK + 5 + SWATCH + 5, top + 3)
+        ShowName(label, record.name or '?', nameRoom)
+        LayoutHelpers.AtLeftTopIn(label, inner, nameLeft, top + 3)
 
         -- Their view's outline on the map (Viewport): off unless ticked, and
         -- not remembered between games.
         local viewCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-        LayoutHelpers.AtLeftTopIn(viewCheck, body, WIDTH - PAD - CHECK, top + (ROW_HEIGHT - CHECK) / 2)
+        LayoutHelpers.AtLeftTopIn(viewCheck, inner, WIDTH - PAD - CHECK, top + (ROW_HEIGHT - CHECK) / 2)
         LayoutHelpers.SetDimensions(viewCheck, CHECK, CHECK)
         viewCheck:SetCheck(record.showView and true or false, true)
         viewCheck.OnCheck = function(self, checked)
@@ -273,7 +680,7 @@ Build = function()
         local followCheck = false
         if FOLLOW > 0 then
             followCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-            LayoutHelpers.AtLeftTopIn(followCheck, body, WIDTH - PAD - CHECK * 2 - 12,
+            LayoutHelpers.AtLeftTopIn(followCheck, inner, WIDTH - PAD - CHECK * 2 - 12,
                 top + (ROW_HEIGHT - CHECK) / 2)
             LayoutHelpers.SetDimensions(followCheck, CHECK, CHECK)
             followCheck:SetCheck(record.follow and true or false, true)
@@ -295,7 +702,7 @@ Build = function()
         if VERSIONS > 0 then
             versionLabel = UIUtil.CreateText(body, '?', 10, UIUtil.bodyFont, true)
             versionLabel:DisableHitTest(true)
-            LayoutHelpers.AtLeftTopIn(versionLabel, body, versionLeft, top + 4)
+            LayoutHelpers.AtLeftTopIn(versionLabel, inner, versionLeft, top + 4)
         end
 
         local row = { record = record, check = check, swatch = swatch, label = label,
@@ -317,16 +724,11 @@ Build = function()
     SyncAll()
     UpdateVersions()
 
-    -- FAF's own left-edge tab. Checked means collapsed, as for its panels.
-    local okArrow, arrow = pcall(UIUtil.CreateCollapseArrow, root, 'l')
-    if okArrow and arrow then
-        LayoutHelpers.AtLeftTopIn(arrow, root, -3, (height - 24) / 2)
-        arrow.Depth:Set(function() return root.Depth() + 10 end)
-        arrow.OnCheck = function(self, checked)
-            SetCollapsed(checked)
-            Play(checked and 'UI_Score_Window_Close' or 'UI_Score_Window_Open')
-        end
-        panel.arrow = arrow
+    if arrow then
+        SetUpTab(root, arrow, edge, height)
+    end
+    if layout.editing then
+        panel.reset = ResetButton(body, edge)
     end
 
     local collapsed = collapsedPref
@@ -401,9 +803,33 @@ function Sync()
     end
     local have = panel and table.getn(panel.rows) or 0
     local versions = Config.Panel.ShowVersions and true or false
-    if want ~= have or (panel and panel.versions ~= versions) then
+    -- (Nobody listed, the panel is there only while the options window is.)
+    local shown = panel and true or false
+    if want ~= have or shown ~= (want > 0 or layout.editing)
+        or (panel and panel.versions ~= versions) then
         Build()
     end
+end
+
+--- TeamMouse's options window opened or closed: while it is open the panel
+--- shows even with nobody to list, and its tab drags it along the edges.
+---@param on boolean
+function SetEditing(on)
+    on = on and true or false
+    if layout.editing == on then
+        return
+    end
+    layout.editing = on
+    Tip()
+    Build()
+end
+
+--- Back to where config.lua puts it (Panel.X / Panel.Y), and forget the
+--- saved spot.
+function ResetPlace()
+    layout.place = false
+    SavePlace()
+    Build()
 end
 
 --- Called every beat: follow the rest of the interface in and out of screen

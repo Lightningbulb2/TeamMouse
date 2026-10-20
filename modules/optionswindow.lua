@@ -9,10 +9,10 @@
 --** (as FAF's own options dialog, lua/ui/dialogs/options.lua), and the game's
 --** tooltips on every row.
 --**
---** The values are ReUI's OptionVars (ReUI/Options/Modules/OptionVar.lua):
---** read by calling them, :Set(v) (which calls OnChange: options.lua writes
+--** The values are ReUI's options (ReUI/Options/Modules/ReactiveOption.lua):
+--** :Get (options.Read), :Set(v) (which fires OnChanged: options.lua writes
 --** Config from there, so a change shows at once), :Save() to keep it in the
---** profile, :Reset() to go back to the saved value. OK saves, Cancel (or the
+--** profile, :Restore() to go back to the saved value. OK saves, Cancel (or the
 --** window's close button) resets, Defaults puts config.lua's values back.
 --**
 --** Only loaded when the window is opened, from the game's interface.
@@ -50,6 +50,15 @@ local function WindowTextures()
         br = UIUtil.SkinnableFile('/game/panel/panel_brd_lr.dds'),
         borderColor = '00415055',
     }
+end
+
+--- Tell the player panel whether this window is open: while it is, the panel
+--- shows even in a solo game, and can be dragged by its tab (panel.lua).
+---@param on boolean
+local function PanelEditing(on)
+    pcall(function()
+        import((rawget(_G, 'TeamMousePath') or '/mods/TeamMouse') .. '/modules/panel.lua').SetEditing(on)
+    end)
 end
 
 --- A slider value as shown beside it.
@@ -233,8 +242,10 @@ function Create(parent, title, spec, values)
         EachOption(spec, values, function(entry, option)
             if save then
                 if option.Save then option:Save() end
+            elseif option.Restore then
+                option:Restore()
             elseif option.Reset then
-                option:Reset()
+                option:Reset()   -- an older ReUI's name for it
             end
         end)
         window:Destroy()
@@ -268,6 +279,17 @@ function Create(parent, title, spec, values)
         'Put every TeamMouse setting back as it ships. OK keeps it, Cancel undoes it.')
 
     window.OnClose = function(self) Close(false) end
+
+    -- However the window goes (OK, Cancel, or ReUI taking it down), the panel
+    -- goes back to normal.
+    PanelEditing(true)
+    local destroyed = window.OnDestroy
+    window.OnDestroy = function(self)
+        PanelEditing(false)
+        if destroyed then
+            return destroyed(self)
+        end
+    end
 
     window.TeamMouseRows = state.rows
     window.TeamMouseGrid = grid

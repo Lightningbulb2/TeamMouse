@@ -5594,6 +5594,166 @@ do
 end
 
 --------------------------------------------------------------------------------
+Section('long names in the player panel')
+--------------------------------------------------------------------------------
+do
+    local long = 'AVeryLongPlayerNameIndeed'
+    local utf = 'ЖЖЖЖЖЖЖЖЖЖЖЖЖ'
+    local armies = Armies()
+    armies[2].nickname = long
+    armies[3].team = 1
+    armies[3].nickname = utf
+    local clients = Clients()
+    clients[2].name = long
+    clients[3].name = utf
+    local env, SM = NewSession({ armies = armies, clients = clients, stubs = function(c)
+        return { ['/lua/ui/game/tooltip.lua'] = {
+            CreateMouseoverDisplay = function(control, tip) c.env.__tip = tip end,
+            DestroyMouseoverDisplay = function() c.env.__tip = nil end,
+        } }
+    end })
+    SM.InitTeamMouse(false)
+    local panel = env.import('/mods/TeamMouse/modules/panel.lua').Get()
+    local function Row(name)
+        for _, row in ipairs(panel.rows) do
+            if row.record.name == name then return row end
+        end
+    end
+    local row, urow = Row(long), Row(utf)
+    local text = row and row.label._text or ''
+    Check('a long name is cut short with "..."', string.sub(text, -3) == '...'
+        and string.find(long, string.sub(text, 1, -4), 1, true) == 1, text)
+    Check('and ends before the version column', row and row.versionLabel
+        and row.label.Left() + row.label:GetStringAdvance(text) <= row.versionLabel.Left() - 4,
+        row and (row.label.Left() + row.label:GetStringAdvance(text)) .. ' vs ' .. row.versionLabel.Left())
+    local utext = urow and urow.label._text or ''
+    local cut = string.sub(utext, 1, -4)
+    local last = string.byte(cut, -1)
+    Check('a UTF-8 name is never cut inside a character', string.sub(utext, -3) == '...'
+        and math.mod(string.len(cut), 2) == 0 and last == 150, utext)
+
+    row.label:HandleEvent({ Type = 'MouseEnter' })
+    Check('hovering a cut name shows it whole', env.__tip and env.__tip.text == long
+        and not row.label._hitTestDisabled)
+    row.label:HandleEvent({ Type = 'MouseExit' })
+    Check('and leaving takes it down', env.__tip == nil)
+
+    -- A short name is left alone.
+    local env2, SM2 = NewSession()
+    SM2.InitTeamMouse(false)
+    local p2 = env2.import('/mods/TeamMouse/modules/panel.lua').Get()
+    Check('a short name is whole', p2.rows[1].label._text == 'KasperAUS', p2.rows[1].label._text)
+    Check('and has no tooltip (the pointer goes through it)', p2.rows[1].label._hitTestDisabled == true)
+    Check('no errors', NoErrors(env) and NoErrors(env2))
+end
+
+--------------------------------------------------------------------------------
+Section('the player panel while the options window is open')
+--------------------------------------------------------------------------------
+do
+    -- Alone: no panel, until the options window opens.
+    local env, SM = NewSession({ clients = { [1] = { name = 'Lightningbulb', ['local'] = true } },
+        armies = { [1] = { nickname = 'Lightningbulb', human = true, color = 'ff436eee', team = 1, armyIndex = 1 } } })
+    SM.InitTeamMouse(false)
+    local P = env.import('/mods/TeamMouse/modules/panel.lua')
+    Check('alone, no panel', P.Get() == false)
+    P.SetEditing(true)
+    local panel = P.Get()
+    Check('the options window open: it shows anyway', panel ~= false and table.getn(panel.rows) == 0
+        and panel.placeholder ~= nil)
+    Check('with arrows on its tab and a reset button', panel and panel.hints and table.getn(panel.hints) == 2
+        and panel.reset ~= nil)
+    SM.OnBeat()
+    Check('and stays while it is open', P.Get() == panel)
+    P.SetEditing(false)
+    Check('closed: gone again', P.Get() == false)
+    SM.OnBeat()
+    Check('and stays gone', P.Get() == false)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    local P = env.import('/mods/TeamMouse/modules/panel.lua')
+    local panel = P.Get()
+    Check('normally no drag arrows or reset button', panel.hints == nil and panel.reset == nil)
+    env.__dragger = nil
+    panel.arrow:HandleEvent({ Type = 'ButtonPress', MouseX = 2, MouseY = 400, KeyCode = 1, Modifiers = { Left = true } })
+    Check('and pressing the tab does not drag it', env.__dragger == nil)
+
+    P.SetEditing(true)
+    panel = P.Get()
+    Check('the options window open: arrows on the tab', panel.hints and table.getn(panel.hints) == 2)
+    Check('on the left edge, where config.lua puts it', panel.edge == 'l' and panel.root.Left() == 0)
+
+    -- A click without moving still folds it.
+    panel.arrow:HandleEvent({ Type = 'ButtonPress', MouseX = 2, MouseY = 400, KeyCode = 1, Modifiers = { Left = true } })
+    Check('pressing the tab starts a drag', env.__dragger ~= nil)
+    env.__dragger:OnMove(3, 401)
+    env.__dragger:OnRelease(3, 401)
+    Check('a click without moving folds it', P.Get().collapsed == true)
+    P.Get().arrow:Click()
+    Check('(open again)', P.Get().collapsed == false)
+
+    -- Dragged down the left edge.
+    panel = P.Get()
+    panel.arrow:HandleEvent({ Type = 'ButtonPress', MouseX = 2, MouseY = 400, KeyCode = 1, Modifiers = { Left = true } })
+    local drag = env.__dragger
+    drag:OnMove(10, 800)
+    panel = P.Get()
+    local h = panel.root.Height()
+    Check('dragged down the left edge: follows, tab under the pointer', panel.edge == 'l'
+        and math.abs(panel.root.Top() + h / 2 - 800) < 1, panel.root.Top())
+    -- Across to the right edge.
+    drag:OnMove(1910, 300)
+    panel = P.Get()
+    Check('to the right edge: moves there with a right-hand tab', panel.edge == 'r'
+        and math.abs(panel.root.Left() + panel.root.Width() - 1920) < 1, panel.root.Left())
+    Check('still with its arrows', panel.hints and table.getn(panel.hints) == 2)
+    -- And up to the top.
+    drag:OnMove(900, 3)
+    panel = P.Get()
+    Check('to the top edge: a top tab', panel.edge == 't' and panel.root.Top() == 0
+        and math.abs(panel.root.Left() + panel.root.Width() / 2 - 900) < 1)
+    -- Never off the screen.
+    drag:OnMove(1919, 1)
+    panel = P.Get()
+    Check('kept on the screen in a corner', panel.root.Left() + panel.root.Width() <= 1920 + 0.01
+        and panel.root.Left() >= 0)
+    drag:OnMove(1000, 2)
+    drag:OnRelease(1000, 2)
+    Check('let go: kept in the profile', env.__prefs.TeamMousePanelPlace
+        and env.__prefs.TeamMousePanelPlace.edge == 't' and (env.__prefsSaved or 0) > 0)
+    Check('a drag does not fold it', P.Get().collapsed == false)
+
+    -- Closing the window keeps it where it was put.
+    P.SetEditing(false)
+    panel = P.Get()
+    Check('the window closed: stays put, arrows gone', panel.edge == 't' and panel.hints == nil
+        and panel.reset == nil)
+
+    -- The next game starts it there.
+    local env2, SM2 = NewSession()
+    env2.__prefs.TeamMousePanelPlace = { edge = 'r', along = 0.5 }
+    SM2.InitTeamMouse(false)
+    local p2 = env2.import('/mods/TeamMouse/modules/panel.lua').Get()
+    Check('a saved spot is where the next game puts it', p2 and p2.edge == 'r'
+        and math.abs(p2.root.Left() + p2.root.Width() - 1920) < 1)
+
+    -- Reset.
+    local P2 = env2.import('/mods/TeamMouse/modules/panel.lua')
+    P2.SetEditing(true)
+    p2 = P2.Get()
+    p2.reset:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true } })
+    p2 = P2.Get()
+    Check('Reset position puts it back where config.lua says', p2.edge == 'l' and p2.root.Left() == 0
+        and math.abs(p2.root.Top() - 1080 * 0.32) < 1)
+    Check('and forgets the saved spot', env2.__prefs.TeamMousePanelPlace == nil)
+    Check('no errors', NoErrors(env) and NoErrors(env2))
+end
+
+--------------------------------------------------------------------------------
 Section('versions are sent at the start of a game (no chat lines)')
 --------------------------------------------------------------------------------
 -- The chat report was replaced by the panel's version column: versions still
@@ -8209,10 +8369,12 @@ end
 Section('ReUI options (modules/options.lua, Main.lua, Options.lua)')
 --------------------------------------------------------------------------------
 --- A stand-in for ReUI.Options. 'current' models today's ReUI
---- (4z0t/FAF-UI-Mods, mods/ReUI/Options): Opt(v) marks a default; assigning
---- ReUI.Options.Mods[name] turns every value into an OptionVar (read by
---- calling it; Set calls OnChange; Save writes the profile; Reset goes back);
---- AddOptions takes a table or a function that builds the window. 'older'
+--- (4z0t/FAF-UI-Mods, mods/ReUI/Options 1.2): OptionValue(v) marks a default;
+--- assigning ReUI.Options.Mods[name] turns every value into a ReactiveOption
+--- (Get; Set fires OnChanged; Save writes the profile; Restore goes back --
+--- no Reset, and no call operator). Opt is still there but deprecated: using
+--- it is counted in reui.optUsed. AddOptions takes a table or a function that
+--- builds the window. 'older'
 --- models the shape the Mouse mod was written against: OptionValue with
 --- Get / OnChanged:Add, and a table-only AddOptions.
 ---@param kind string
@@ -8221,29 +8383,35 @@ local function FakeReUI(kind, saved)
     saved = saved or {}
     local reui = { Options = { added = false }, saved = saved }
     if kind == 'current' then
-        local OptMeta = {}
-        reui.Options.Opt = function(v) return setmetatable({ value = v }, OptMeta) end
+        reui.optUsed = 0
+        local ProtoMeta = {}
+        reui.Options.OptionValue = function(v) return setmetatable({ value = v }, ProtoMeta) end
+        reui.Options.Opt = function(v)
+            reui.optUsed = reui.optUsed + 1
+            return setmetatable({ value = v }, ProtoMeta)
+        end
+        reui.Options.ReactiveOption = {}
         local VarMeta = {}
         VarMeta.__index = VarMeta
-        VarMeta.__call = function(self) return self._v end
+        function VarMeta:Get() return self._v end
         function VarMeta:Set(v)
             if self._prev == nil then self._prev = self._v end
             self._v = v
-            self:OnChange()
+            for _, fn in ipairs(self.OnChanged.fns) do fn(self, v) end
         end
-        function VarMeta:Reset()
+        function VarMeta:Restore()
             if self._prev ~= nil then self:Set(self._prev); self._prev = nil end
         end
         function VarMeta:Save() saved[self._o] = self._v; self._prev = nil end
-        function VarMeta:OnChange() end
-        function VarMeta:Option() return self._o end
         reui.Options.Mods = setmetatable({}, { __newindex = function(t, name, values)
             local out = {}
             for k, v in pairs(values) do
-                local default = (getmetatable(v) == OptMeta) and v.value or v
+                local default = (getmetatable(v) == ProtoMeta) and v.value or v
                 local val = saved[k]
                 if val == nil then val = default end
-                out[k] = setmetatable({ _o = k, _v = val }, VarMeta)
+                local changed = { fns = {} }
+                changed.Add = function(self, fn) table.insert(self.fns, fn) end
+                out[k] = setmetatable({ _o = k, _v = val, OnChanged = changed }, VarMeta)
             end
             rawset(t, name, out)
         end })
@@ -8369,7 +8537,8 @@ do
     local optionsFile = RunRoot(env, 'Options.lua')
     local values = env.ReUI.Options.Mods['TeamMouse']
     Check('every setting is a ReUI option', values and values.showNames and values.opacity
-        and values.showNames() == cfg.Appearance.ShowLabels)
+        and values.showNames:Get() == cfg.Appearance.ShowLabels)
+    Check('made with OptionValue, not the deprecated Opt', env.ReUI.optUsed == 0)
     local mainFile = RunRoot(env, 'Main.lua')
     Check('Main.lua asks for ReUI.Options', env.ReUI.required
         and string.find(env.ReUI.required[1], 'ReUI.Options', 1, true))
@@ -8440,7 +8609,7 @@ do
     Check('a slider too', cfg.Appearance.BaseAlpha == 0.3)
     window.TeamMouseButtons.cancel:OnClick()
     Check('Cancel puts them back', cfg.Appearance.ShowLabels == true and cfg.Appearance.BaseAlpha == 0.5
-        and values.opacity() == 50)
+        and values.opacity:Get() == 50)
     Check('and closes the window', window._destroyed)
 
     window = added.build(env.GetFrame(0))
@@ -8463,6 +8632,12 @@ do
     -- During a game.
     SM.InitTeamMouse(false)
     Check('a game sets the rebuild hook', type(env.TeamMouseRebuild) == 'function')
+    local PanelModule = env.import('/mods/TeamMouse/modules/panel.lua')
+    Check('the panel is not being placed with the window closed', not PanelModule.Get().editing)
+    window = added.build(env.GetFrame(0))
+    Check('the window open: the panel can be placed', PanelModule.Get().editing == true)
+    window.TeamMouseButtons.ok:OnClick()
+    Check('closed: back to normal', PanelModule.Get().editing == false)
     env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true })
     local driver = Mock.FindDriver(env)
     env.__clock.t = env.__clock.t + 0.3

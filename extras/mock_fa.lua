@@ -307,6 +307,8 @@ local Text = MakeClass(Control) {
         Control.__init(self, parent)
     end,
     SetText = function(self, t) self._text = t end,
+    -- As the engine's: the width a string would take. Here 7 per byte.
+    GetStringAdvance = function(self, t) return string.len(t) * 7 end,
     SetColor = function(self, c)
         if type(c) ~= 'string' or c == '' then
             error('SetColor given an invalid colour: ' .. tostring(c))
@@ -555,6 +557,9 @@ function M.CreateEnvironment(opts)
     env.GetMouseWorldPos = function() return env.__mouseWorld end
     env.GetMouseScreenPos = function() return env.__mouseScreen end
     env.GetFrame = function() return frame end
+    env.__prefs = {}
+    env.SavePreferences = function() env.__prefsSaved = (env.__prefsSaved or 0) + 1 end
+    env.PostDragger = function(origin, key, drag) env.__dragger = drag end
 
     -- Global in the real engine: UnProject(view, point) -> world Vector.
     -- Inverse of the mock WorldView.Project.
@@ -913,6 +918,16 @@ function M.CreateEnvironment(opts)
             AddBeatFunction = function() end,
             RemoveBeatFunction = function() end,
             AddOnUIDestroyedFunction = function() end,
+        },
+        -- The game's profile: kept in env.__prefs.
+        ['/lua/user/prefs.lua'] = {
+            GetFromCurrentProfile = function(key) return env.__prefs[key] end,
+            SetToCurrentProfile = function(key, value) env.__prefs[key] = value end,
+        },
+        -- A drag: PostDragger keeps the last one in env.__dragger, and a test
+        -- drives it with its OnMove / OnRelease.
+        ['/lua/maui/dragger.lua'] = {
+            Dragger = function() return { Destroy = function(self) self._destroyed = true end } end,
         },
     }
 

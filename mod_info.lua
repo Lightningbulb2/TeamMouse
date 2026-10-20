@@ -1,12 +1,12 @@
 name = "TeamMouse"
-uid = "TeamMouseV2"
+uid = "team-mouse-v3"
 description =
 "Notice: AI was used for developing this mod. \nShow your teammates what you are doing. Shares mouse position, order cursor, build selection and drag-selections with your team, with smooth interpolation, zoom-aware scaling, and a HUD indicator \nhttps://github.com/Lightningbulb2/TeamMouse"
 copyright = "Licensed under the FAF Vault License. Free to use and modify."
 author = "Lightningbulb & HotCheese | KasperAUS | Eternal-"
 url = "https://github.com/Lightningbulb2/TeamMouse"
 icon = "/mods/TeamMouse/logo.png"
-version = 2
+version = 3
 exclusive = false
 
 ui_only = true
@@ -71,6 +71,17 @@ V2:
 • Fix click pulse not displaying when directly swapping between selections rather than deselecting first.
 
 • Fix frozen mouse when teammate's box selection is disabled.
+
+
+v3:
+
+• add drag support for the UI panel to change where on your screen it is.
+
+• the player panel shows in solo games while TeamMouse's options window is open, so it can be placed.
+
+• fix UID capitalization causing deselect every game launch
+
+• truncate names and hover for full names in the UI panel
 
 
 ]]

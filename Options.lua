@@ -8,14 +8,17 @@
 
 local TeamMouseOptions = import('/mods/TeamMouse/modules/options.lua')
 
--- Current ReUI: Opt. An older one: OptionValue. Either way ReUI turns these
--- into saved options when they are assigned here.
-local Make = ReUI.Options.Opt or ReUI.Options.OptionValue
+-- OptionValue (Opt, still there in the current ReUI, is deprecated and warns
+-- in the log). Either way ReUI turns these into saved options when they are
+-- assigned here.
+local Make = ReUI.Options.OptionValue or ReUI.Options.Opt
 ReUI.Options.Mods[TeamMouseOptions.MOD_KEY] = TeamMouseOptions.MakeValues(Make)
 
 function Main()
     local values = ReUI.Options.Mods[TeamMouseOptions.MOD_KEY]
-    -- Our own window needs ReUI's OptionVar (Opt); an older ReUI gets its own
-    -- table-built window, without tooltips.
-    TeamMouseOptions.Register(ReUI.Options.Builder, values, ReUI.Options.Opt ~= nil)
+    -- Our own window needs a ReUI that takes a window-building function (it has
+    -- ReactiveOption, or at least Opt); an older ReUI gets its own table-built
+    -- window, without tooltips.
+    TeamMouseOptions.Register(ReUI.Options.Builder, values,
+        ReUI.Options.ReactiveOption ~= nil or ReUI.Options.Opt ~= nil)
 end

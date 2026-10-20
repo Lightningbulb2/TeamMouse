@@ -20,10 +20,9 @@
 --** picks what they show with their own settings. Network and Protocol must
 --** match between players and are not offered.
 --**
---** ReUI's own option values (ReUI.Options.Opt -> OptionVar, the current
---** ReUI: read by calling it, :Set, OnChange, :Save/:Reset) and the older shape
---** some mods were written against (OptionValue: :Get, OnChanged:Add) are both
---** understood.
+--** ReUI's option values in either shape are understood: the current ReUI's
+--** (ReUI.Options.OptionValue -> ReactiveOption: :Get, :Set, OnChanged:Add,
+--** :Save, :Restore), and the deprecated Opt one (read by calling it, OnChange).
 --**
 --** No imports but config.lua: ReUI may load this before the game's interface
 --** (and teammouse.lua) exists.
@@ -253,7 +252,7 @@ function Controls(Builder, values)
 end
 
 --- ReUI's option values, with config.lua's values as their defaults.
----@param Make? function   # ReUI.Options.Opt (or the older OptionValue); none: plain values
+---@param Make? function   # ReUI.Options.OptionValue (or the deprecated Opt); none: plain values
 ---@return table
 function MakeValues(Make)
     local values = {}
