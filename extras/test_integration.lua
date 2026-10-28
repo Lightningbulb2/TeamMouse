@@ -8368,77 +8368,43 @@ end
 --------------------------------------------------------------------------------
 Section('ReUI options (modules/options.lua, Main.lua, Options.lua)')
 --------------------------------------------------------------------------------
---- A stand-in for ReUI.Options. 'current' models today's ReUI
---- (4z0t/FAF-UI-Mods, mods/ReUI/Options 1.2): OptionValue(v) marks a default;
---- assigning ReUI.Options.Mods[name] turns every value into a ReactiveOption
---- (Get; Set fires OnChanged; Save writes the profile; Restore goes back --
---- no Reset, and no call operator). Opt is still there but deprecated: using
---- it is counted in reui.optUsed. AddOptions takes a table or a function that
---- builds the window. 'older'
---- models the shape the Mouse mod was written against: OptionValue with
---- Get / OnChanged:Add, and a table-only AddOptions.
----@param kind string
+--- A stand-in for ReUI.Options, as in ReUI 1.4.0 (4z0t/FAF-UI-Mods,
+--- mods/ReUI/Options 2.0): OptionValue(v) marks a default; assigning
+--- ReUI.Options.Mods[name] turns every value into a ReactiveOption (Get; Set
+--- fires OnChanged; Save writes the profile; Restore goes back). Add(name, fn)
+--- takes a function that builds the window.
 ---@param saved? table   # option -> value already in the profile
-local function FakeReUI(kind, saved)
+local function FakeReUI(saved)
     saved = saved or {}
     local reui = { Options = { added = false }, saved = saved }
-    if kind == 'current' then
-        reui.optUsed = 0
-        local ProtoMeta = {}
-        reui.Options.OptionValue = function(v) return setmetatable({ value = v }, ProtoMeta) end
-        reui.Options.Opt = function(v)
-            reui.optUsed = reui.optUsed + 1
-            return setmetatable({ value = v }, ProtoMeta)
-        end
-        reui.Options.ReactiveOption = {}
-        local VarMeta = {}
-        VarMeta.__index = VarMeta
-        function VarMeta:Get() return self._v end
-        function VarMeta:Set(v)
-            if self._prev == nil then self._prev = self._v end
-            self._v = v
-            for _, fn in ipairs(self.OnChanged.fns) do fn(self, v) end
-        end
-        function VarMeta:Restore()
-            if self._prev ~= nil then self:Set(self._prev); self._prev = nil end
-        end
-        function VarMeta:Save() saved[self._o] = self._v; self._prev = nil end
-        reui.Options.Mods = setmetatable({}, { __newindex = function(t, name, values)
-            local out = {}
-            for k, v in pairs(values) do
-                local default = (getmetatable(v) == ProtoMeta) and v.value or v
-                local val = saved[k]
-                if val == nil then val = default end
-                local changed = { fns = {} }
-                changed.Add = function(self, fn) table.insert(self.fns, fn) end
-                out[k] = setmetatable({ _o = k, _v = val, OnChanged = changed }, VarMeta)
-            end
-            rawset(t, name, out)
-        end })
-    else
-        reui.Options.Mods = {}
-        reui.Options.OptionValue = function(default)
-            local o = { v = default, OnChanged = { fns = {} } }
-            o.Get = function(self) return self.v end
-            o.OnChanged.Add = function(self, fn) table.insert(self.fns, fn) end
-            o.Set = function(self, v)
-                self.v = v
-                for _, fn in ipairs(self.OnChanged.fns) do fn(self, v) end
-            end
-            return o
-        end
+    local ProtoMeta = {}
+    reui.Options.OptionValue = function(v) return setmetatable({ value = v }, ProtoMeta) end
+    local VarMeta = {}
+    VarMeta.__index = VarMeta
+    function VarMeta:Get() return self._v end
+    function VarMeta:Set(v)
+        if self._prev == nil then self._prev = self._v end
+        self._v = v
+        for _, fn in ipairs(self.OnChanged.fns) do fn(self, v) end
     end
-    reui.Options.Builder = {
-        Filter = function(label, option) return { kind = 'filter', label = label, option = option } end,
-        Slider = function(label, lo, hi, step, option)
-            return { kind = 'slider', label = label, lo = lo, hi = hi, step = step, option = option }
-        end,
-        AddOptions = function(key, title, build)
-            reui.Options.added = { key = key, title = title, build = build }
-        end,
-    }
-    if kind == 'current' then
-        reui.Options.Builder.Title = function(label) return { kind = 'title', label = label } end
+    function VarMeta:Restore()
+        if self._prev ~= nil then self:Set(self._prev); self._prev = nil end
+    end
+    function VarMeta:Save() saved[self._o] = self._v; self._prev = nil end
+    reui.Options.Mods = setmetatable({}, { __newindex = function(t, name, values)
+        local out = {}
+        for k, v in pairs(values) do
+            local default = (getmetatable(v) == ProtoMeta) and v.value or v
+            local val = saved[k]
+            if val == nil then val = default end
+            local changed = { fns = {} }
+            changed.Add = function(self, fn) table.insert(self.fns, fn) end
+            out[k] = setmetatable({ _o = k, _v = val, OnChanged = changed }, VarMeta)
+        end
+        rawset(t, name, out)
+    end })
+    reui.Options.Add = function(name, build)
+        reui.Options.added = { key = name, build = build }
     end
     reui.Require = function(list) reui.required = list end
     return reui
@@ -8526,22 +8492,21 @@ local function RunRoot(env, file)
 end
 
 do
-    -- Today's ReUI: our own window, with tooltips and a scrollbar.
+    -- ReUI: our own window, with tooltips and a scrollbar.
     local env, SM = NewSession({ stubs = WindowStubs })
     local cfg = env.import('/mods/TeamMouse/modules/config.lua')
     local O = env.import('/mods/TeamMouse/modules/options.lua')
     local shipped = cfg.Appearance.BaseAlpha
-    env.ReUI = FakeReUI('current', { opacity = 50, nameSize = 14 })
+    env.ReUI = FakeReUI({ opacity = 50, nameSize = 14 })
 
     -- ReUI loads Options.lua when Main.lua first reads the options.
     local optionsFile = RunRoot(env, 'Options.lua')
     local values = env.ReUI.Options.Mods['TeamMouse']
     Check('every setting is a ReUI option', values and values.showNames and values.opacity
         and values.showNames:Get() == cfg.Appearance.ShowLabels)
-    Check('made with OptionValue, not the deprecated Opt', env.ReUI.optUsed == 0)
     local mainFile = RunRoot(env, 'Main.lua')
-    Check('Main.lua asks for ReUI.Options', env.ReUI.required
-        and string.find(env.ReUI.required[1], 'ReUI.Options', 1, true))
+    Check('Main.lua asks for ReUI.Options 2', env.ReUI.required
+        and string.find(env.ReUI.required[1], 'ReUI.Options >= 2', 1, true))
     mainFile.Main()
     Check('saved settings go into Config', cfg.Appearance.BaseAlpha == 0.5 and cfg.Appearance.LabelSize == 14)
     for _, entry in ipairs(O.Spec) do
@@ -8666,29 +8631,6 @@ do
     Check('teardown removes the rebuild hook', env.TeamMouseRebuild == nil)
     values.showNames:Set(false)
     Check('changes outside a game are harmless', cfg.Appearance.ShowLabels == false and NoErrors(env))
-end
-
-do
-    -- An older ReUI (no Opt): its own table-built window, without tooltips.
-    local env = NewSession()
-    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
-    local O = env.import('/mods/TeamMouse/modules/options.lua')
-    env.ReUI = FakeReUI('older')
-    local optionsFile = RunRoot(env, 'Options.lua')
-    local values = env.ReUI.Options.Mods['TeamMouse']
-    Check('older ReUI: values with its OptionValue', values and values.opacity
-        and values.opacity:Get() == math.floor(cfg.Appearance.BaseAlpha * 100 + 0.5))
-    values.opacity.v = 40
-    RunRoot(env, 'Main.lua').Main()
-    Check('older ReUI: saved settings go into Config', cfg.Appearance.BaseAlpha == 0.4)
-    optionsFile.Main()
-    local added = env.ReUI.Options.added
-    local settings = 0
-    for _, entry in ipairs(O.Spec) do if entry.key then settings = settings + 1 end end
-    Check('older ReUI: a table of controls, one per setting', type(added.build) == 'table'
-        and table.getn(added.build) == settings, type(added.build) == 'table' and table.getn(added.build))
-    values.size:Set(120)
-    Check('older ReUI: changes reach Config', cfg.Appearance.SizeScale == 1.2)
 end
 
 do

@@ -1,12 +1,12 @@
 name = "TeamMouse"
-uid = "team-mouse-v3"
+uid = "team-mouse-v4"
 description =
 "Notice: AI was used for developing this mod. \nShow your teammates what you are doing. Shares mouse position, order cursor, build selection and drag-selections with your team, with smooth interpolation, zoom-aware scaling, and a HUD indicator \nhttps://github.com/Lightningbulb2/TeamMouse"
 copyright = "Licensed under the FAF Vault License. Free to use and modify."
 author = "Lightningbulb & HotCheese | KasperAUS | Eternal-"
 url = "https://github.com/Lightningbulb2/TeamMouse"
 icon = "/mods/TeamMouse/logo.png"
-version = 3
+version = 4
 exclusive = false
 
 ui_only = true
@@ -82,6 +82,12 @@ v3:
 • fix UID capitalization causing deselect every game launch
 
 • truncate names and hover for full names in the UI panel
+
+V4:
+
+• Fix: upgrade ReUI support to latest version
+
+• add coaching
 
 
 ]]

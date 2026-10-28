@@ -1,16 +1,15 @@
 --******************************************************************************
 --** TeamMouse -- modules/optionswindow.lua
 --**
---** TeamMouse's window in ReUI's options list. ReUI's own table-built window
---** has neither tooltips nor a scrollbar, but ReUI.Options.Builder.AddOptions
---** also takes a function that builds the window itself (ReUI's
---** Options/Modules/Selector.lua: `iscallable(self.data[2])`). This is that
+--** TeamMouse's window in ReUI's options list. ReUI.Options.Add takes a
+--** function that builds the window itself (ReUI's
+--** Options/Modules/Selector.lua: `iscallable(self.data.builder)`). This is that
 --** window: the game's own Window, a Grid of rows with the game's scrollbar
 --** (as FAF's own options dialog, lua/ui/dialogs/options.lua), and the game's
 --** tooltips on every row.
 --**
 --** The values are ReUI's options (ReUI/Options/Modules/ReactiveOption.lua):
---** :Get (options.Read), :Set(v) (which fires OnChanged: options.lua writes
+--** :Get, :Set(v) (which fires OnChanged: options.lua writes
 --** Config from there, so a change shows at once), :Save() to keep it in the
 --** profile, :Restore() to go back to the saved value. OK saves, Cancel (or the
 --** window's close button) resets, Defaults puts config.lua's values back.
@@ -131,14 +130,14 @@ local function CreateRow(grid, entry, option, state)
         local check = UIUtil.CreateCheckbox(row, '/dialogs/check-box_btn/', entry.label, true)
         LayoutHelpers.AtLeftIn(check, row, 8)
         LayoutHelpers.AtVerticalCenterIn(check, row)
-        check:SetCheck(Options.Read(option) and true or false, true)
+        check:SetCheck(option:Get() and true or false, true)
         check.OnCheck = function(control, checked)
             option:Set(checked and true or false)
         end
         Hook(check, state, tip)
         row.control = check
         row.Refresh = function(self)
-            check:SetCheck(Options.Read(option) and true or false, true)
+            check:SetCheck(option:Get() and true or false, true)
         end
         return row
     end
@@ -167,14 +166,14 @@ local function CreateRow(grid, entry, option, state)
     slider.OnValueSet = function(control, newValue)
         option:Set(newValue)
     end
-    local current = Options.Read(option)
+    local current = option:Get()
     if type(current) ~= 'number' then current = entry.min end
     slider:SetValue(current)
     value:SetText(Shown(entry, current))
 
     row.control = slider
     row.Refresh = function(self)
-        local v = Options.Read(option)
+        local v = option:Get()
         if type(v) == 'number' then
             slider:SetValue(v)
             value:SetText(Shown(entry, v))
@@ -241,11 +240,9 @@ function Create(parent, title, spec, values)
         Tooltip.DestroyMouseoverDisplay()
         EachOption(spec, values, function(entry, option)
             if save then
-                if option.Save then option:Save() end
-            elseif option.Restore then
+                option:Save()
+            else
                 option:Restore()
-            elseif option.Reset then
-                option:Reset()   -- an older ReUI's name for it
             end
         end)
         window:Destroy()
@@ -267,7 +264,7 @@ function Create(parent, title, spec, values)
     defaults.OnClick = function()
         EachOption(spec, values, function(entry, option)
             local default = entry.default
-            if default ~= nil and default ~= Options.Read(option) then
+            if default ~= nil and default ~= option:Get() then
                 option:Set(default)
             end
         end)

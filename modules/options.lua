@@ -20,9 +20,8 @@
 --** picks what they show with their own settings. Network and Protocol must
 --** match between players and are not offered.
 --**
---** ReUI's option values in either shape are understood: the current ReUI's
---** (ReUI.Options.OptionValue -> ReactiveOption: :Get, :Set, OnChanged:Add,
---** :Save, :Restore), and the deprecated Opt one (read by calling it, OnChange).
+--** ReUI's option values are ReactiveOptions (ReUI.Options 2.0, from
+--** ReUI.Options.OptionValue): :Get, :Set, OnChanged:Add, :Save, :Restore.
 --**
 --** No imports but config.lua: ReUI may load this before the game's interface
 --** (and teammouse.lua) exists.
@@ -161,37 +160,6 @@ function Apply(entry, value)
     return true
 end
 
---- An option's current value, whichever shape ReUI gave it.
----@param option any
----@return any
-function Read(option)
-    if type(option) == 'table' and type(option.Get) == 'function' then
-        return option:Get()
-    end
-    local ok, value = pcall(option)
-    if ok then
-        return value
-    end
-end
-
---- Call fn(value) whenever an option changes, whichever shape it is.
----@param option table
----@param fn function
-local function Watch(option, fn)
-    if type(option.OnChanged) == 'table' and type(option.OnChanged.Add) == 'function' then
-        option.OnChanged:Add(function(changed, value) fn(value) end)
-        return
-    end
-    -- ReUI's OptionVar: Set calls self:OnChange(). Keep whatever was there.
-    local previous = option.OnChange
-    option.OnChange = function(self)
-        if previous then
-            previous(self)
-        end
-        fn(Read(self))
-    end
-end
-
 --- Cursors are rebuilt once the change is in, if a game is running.
 local function Rebuild()
     local rebuild = rawget(_G, 'TeamMouseRebuild')
@@ -212,10 +180,10 @@ function Bind(values)
         local entry = item
         local option = entry.key and values[entry.key]
         if option then
-            if Apply(entry, Read(option)) and entry.rebuild then
+            if Apply(entry, option:Get()) and entry.rebuild then
                 rebuild = true
             end
-            Watch(option, function(value)
+            option.OnChanged:Add(function(changed, value)
                 if Apply(entry, value) and entry.rebuild then
                     Rebuild()
                 end
@@ -227,32 +195,8 @@ function Bind(values)
     end
 end
 
---- The controls for ReUI's own (table-built) options window: no tooltips
---- or scrollbar there, but it is what an older ReUI can draw.
----@param Builder table      # ReUI.Options.Builder
----@param values table       # ReUI.Options.Mods[MOD_KEY]
----@return table
-function Controls(Builder, values)
-    local out = {}
-    for _, entry in ipairs(Spec) do
-        local option = entry.key and values[entry.key]
-        if entry.kind == 'title' then
-            if Builder.Title then
-                table.insert(out, Builder.Title(entry.label, 14))
-            end
-        elseif option then
-            if entry.kind == 'toggle' then
-                table.insert(out, Builder.Filter(entry.label, option))
-            else
-                table.insert(out, Builder.Slider(entry.label, entry.min, entry.max, entry.step, option))
-            end
-        end
-    end
-    return out
-end
-
 --- ReUI's option values, with config.lua's values as their defaults.
----@param Make? function   # ReUI.Options.OptionValue (or the deprecated Opt); none: plain values
+---@param Make? function   # ReUI.Options.OptionValue; none: plain values
 ---@return table
 function MakeValues(Make)
     local values = {}
@@ -266,21 +210,15 @@ function MakeValues(Make)
     return values
 end
 
---- Register the options window with ReUI: our own window (tooltips, a
---- scrollbar) where ReUI can take one, its table-built one otherwise.
----@param Builder table   # ReUI.Options.Builder
----@param values table    # ReUI.Options.Mods[MOD_KEY]
----@param ownWindow boolean
-function Register(Builder, values, ownWindow)
-    if ownWindow then
-        Builder.AddOptions(MOD_KEY, TITLE, function(parent)
-            local OptionsWindow = import((rawget(_G, 'TeamMousePath') or '/mods/TeamMouse')
-                .. '/modules/optionswindow.lua')
-            return OptionsWindow.Create(parent, TITLE, Spec, values)
-        end)
-    else
-        Builder.AddOptions(MOD_KEY, TITLE, Controls(Builder, values))
-    end
+--- Register our own options window (tooltips, a scrollbar) in ReUI's list.
+---@param ReUIOptions table   # ReUI.Options
+---@param values table        # ReUI.Options.Mods[MOD_KEY]
+function Register(ReUIOptions, values)
+    ReUIOptions.Add(TITLE, function(parent)
+        local OptionsWindow = import((rawget(_G, 'TeamMousePath') or '/mods/TeamMouse')
+            .. '/modules/optionswindow.lua')
+        return OptionsWindow.Create(parent, TITLE, Spec, values)
+    end)
 end
 
 -- What config.lua ships, kept before ReUI's saved values are written in: the
