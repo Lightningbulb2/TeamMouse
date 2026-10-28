@@ -1982,7 +1982,7 @@ RemoteCursor = Class(Group) {
         end
 
         if onHud and not self.hud then
-            self.hud = HudGhost(self, self.record.faction)
+            self.hud = HudGhost(self, self.record.faction, self.record.coach)
             self.hudFade = 0
             self.appliedHudAlpha = -1
             self.hudBound = false

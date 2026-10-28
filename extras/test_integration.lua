@@ -9673,6 +9673,38 @@ do
 end
 
 do
+    -- Regression test for: an observer's build drag cancelled with a right
+    -- click still placing one structure at its end.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    PanelRow(env, 2).coachCheck:Click()
+    MoveTo(env, SM, 40, 0, 40, 80, 80)
+    Calibrate(env, SM)
+    local view = env.__views['WorldCamera']
+    local cell = Mock.FindDragOverlays(env)[1].children[1]
+    local first = table.getn(env.__sent) + 1
+    env.__commandMode = { 'build', { name = 'ueb0101' } }
+    env.__mouseWorld = { 50, 0, 50 }
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    cell:HandleEvent({ Type = 'MouseEnter', MouseX = 300, MouseY = 200, Modifiers = { Left = true } })
+    local consumed = view:HandleEvent({ Type = 'ButtonPress', MouseX = 300, MouseY = 200,
+        Modifiers = { Left = true, Right = true } })
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 300, MouseY = 200, Modifiers = {} })
+    for _ = 1, 3 do
+        env.__clock.t = env.__clock.t + 0.2
+        SM.OnBeat()
+        Frames(env, 0.1, 0.05)
+    end
+    local placed = false
+    for i = first, table.getn(env.__sent) do
+        if type(env.__sent[i].msg.mob) == 'table' then placed = true end
+    end
+    Check('a right click during a build drag cancels it: nothing is placed', not placed)
+    Check('and the right click goes to the game (it leaves build mode)', not consumed)
+    Check('no errors', NoErrors(env))
+end
+
+do
     -- An observer following: their clicks stay theirs (the build menu), no
     -- capture layer, no rings; a right-drag still draws on the player's screen.
     local env, SM = NewSession(ObserverOpts())
@@ -9885,8 +9917,10 @@ do
     for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
         if c.record and c.record.coach then coach = c end
     end
-    Check('a coach on their interface: no interface ghost', coach and not (coach.hud and Mock.IsVisible(coach.hud)))
-    Check('and no cursor', coach and not Mock.IsVisible(coach.mouseIcon))
+    Check('a coach on their interface: their cursor shows, on its ghost panel',
+        coach and Mock.IsVisible(coach.mouseIcon) and coach.hud and Mock.IsVisible(coach.hud))
+    Check('which is an invisible rectangle, not an interface picture',
+        coach and coach.hud and coach.hud.hud._color == '00ffffff', coach and coach.hud and coach.hud.hud._color)
     receive('Caster', { v = 1, a = -1, p = { 130, 0, 100 }, o = 0, z = 80, w = true })
     Frames(env, 0.3, 0.05)
     Check('back on the map: their cursor is back', Mock.IsVisible(coach.mouseIcon))

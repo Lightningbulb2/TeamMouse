@@ -40,7 +40,9 @@ HudGhost = Class(Group) {
     ---@param self HudGhost
     ---@param parent Control
     ---@param faction? number   # their faction (armies table), for the picture's colours
-    __init = function(self, parent, faction)
+    ---@param clear? boolean    # no picture, an invisible panel: an observer coaching
+    ---                           (their interface is not the player's)
+    __init = function(self, parent, faction, clear)
         Group.__init(self, parent, 'TeamMouseHudGhost')
 
         local w = Config.Hud.Width
@@ -52,8 +54,12 @@ HudGhost = Class(Group) {
         self:DisableHitTest(true)
 
         self.hud = Bitmap(self)
-        -- Their own faction's interface, as they see it.
-        self.hud:SetTexture(TextureFor(faction))
+        if clear then
+            self.hud:SetSolidColor('00ffffff')
+        else
+            -- Their own faction's interface, as they see it.
+            self.hud:SetTexture(TextureFor(faction))
+        end
         LayoutHelpers.SetDimensions(self.hud, w, h)
         LayoutHelpers.AtLeftTopIn(self.hud, self, 0, 0)
         self.hud:DisableHitTest(true)

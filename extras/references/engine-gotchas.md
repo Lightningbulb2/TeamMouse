@@ -1117,8 +1117,10 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   while `localSelecting`), so a row of structures being laid is not slid
   away from. (The reported "left drags fail while following" was build
   drags, and was the IsKeyDown beat check above.)
-- **A coach on their own interface** shows the player nothing (no HUD ghost,
-  no cursor): the observer's interface means nothing to them.
+- **A coach on their own interface** shows their cursor on an invisible
+  ghost panel (`HudGhost(parent, faction, clear)`): the observer's interface
+  picture means nothing to the player. (Hiding the cursor there instead was
+  tried; it read as the cursor disappearing.)
 - **Replays had no TeamMouse panel (found in the logs):** nothing was
   recorded. The dev autolobby only sets what `/gameoptions` lists, so
   `TeamMouseReplay` was never on (the launch script now passes
@@ -1155,3 +1157,9 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
     piece's alpha to be pushed each frame.
   - The cursor stream itself was already compact and is unchanged: ~31 B/s at
     rest, ~430 sweeping, ~660 panning or box-dragging, per teammate.
+- **A right press during a left drag carries `Modifiers.Left` too** (the left
+  button is still held). Taken for a new left press, in build mode it began a
+  one-structure drag where the right click was, placed on release (reported:
+  a cancelled build drag still placed one building). The view hook only
+  hands a press without `Modifiers.Right` to HandleLeftPress, and a right
+  press cancels a build drag in progress (`CancelBuildDrag`), as the game does.

@@ -3981,11 +3981,7 @@ local function UpdateFrame(delta)
                     if record.self then
                         visual:HideOwnPieces()
                     elseif record.followsMe and record.coach then
-                        visual:CursorFade(record.renderHud and 0 or record.coachFade or 0)
-                    elseif record.coach and record.renderHud then
-                        -- On their own (observer's) interface: nothing of it
-                        -- means anything to the player -- no ghost, no cursor.
-                        visual:HideCursorOnly()
+                        visual:CursorFade(record.coachFade or 0)
                     elseif visual.cursorOnlyHidden or visual.cursorFaded then
                         visual:ShowCursorAgain()
                     end
@@ -4652,6 +4648,17 @@ local function ObserverOrderPress(t, event)
     return false
 end
 
+--- A right press while a row of structures is being dragged cancels it, as
+--- in the game: nothing is announced when the left button comes up
+--- (reported: an observer's cancelled drag still placed one at its end).
+---@param view WorldView
+local function CancelBuildDrag(view)
+    if localSelecting and sendState.line then
+        EndDrag()
+        LowerGridNow(view)
+    end
+end
+
 --- The release of a build press kept from the game: leave build mode, as the
 --- game does once it has placed something (Shift keeps it, as in the game).
 ---@param event table
@@ -4729,11 +4736,18 @@ local function HookViewEvents(view)
             localMouse.pendingHud = false
         end
         --LOG("Pending: " .. tostring(localMouse.pendingHud))
+        if t == 'ButtonPress' and event.Modifiers and event.Modifiers.Right then
+            CancelBuildDrag(self)
+        end
         if trackRight and tracking and (t == 'ButtonPress' or t == 'ButtonRelease') then
             HandleRightButton(t, event, self)
         end
         if trackSelection and (tracking or localSelecting) then
-            if t == 'ButtonPress' then
+            -- (A right press with the left button still held carries Left
+            -- too: it is the right button's, not a new left press -- taken
+            -- as one, it began a new one-structure drag where it was pressed,
+            -- and that structure was placed on release.)
+            if t == 'ButtonPress' and not (event.Modifiers and event.Modifiers.Right) then
                 HandleLeftPress(self, event)
             elseif t == 'ButtonRelease' then
                 AnnounceBuild()
