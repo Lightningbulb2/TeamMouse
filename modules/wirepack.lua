@@ -65,6 +65,11 @@ local function Get(s, at, width)
     return v
 end
 
+--- The digit writer and reader, for other compact strings (coach.lua's
+--- strokes). `width` 1..3.
+PutDigits = Put
+GetDigits = Get
+
 ---@param f number
 ---@return boolean, boolean   # on the HUD, dragging
 local function Parts(f)

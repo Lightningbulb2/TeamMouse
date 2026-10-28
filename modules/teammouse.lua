@@ -1048,7 +1048,7 @@ local function ProcessMessage(sender, msg)
     local plain = true
     if type(msg) == 'table' and type(msg[Config.ChatIdentifier]) == 'string' then
         NoteCompact(sender)
-        msg = WireCodec.Decode(msg[Config.ChatIdentifier])
+        msg = WireCodec.DecodeReused(msg[Config.ChatIdentifier])
         plain = false
     end
     if type(msg) ~= 'table' then

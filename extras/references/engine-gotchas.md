@@ -1138,3 +1138,20 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
 - **`SetFocusArmy` via ConExecute is a moderator event in every log**, and the
   focus takes a moment to change: re-asserted at most once a second
   (`Coach` `SyncFocus`), not every frame (reported: a screenful).
+- **Optimisation pass (measured with extras/frame_report.lua, now warmed up
+  10 s so the sample buffers are full before measuring; and wire_size.lua):**
+  - The live receive path decodes into one reused table
+    (`WireCodec.DecodeReused`; valid until the next call, so only for
+    ProcessMessage, which copies what it keeps), and `Encode`'s self-check
+    decodes into a second one. Garbage per frame, three teammates: at rest
+    212 -> 27, moving 657 -> 316, busy 686 -> 334. `Decode` still returns a
+    fresh table for every other caller.
+  - Coach strokes are one packed string (`Coach.PackPoints`: wirepack.lua's
+    64 digits, the first point whole, then one-digit differences, the id and
+    "done" in a 3-digit header -- no `ti`/`te` keys). A second of drawing on
+    a teammate's screen: ~975 -> ~530 B/s.
+  - Screen strokes fade in `Coach.FadeStep` (0.05) steps: every dot's alpha
+    is an engine call. A following coach's cursor no longer forces every
+    piece's alpha to be pushed each frame.
+  - The cursor stream itself was already compact and is unchanged: ~31 B/s at
+    rest, ~430 sweeping, ~660 panning or box-dragging, per teammate.

@@ -30,12 +30,15 @@
 --** one client concerned:
 --**   { tmf = 1|0, ta = army }     I follow you / no longer
 --**   { tmh = 1|0 }                I coach you / no longer (observers)
---**   { tml = 'x,y,...', ti, te }  a lens stroke: points in thousandths of
---**                                your main view (te: the stroke is done)
---**   { tmk = 'x,y' }              a click ring, the same way
---**   { tmw = 'x,y,z,...', ti, te } a coach's stroke on the map, world tenths
---** Each chunk repeats the last point of the one before, so a lost message
---** leaves a gap, not a wrong line.
+--**   { tml = <points> }           a lens stroke: thousandths of your main view
+--**   { tmk = 'x,y' }              a click ring, in thousandths the same way
+--**   { tmw = <points> }           a coach's stroke on the map, world tenths
+--** <points> is one string in wirepack.lua's 64 digits (PackPoints): whether
+--** the stroke is done (1 digit), its id (2), the chunk's first point whole
+--** (3 digits a number), then each number as the difference from the point
+--** before: one digit for -31..31, else '_' and three. Each chunk repeats the
+--** last point of the one before, whole, so a lost message leaves a gap, not a
+--** wrong line.
 --**
 --** UNVERIFIED in game: that a right press returned as handled (true) from the
 --** world view's HandleEvent stops the game's painting and orders, as a left
@@ -46,6 +49,7 @@
 
 local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 local CursorData = import(_G.TeamMousePath .. '/modules/cursordata.lua')
+local WirePack = import(_G.TeamMousePath .. '/modules/wirepack.lua')
 local WorldViewManager = import('/lua/ui/game/worldview.lua')
 local Group = import('/lua/maui/group.lua').Group
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
@@ -363,7 +367,8 @@ local function AnimateLens(now)
         if alpha <= 0 then
             for j = 1, s.nd do GiveDot(s.dots[j]) end
         else
-            if math.abs(alpha - s.alpha) >= 0.01 then
+            -- In steps (Coach.FadeStep): every dot is an engine call.
+            if math.abs(alpha - s.alpha) >= cfg.FadeStep then
                 s.alpha = alpha
                 for j = 1, s.nd do s.dots[j]:SetAlpha(alpha) end
             end
@@ -623,8 +628,8 @@ local function StrokePoint(x, y)
         local u, v = (x - s.l) / s.w, (y - s.t) / s.h
         LensPoint(s.local_, u, v)
         s.n = s.n + 1
-        s.wire[s.n * 2 - 1] = Int(u * 1000)
-        s.wire[s.n * 2] = Int(v * 1000)
+        s.wire[s.n * 2 - 1] = math.floor(u * 1000 + 0.5)
+        s.wire[s.n * 2] = math.floor(v * 1000 + 0.5)
     else
         local ok, pos = pcall(GetMouseWorldPos)
         if not ok or type(pos) ~= 'table' then
@@ -637,9 +642,9 @@ local function StrokePoint(x, y)
         if type(wy) ~= 'number' or wy ~= wy then wy = 0 end
         InkPoint(s.local_, wx, wy, wz)
         s.n = s.n + 1
-        s.wire[s.n * 3 - 2] = Int(wx * 10)
-        s.wire[s.n * 3 - 1] = Int(wy * 10)
-        s.wire[s.n * 3] = Int(wz * 10)
+        s.wire[s.n * 3 - 2] = math.floor(wx * 10 + 0.5)
+        s.wire[s.n * 3 - 1] = math.floor(wy * 10 + 0.5)
+        s.wire[s.n * 3] = math.floor(wz * 10 + 0.5)
     end
 end
 
@@ -657,19 +662,12 @@ local function FlushStroke(done)
         return
     end
     if s.n > s.sent or done then
-        local first = math.max(1, s.sent)
-        local parts = {}
-        for i = (first - 1) * per + 1, s.n * per do
-            table.insert(parts, s.wire[i])
-        end
-        if table.getn(parts) > 0 or done then
-            local msg = { ti = s.id, te = done and 1 or nil }
-            if s.kind == 'lens' then
-                msg.tml = table.concat(parts, ',')
-            else
-                msg.tmw = table.concat(parts, ',')
-            end
-            Send(s.index, msg)
+        -- From the last point sent (whole), so a lost chunk leaves a gap.
+        local packed = PackPoints(s.id, done, s.wire, math.max(1, s.sent), s.n, per)
+        if s.kind == 'lens' then
+            Send(s.index, { tml = packed })
+        else
+            Send(s.index, { tmw = packed })
         end
         s.sent = s.n
     end
@@ -717,6 +715,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Numbers off the wire (comma-separated whole numbers), into `scratch`.
+--- (Only the click ring still comes this way.)
 ---@param s any
 ---@param max number
 ---@return number   # how many (0: none, or not readable)
@@ -734,6 +733,89 @@ local function ReadInts(s, max)
         scratch[n] = tonumber(word)
     end
     return n
+end
+
+--- A whole number's offset, and the range a one-digit difference covers.
+local WHOLE = 131072
+local SMALL = 31
+local ESCAPE = 63
+
+--- A chunk of a stroke as one string (see the top of the file): `values`
+--- holds whole numbers, `per` to a point; points `from`..`to` go.
+---@param id number
+---@param done boolean
+---@param values number[]
+---@param from number
+---@param to number
+---@param per number   # 2 on the screen, 3 on the map
+---@return string
+function PackPoints(id, done, values, from, to, per)
+    local parts = {}
+    local Put = WirePack.PutDigits
+    Put(parts, done and 1 or 0, 1)
+    Put(parts, math.mod(math.floor(id), 4096), 2)
+    local base = (from - 1) * per
+    for i = base + 1, to * per do
+        local v = values[i]
+        if i <= base + per then
+            Put(parts, v + WHOLE, 3)
+        else
+            local d = v - values[i - per]
+            if d >= -SMALL and d <= SMALL then
+                Put(parts, d + SMALL, 1)
+            else
+                Put(parts, ESCAPE, 1)
+                Put(parts, d + WHOLE, 3)
+            end
+        end
+    end
+    return table.concat(parts)
+end
+
+--- The reverse, into `out` (scratch unless given): how many numbers (whole
+--- points only; 0 if the string is not one), the stroke's id, and whether it
+--- is done.
+---@param s any
+---@param per number
+---@param max number   # numbers at most
+---@param out? table
+---@return number, number, boolean
+function UnpackPoints(s, per, max, out)
+    out = out or scratch
+    if type(s) ~= 'string' or string.len(s) > 4 * max + 3 then
+        return 0, 0, false
+    end
+    local Get = WirePack.GetDigits
+    local done, id = Get(s, 1, 1), Get(s, 2, 2)
+    if not done or not id then
+        return 0, 0, false
+    end
+    local at, len, n = 4, string.len(s), 0
+    while at <= len and n < max do
+        local v
+        if n < per then
+            v = Get(s, at, 3)
+            if not v then return 0, 0, false end
+            v = v - WHOLE
+            at = at + 3
+        else
+            local d = Get(s, at, 1)
+            if not d then return 0, 0, false end
+            at = at + 1
+            if d == ESCAPE then
+                d = Get(s, at, 3)
+                if not d then return 0, 0, false end
+                d = d - WHOLE
+                at = at + 3
+            else
+                d = d - SMALL
+            end
+            v = out[n + 1 - per] + d
+        end
+        n = n + 1
+        out[n] = v
+    end
+    return n - math.mod(n, per), id, done == 1
 end
 
 --- The colour someone draws in: a player's own, an observer's Coach.Color.
@@ -838,14 +920,16 @@ function Receive(sender, msg)
     end
 
     local cfg = Config.Coach
-    local id = type(msg.ti) == 'number' and msg.ti or 0
     if msg.tml ~= nil and state.followers[index] then
-        local n = ReadInts(msg.tml, cfg.MaxPoints * 2)
+        local n, id, done = UnpackPoints(msg.tml, 2, cfg.MaxPoints * 2)
+        if n == 0 then
+            return true
+        end
         local s = LensStroke(sender .. '/' .. id, ColorOf(sender))
         for i = 1, n - 1, 2 do
             LensPoint(s, scratch[i] / 1000, scratch[i + 1] / 1000)
         end
-        if msg.te then
+        if done then
             s.endT = GetSystemTimeSeconds()
         end
     elseif msg.tmk ~= nil and state.followers[index] then
@@ -854,12 +938,15 @@ function Receive(sender, msg)
             Ring(l + scratch[1] / 1000 * w, t + scratch[2] / 1000 * h, ColorOf(sender))
         end
     elseif msg.tmw ~= nil and state.coaches[sender] then
-        local n = ReadInts(msg.tmw, cfg.MaxPoints * 3)
+        local n, id, done = UnpackPoints(msg.tmw, 3, cfg.MaxPoints * 3)
+        if n == 0 then
+            return true
+        end
         local s = InkStroke(sender .. '/' .. id, ColorOf(sender))
         for i = 1, n - 2, 3 do
             InkPoint(s, scratch[i] / 10, scratch[i + 1] / 10, scratch[i + 2] / 10)
         end
-        if msg.te then
+        if done then
             s.endT = GetSystemTimeSeconds()
         end
     end

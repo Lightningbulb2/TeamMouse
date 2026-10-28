@@ -1308,10 +1308,9 @@ RemoteCursor = Class(Group) {
                 self.nameBarStroke:SetHidden(true)
             end
         end
-        -- So ApplyAlpha puts the real values back once this stops.
+        -- ShowCursorAgain puts the real values back once this stops (set
+        -- here every frame meanwhile, after UpdateFrame's own).
         self.cursorFaded = true
-        self.appliedAlpha = -1
-        self.appliedLabelAlpha = -1
     end,
 
     --- Our own record (an observer's own orders and placements, which the

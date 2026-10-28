@@ -767,8 +767,10 @@ Coach = {
     ShowLens = true,
 
     --- Finished strokes fade out over this many seconds: on their screen
-    --- (following), and on their map (coaching).
+    --- (following), and on their map (coaching). Screen strokes fade in steps
+    --- of FadeStep (each dot is an engine call).
     LensFadeSeconds = 1,
+    FadeStep = 0.05,
     FadeSeconds = 2,
 
     --- A stroke whose sender went quiet without finishing it ends after this.

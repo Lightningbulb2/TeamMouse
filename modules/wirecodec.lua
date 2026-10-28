@@ -801,15 +801,29 @@ end
 local decodeR = { s = '', at = 1, len = 0 }
 local decodeCtx = { p = false, msg = false, px = nil, py = nil, pz = nil }
 
-local function DecodeUnsafe(s)
+--- DecodeReused's packet and position, kept from one packet to the next;
+--- and Encode's own, for the check that the string decodes to the packet
+--- (apart, so the two can never be handed the same table).
+local reused = { msg = {}, p = {} }
+local checked = { msg = {}, p = {} }
+
+local function DecodeUnsafe(s, into)
     local r = decodeR
     r.s, r.at, r.len = s, 1, string.len(s)
     if GetUint(r) ~= FORMAT then
         error('another format')
     end
-    local msg = { v = Config.Protocol }
+    local msg, p
+    if into then
+        msg, p = into.msg, into.p
+        for k in pairs(msg) do
+            msg[k] = nil
+        end
+        msg.v = Config.Protocol
+    else
+        msg, p = { v = Config.Protocol }, {}
+    end
     msg.a = (GetReal(r, 1, nil))
-    local p = {}
     local ctx = decodeCtx
     ctx.p, ctx.msg = p, msg
     p[1], ctx.px = GetReal(r, 10, nil)
@@ -839,6 +853,23 @@ function Decode(s)
         return nil
     end
     local ok, msg = pcall(DecodeUnsafe, s)
+    if ok then
+        return msg
+    end
+    return nil
+end
+
+--- Decode, into the same table every time: the live receive path, which is
+--- done with each packet before the next arrives, and copies what it keeps.
+--- Valid only until the next call. (A new table per packet was most of the
+--- mod's garbage with teammates at rest: extras/frame_report.lua.)
+---@param s any
+---@return table | nil
+function DecodeReused(s)
+    if type(s) ~= 'string' then
+        return nil
+    end
+    local ok, msg = pcall(DecodeUnsafe, s, reused)
     if ok then
         return msg
     end
@@ -888,8 +919,8 @@ function Encode(msg)
     if not ok then
         return nil
     end
-    local back = Decode(s)
-    if not back then
+    local okBack, back = pcall(DecodeUnsafe, s, checked)
+    if not okBack or not back then
         return nil
     end
     back.Identifier = msg.Identifier

@@ -9184,6 +9184,27 @@ local function CoachSent(env, key, first)
     return out
 end
 
+--- A stroke chunk as coach.lua sends it: points `values` (whole numbers,
+--- `per` to a point), stroke `id`, finished or not.
+local function Stroke(env, values, per, id, done)
+    local n = table.getn(values) / per
+    return env.import('/mods/TeamMouse/modules/coach.lua').PackPoints(id, done, values, 1, n, per)
+end
+
+--- A stroke chunk read back: its numbers, how many, its id, and whether it
+--- is finished.
+local function ReadStroke(env, s, per)
+    local out = {}
+    local n, id, done = env.import('/mods/TeamMouse/modules/coach.lua').UnpackPoints(s, per, 10000, out)
+    return out, n, id, done
+end
+
+--- Whether a stroke chunk says the stroke is finished.
+local function StrokeDone(env, s, per)
+    local _, _, _, done = ReadStroke(env, s, per)
+    return done
+end
+
 --- A list of client indices as text, to compare.
 local function To(s)
     return s and table.concat(s.clients, ',') or ''
@@ -9235,13 +9256,29 @@ do
     local last = strokes[table.getn(strokes)]
     local nums = 0
     for _, s in ipairs(strokes) do
-        for _ in string.gfind(s.msg.tml, '[^,]+') do nums = nums + 1 end
+        local _, n = ReadStroke(env, s.msg.tml, 2)
+        nums = nums + n
     end
     Check('it is sent to them as it is drawn, in pieces', table.getn(strokes) >= 2, table.getn(strokes))
-    Check('to them alone, and the last piece says it is finished', last and last.msg.te == 1
+    Check('to them alone, and the last piece says it is finished', last and StrokeDone(env, last.msg.tml, 2)
         and To(last) == '2', last and To(last))
     Check('every point goes (the first of each piece repeats the last of the one before)',
         nums >= 2 * 11, nums)
+    -- What was sent, read at the other end, is the stroke we drew.
+    do
+        local renv, RSM = NewSession({ clients = { [1] = { name = 'Lightningbulb' },
+            [2] = { name = 'KasperAUS', ['local'] = true }, [3] = { name = 'Eternal' } }, focusArmy = 2 })
+        RSM.InitTeamMouse(false)
+        local rreceive = renv.__chatFuncs['TeamMouse']
+        rreceive('Lightningbulb', { Identifier = 'TeamMouse', tmf = 1, ta = 2 })
+        for _, sent in ipairs(strokes) do rreceive('Lightningbulb', sent.msg) end
+        local _, rdraw = renv.import('/mods/TeamMouse/modules/coach.lua').Get()
+        local _, ldraw = Coach.Get()
+        local mine, theirs = ldraw.lens[1], rdraw.lens[1]
+        Check('sent as differences, it arrives as the very stroke drawn', mine and theirs
+            and math.abs(mine.x - theirs.x) <= 1 and math.abs(mine.y - theirs.y) <= 1 and mine.n == theirs.n,
+            theirs and (theirs.x .. ',' .. theirs.y .. ' vs ' .. mine.x .. ',' .. mine.y .. ' n ' .. theirs.n .. '/' .. mine.n))
+    end
     local drawn = false
     for i = sent0 + 1, table.getn(env.__sent) do
         if env.__sent[i].msg.d then drawn = true end
@@ -9334,7 +9371,7 @@ do
     for _, s in ipairs(env.__sent) do if s.msg.cam then camBefore = true end end
     Check('teammates are not sent our camera while none follows us', not camBefore)
 
-    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 100, 100, 500, 500 }, 2, 1, false) })
     Check('a stroke from someone not following us is ignored', draw.nlens == 0)
 
     receive('KasperAUS', { Identifier = 'TeamMouse', tmf = 1, ta = 1 })
@@ -9348,18 +9385,18 @@ do
     Check('and their cursor is not shown while they look through our eyes',
         cursor and not Mock.IsVisible(cursor.mouseIcon))
 
-    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 100, 100, 500, 500 }, 2, 1, false) })
     Check('their stroke is drawn on our screen', draw.nlens == 1 and draw.lens[1].nd > 10)
     local l, t = env.__views['WorldCamera'].Left(), env.__views['WorldCamera'].Top()
     local w = env.__views['WorldCamera'].Width()
     local d1 = draw.lens[1].dots[1]
     Check('where they drew it on our view', d1 and math.abs(d1.Left() - (l + 0.1 * w)) <= 3, d1 and d1.Left())
-    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '500,500,900,500', ti = 1, te = 1 })
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 500, 500, 900, 500 }, 2, 1, true) })
     Check('one stroke, carried on', draw.nlens == 1)
     Frames(env, 2.2, 0.05)
     Check('and faded away once finished', draw.nlens == 0)
 
-    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 2 })
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 100, 100, 500, 500 }, 2, 2, false) })
     Frames(env, 0.5, 0.05)
     Check('a stroke never finished (its end lost) still goes', draw.nlens == 1)
     Frames(env, 5, 0.1)
@@ -9372,7 +9409,7 @@ do
     Check('players have a "drawings on my screen" box, ticked', panel.lensCheck and panel.lensCheck:IsChecked())
     panel.lensCheck:Click()
     Check('unticked, what is up goes', draw.nrings == 0)
-    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 3 })
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 100, 100, 500, 500 }, 2, 3, false) })
     Check('and nothing more is drawn', draw.nlens == 0)
 
     receive('KasperAUS', { Identifier = 'TeamMouse', tmf = 0, ta = 1 })
@@ -9397,7 +9434,7 @@ do
     local panel = env.import('/mods/TeamMouse/modules/panel.lua').Get()
     Check('Coach.ShowLens off: the box starts unticked', panel.lensCheck and not panel.lensCheck:IsChecked())
     env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmf = 1, ta = 1 })
-    env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tml = Stroke(env, { 100, 100, 500, 500 }, 2, 1, false) })
     local _, draw = env.import('/mods/TeamMouse/modules/coach.lua').Get()
     Check('and nothing is drawn', draw.nlens == 0)
 end
@@ -9449,9 +9486,10 @@ do
     local ink = CoachSent(env, 'tmw', c0 + 1)
     Check('a coach\'s right-drag is theirs, not the game\'s painting', consumed == true)
     Check('and goes to the coached player as a stroke on the map', table.getn(ink) >= 1
-        and ink[table.getn(ink)].msg.te == 1 and To(ink[1]) == '2')
-    Check('in world tenths', ink[1] and string.find(ink[1].msg.tmw, '^100,0,100,150,0,100', 1) ~= nil,
-        ink[1] and ink[1].msg.tmw)
+        and StrokeDone(env, ink[table.getn(ink)].msg.tmw, 3) and To(ink[1]) == '2')
+    local inkPts = ink[1] and ReadStroke(env, ink[1].msg.tmw, 3) or {}
+    Check('in world tenths', inkPts[1] == 100 and inkPts[2] == 0 and inkPts[3] == 100 and inkPts[4] == 150
+        and inkPts[6] == 100, table.concat(inkPts, ','))
     Mock.RenderWorld(env)
     Check('we see it on our map too', table.getn(env.__lines) >= 5, table.getn(env.__lines))
     Frames(env, 2.2, 0.05)
@@ -9494,7 +9532,7 @@ do
     end
     Check('and it moves like a teammate\'s', shown)
 
-    receive('Caster', { Identifier = 'TeamMouse', tmw = '100,0,100,200,0,100,300,0,150', ti = 1, te = 1 })
+    receive('Caster', { Identifier = 'TeamMouse', tmw = Stroke(env, { 100, 0, 100, 200, 0, 100, 300, 0, 150 }, 3, 1, true) })
     Mock.RenderWorld(env)
     local white = 0
     for _, line in ipairs(env.__lines) do
@@ -9511,7 +9549,7 @@ do
 
     receive('Caster', { Identifier = 'TeamMouse', tmh = 0 })
     Check('they stop: their cursor goes', table.getn(Mock.FindCursors(env, 'WorldCamera')) == before)
-    receive('Caster', { Identifier = 'TeamMouse', tmw = '100,0,100,200,0,100', ti = 2, te = 1 })
+    receive('Caster', { Identifier = 'TeamMouse', tmw = Stroke(env, { 100, 0, 100, 200, 0, 100 }, 3, 2, true) })
     Mock.RenderWorld(env)
     Check('and their strokes are no longer taken', table.getn(env.__lines) == 0)
     Frames(env, 0.3, 0.05)
@@ -9660,7 +9698,7 @@ do
     frame:HandleEvent({ Type = 'ButtonRelease', MouseX = 980, MouseY = 1000, Modifiers = { Right = true } })
     local strokes = CoachSent(env, 'tml', c0 + 1)
     Check('a right-drag over the interface still draws on their screen', table.getn(strokes) >= 1
-        and strokes[table.getn(strokes)].msg.te == 1)
+        and StrokeDone(env, strokes[table.getn(strokes)].msg.tml, 2))
 
     -- In build mode a right click leaves it, as in the game: no drawing.
     env.__commandMode = { 'build', { name = 'ueb0101' } }
@@ -9920,7 +9958,8 @@ do
     local FR = dofile('extras/frame_report.lua')
     rawset(_G, 'FRAME_REPORT_LIB', nil)
     local garbage, instructions = FR.Measure('busy', 60)
-    Check('three busy teammates: under 1200 bytes of garbage a frame', garbage < 1200,
+    -- (~334 since packets are decoded into a reused table: wirecodec DecodeReused.)
+    Check('three busy teammates: under 600 bytes of garbage a frame', garbage < 600,
         string.format('%.0f bytes', garbage))
     Check('and under 7800 Lua instructions a frame', instructions < 7800,
         string.format('%.0f instructions', instructions))

@@ -123,7 +123,8 @@ local function Session(scenario)
 end
 
 local MOD_FILES = { 'teammouse.lua', 'remotecursor.lua', 'wirecodec.lua', 'wirepack.lua', 'cursordata.lua',
-    'hudghost.lua', 'actions.lua', 'panel.lua', 'version.lua', 'replaycodec.lua', 'legacyprotocol.lua' }
+    'hudghost.lua', 'actions.lua', 'panel.lua', 'version.lua', 'replaycodec.lua', 'legacyprotocol.lua',
+    'coach.lua' }
 local isMod = {}
 for _, f in ipairs(MOD_FILES) do isMod[f] = true end
 
@@ -131,7 +132,10 @@ for _, f in ipairs(MOD_FILES) do isMod[f] = true end
 --- mod's garbage and instructions, in total and by function.
 local function Measure(scenario, frames)
     local run = Session(scenario)
-    run(240)   -- pools, shapes and buffers all built first
+    -- Pools, shapes and buffers all built first: each teammate's sample
+    -- buffer (Smoothing.BufferSize, 48) fills at ten packets a second, so a
+    -- shorter warm-up counted the buffer's own first fill as garbage.
+    run(600)
     local short = {}
     local ins, mem, insBy, memBy = 0, 0, {}, {}
     local lastKey, lastMod, lastKB
