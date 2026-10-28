@@ -331,6 +331,10 @@ Selection = {
 Line = {
     Enabled = true,
 
+    --- A build press is one structure until the pointer has gone this many
+    --- pixels from where it was pressed; only then is it a row.
+    StartPixels = 8,
+
     --- Dot size and spacing on screen, in pixels.
     DotSize = 4,
     DotSpacing = 12,
@@ -383,6 +387,12 @@ Draw = {
 
     --- Seconds the finished trail takes to fade away once the button is up.
     FadeTime = 2.0,
+
+    --- Drawn as lines on the map, as the game draws a drawing: their opacity
+    --- and UI_DrawLine thickness. (Dots, above, only where a view cannot draw
+    --- lines.)
+    Alpha = 1,
+    Thickness = 0,
 
     --- A stroke shorter than this many pixels on screen is a click.
     MinLength = 8,
@@ -701,12 +711,13 @@ Viewport = {
 }
 
 --==============================================================================
--- Following a player (replays and observers)
+-- Following a player
 --==============================================================================
 --
--- Watching a replay, or observing a live game, the panel's "follow" box on a
--- player makes your camera follow theirs: where they look, how far in, at
--- what angle.
+-- Click a player's name in the panel (a teammate, or anyone when observing or
+-- watching a replay) and your camera follows theirs: where they look, how far
+-- in, at what angle. Click it again to go back to where you were looking.
+-- Live, what you draw while following goes on their screen (Coach).
 --
 Follow = {
     Enabled = true,
@@ -735,6 +746,75 @@ Follow = {
     --- shows their camera's updates as small steps; lower is smoother but
     --- trails behind.
     Rate = 8,
+}
+
+--==============================================================================
+-- Coaching (modules/coach.lua)
+--==============================================================================
+--
+-- Following someone live, your right-drags are drawn on THEIR screen, as if on
+-- the camera lens (over their interface), never through the game's painting
+-- (nothing reaches the sim or the replay); a left click plays a ring there.
+-- A live observer can also "coach" one player (the panel's box): their cursor
+-- goes to that player alone, their selection follows the player's, and their
+-- right-drags on the map are drawn on that player's map.
+--
+Coach = {
+    Enabled = true,
+
+    --- Show what people following or coaching you draw (the panel's
+    --- "drawings on my screen" box starts like this).
+    ShowLens = true,
+
+    --- Finished strokes fade out over this many seconds: on their screen
+    --- (following), and on their map (coaching).
+    LensFadeSeconds = 1,
+    FadeSeconds = 2,
+
+    --- A stroke whose sender went quiet without finishing it ends after this.
+    StaleSeconds = 3,
+
+    --- Lens strokes: dots this many pixels across, this far apart.
+    LensThickness = 3,
+    LensSpacing = 2,
+    --- Over everything else on screen.
+    LensDepth = 20000,
+    --- While following, a layer at this depth takes clicks and right-drags
+    --- anywhere on screen (over the interface too) for drawing on theirs;
+    --- the panel is raised above it, to PanelRaisedDepth, so its names
+    --- still work.
+    CaptureDepth = 19000,
+    PanelRaisedDepth = 19500,
+    --- At most this many dots up at once (strokes and rings together).
+    MaxDots = 3000,
+
+    --- Strokes up at once, and points in one.
+    MaxStrokes = 24,
+    MaxPoints = 400,
+    --- A new point once the pointer has moved this many pixels.
+    MinMove = 3,
+    --- A stroke in progress is sent this often.
+    SendInterval = 0.1,
+
+    --- The click ring: grows to RingRadius pixels over RingSeconds.
+    RingRadius = 30,
+    RingSeconds = 0.6,
+    RingDots = 28,
+
+    --- A coach's strokes on the map: UI_DrawLine thickness.
+    InkThickness = 0,
+
+    --- An observer's colour (cursor and strokes): they have no army.
+    Color = 'ffffffff',
+
+    --- Observers: following a player makes them the one you coach too.
+    CoachFollowed = true,
+
+    --- A coach following you: their cursor shows only while they do
+    --- something (a building in hand, a drag, a click, a drawing), fading
+    --- out over CursorFadeSeconds after; AlwaysShowCursor shows it always.
+    AlwaysShowCursor = false,
+    CursorFadeSeconds = 0.5,
 }
 
 --==============================================================================

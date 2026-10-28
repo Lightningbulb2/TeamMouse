@@ -540,7 +540,8 @@ a whole view-width to the left, and the receiver's HUD-panel clamp pinned the
 ghost to the left edge of its view (CONFIRMED by report). The origin view now
 only verifies UnProject; an offset view is not projected through at all until a
 resting pointer on it has settled the convention (`UnProjectAt`).
-
+
+
 ### Knowing a structure was really placed (UNVERIFIED in game)
 
 FAF's `/lua/ui/game/commandmode.lua` defines `OnCommandIssued(command)`,
@@ -621,7 +622,8 @@ once by `ReplayCodec.IsEnabled`, falling back to `Config.ReplayCodec.Enabled`
 when absent. `mods.lua` (and so `AllMods`) is not in the FAF repository; that it
 includes UI mods is assumed -- if the option never shows in the lobby, that is
 why.
-
+
+
 ### Cursors, the name bar, teammates' views
 
 - **A paused replay sends nothing** (no sim, no recorded packets), so every
@@ -660,7 +662,8 @@ why.
   verified; nothing is sent before). Lines are straight between the corners,
   so they can dip under hills. **Needs confirming in game:** a steeply tilted
   camera, where corners can land very far away.
-
+
+
 ### Following a player's camera (replays; UNVERIFIED in game)
 
 - `CameraImpl:SaveSettings()` returns `{ Focus, Heading, Pitch, Zoom }` and
@@ -678,7 +681,8 @@ why.
 - **Needs confirming in game:** that `RestoreSettings` every frame is smooth,
   and what happens if the viewer scrolls or zooms while following (it will
   be pulled back; there may be a visible tug).
-
+
+
 ### Bandwidth and per-frame cost (measured in the mock)
 
 Measured with a mock session (wire_size.lua's estimate for bytes; counts of
@@ -731,7 +735,8 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   ring buffer would change the layout every reader and test relies on);
   the decoder still builds the extra-samples string the receiver then reads
   (the price of decoding to exactly the table that was sent).
-
+
+
 ### Upgrades, selections, clicks (UNVERIFIED in game)
 
 - **Upgrades** cannot be caught by wrapping alone. Three engine globals
@@ -774,7 +779,8 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   Live observers get the camera in their own copy of each packet (players
   send teammates and observers separately: `sendState.teamTo` / `specTo`),
   and may follow; they do not take selections.
-
+
+
 - **Selection boxes** (`UI_DrawRect(pos, size, color, thickness)`):
   - **Thickness is in world units** (like size). With a fixed 1 it filled
     small boxes zoomed in and vanished around big ones zoomed out (reported
@@ -809,11 +815,13 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   `SimCallback({ Func = 'DistributeOrders', ... }, true)`, and only when the
   chosen unit has orders to give out, so the same wrap reports it (action 8).
   UNVERIFIED in game.
-
+
+
 - **A plain right click is a move.** Its cursor index is 0 (no command
   cursor) or `selectable`/`selectable-invalid` (over a unit you could select);
   the order is sent with the `move` index so teammates see the move icon.
-
+
+
 - **No compatibility with earlier TeamMouse builds** (unreleased): one wire
   format. The order cursor `o` goes only when it changes and with the
   keep-alive (a missing `o` means unchanged). Compatibility is kept only with
@@ -824,7 +832,8 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   it (reported). It now only counts within `Orders.GrabStartPixels` of where
   the drag began; and while a box drag is in progress the pointer is reported
   as plain, whatever the game's cursor flickers to.
-
+
+
 - **Over the cap: rectangles round the bunches.** More units selected than
   `TeamSelection.MaxSend` (40) used to mean only the first 40 got boxes.
   Now the sender groups every selected unit (up to `MaxCluster`) into grid
@@ -836,7 +845,8 @@ lazy-var sets, visibility, alpha and Project calls for per-frame work):
   selected, since past the cap more units change the rectangles but not the
   ids. Drawn with `UI_DrawLine` (rectangles are not square; `UI_DrawRect`
   only does squares), fading like live boxes, for observers too.
-
+
+
 - **Hiding a cursor stops it being sent.** Unticking a player in the panel
   (or "all") sends `tmo = 0` naming their army; they drop our client from
   their sends (`sendState.muted`, `teamLive` / `specLive`), and with nobody
@@ -969,3 +979,162 @@ counts notches (|WheelRotation| / 120, at least 1 per event) while following;
 follow and untick its box (`Panel.SyncFollow`). Fewer are undone by the
 follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
 (120) on every system.
+
+### Coaching (coach.lua; UNVERIFIED in game)
+
+- **Following is a click on a name** in the panel (the follow column is
+  gone). Live players can follow teammates now, not only observers and
+  replays. The follower says `{ tmf = 1, ta = army }` to the followed
+  player's client alone (again every 2 s while no camera comes); while any
+  teammate follows, a player's packets to teammates carry `cam` too
+  (`Coach.TeamFollowing`), and the followed player hides the follower's
+  cursor (`record.followsMe`). Clicking the name again restores the camera
+  saved when following began (`SaveSettings` / `RestoreSettings`); a hard
+  scroll (`NoteFollowScroll` -> `Coach.FollowStopped`) leaves it.
+- **While following live, presses are consumed**: the view hook asks
+  `Coach.ViewEvent` first and returns true for a right press (a lens stroke)
+  and a left press (a click ring), so neither FAF's painting (which would
+  send a SimCallback, into the replay) nor any order or selection happens.
+  This relies on a handled ButtonPress stopping the engine's native
+  handling, confirmed for the LEFT button only ("The native drag capture");
+  **needs confirming for the right button**. A stroke ends on a release, or,
+  as the game's own right drags, on a motion without `Modifiers.Right`.
+- **Lens coordinates** are thousandths of the followed player's main view.
+  The follower measures where that view is on its own screen by projecting
+  the middle of each edge of their outline (`vp`) through its camera
+  (`TargetRect`); without `vp`, its own view. **Needs checking in game** how
+  well a mark lines up, especially with a steep camera.
+- **Lens drawing is bitmaps**: small square dots (`Coach.LensThickness`,
+  `LensSpacing` apart) in one group on the root frame at `Coach.LensDepth`,
+  above the interface, hit-testing off, pooled (`MaxDots`). UI_DrawLine only
+  works inside a world view's render, so it cannot draw over the interface.
+- **Observer coaching**: the "coach" box sets `sendState.teamTo` to that
+  one client and the observer runs the ordinary send (`PlayerBeat`) while
+  coaching; observers never record, so nothing reaches the replay. The
+  player, on `{ tmh = 1 }`, makes a record for the observer (army
+  `1000 + client index`, `Coach.Color`) and drops it on `tmh = 0`. The
+  observer's right-drags (not following) are its own strokes in world
+  space (`tmw`), drawn with UI_DrawLine in a shape on every world view;
+  FAF's painting would be no use here anyway, since it refuses to start with
+  units selected and the coach's selection copies the player's.
+- **Drawing over the interface (replaces the view-hook path while following):**
+  following live, coach.lua raises a transparent, hit-testable Bitmap over the
+  whole screen (`Coach.CaptureDepth`); every press, drag and release goes to
+  it, so right-drags draw and left clicks ring even over the interface, and
+  the game sees none of them. The wheel is passed on to the main world view
+  (zooming, `NoteFollowScroll`). The panel is raised above it
+  (`Panel.SetRaised`, `Coach.PanelRaisedDepth`) so a name can still be
+  clicked to stop. The whole interface is unusable meanwhile, by design;
+  keyboard hotkeys still work.
+- **A white box from the screen's corner to a stroke (CONFIRMED by
+  screenshot):** dots were shown before their Left/Top were set -- the
+  circular-default trap above. Every dot is now hidden at creation, its
+  Width/Height/Left/Top/Right/Bottom set, then shown. The mock does not
+  model the engine's failed lazy evaluation, so its test only checks the
+  layout ends up right; **needs confirming in game** that the box is gone.
+- **An observer's focus army** follows whoever they follow (else coach):
+  `ConExecute('SetFocusArmy ' .. (army - 1))`, as FAF's score panel does,
+  and `-1` when neither, so `SelectUnits` with the player's units works and
+  their selection is copied while following too.
+- **Observers' orders are kept from the game (second attempt; UNVERIFIED in
+  game that it stops "trying to cheat"):** `OnCommandIssued` comes after the
+  engine has sent a command, so the press itself is withheld
+  (`ObserverOrderPress`): a right press with units selected outside a command
+  mode, a left press in a command mode; and the `IssueBlueprintCommand*`
+  wrappers skip the real call (hooked for every live observer). The first
+  attempt "did nothing": a blocked placement waited for the game's own build
+  orders (`Orders.BuildConfirm`), and once any command had passed the hook
+  (`buildWatch.seen`) their absence meant "refused" -- so observers now
+  announce placements as dragged. And an observer only following (not
+  coaching) was not tracked at all: now following or coaching
+  (`Coach.Acting`) tracks them. A blocked build press leaves build mode on
+  its release unless Shift is held (`EndBlockedBuild`), as a placed building
+  does. What they did is drawn for them too: the packet is read back into a
+  record of their own (`FeedSelf`, army 2000, `record.self`), drawn without
+  its arrow, name, building in hand or selection box (`HideOwnPieces`) --
+  the game shows those already, but not the row, placements or orders it
+  never received.
+- **A coaching observer is tracked like a player** (drag boxes, structure
+  lines, orders): the grid and the input hooks (`CoachInputs`) are set up
+  when coaching first starts; their selection is not sent (it copies the
+  player's). Their focus army is locked to the coached (or followed) army:
+  changed from the score panel, it is put back the next frame. Stopping
+  (a click on the name, a hard scroll) leaves the focus on that army.
+- **A coach following us** keeps sending their cursor; the player hides only
+  the arrow, name, zoom bar and interface ghost (`HideCursorOnly`, each
+  frame after `UpdateFrame`; `ShowCursorAgain` when they stop), so their
+  building in hand and drag box still show. A teammate following still
+  hides everything. Following, a right click in a command mode leaves the
+  mode (the game's own behaviour) instead of starting a stroke.
+- **An observer following has no capture layer** (their left clicks are
+  theirs: the build menu, ghost placements for the player). Their right
+  presses over the interface reach `Coach.RootEvent` by bubbling up to the
+  root frame -- only from interface controls that do not take right clicks
+  themselves. A player's capture layer raises FAF's menu bar
+  (`tabs.lua` `controls.parent` / `collapseArrow`) above it with the panel.
+- **A teammate's drawing in progress is world lines now** (`NewTrailShape`
+  in remotecursor.lua, `'TeamMouseTrail' .. army` on each view): UI_DrawLine
+  through the trail's own points in their colour (`Draw.Alpha`,
+  `Draw.Thickness`), as the game draws a finished drawing and as a coach's
+  map strokes are drawn. The screen-length check (`Draw.MinLength`: a click
+  is not a drawing) still projects the points. The dotted bitmap trail is
+  only used where a view cannot take shapes.
+- **A following coach's cursor** shows while they are busy (`CoachBusy` in
+  coach.lua: a building in hand, any drag, a recent click pulse, one of
+  their lens strokes in progress) and fades out over
+  `Coach.CursorFadeSeconds` (`record.coachFade`, applied after UpdateFrame by
+  `RemoteCursor:CursorFade`, which pushes alpha afresh each frame meanwhile).
+  `Coach.AlwaysShowCursor` (ReUI) keeps it up. `Coach.CoachFollowed` (ReUI,
+  on by default): an observer following a player ticks their coach box.
+- **A single placement is not a row (reported for an observer coach):** a
+  build press used to be reported as a structure line from the press, and
+  the line only ended on a release the view saw -- for an observer, whose
+  build order the game refuses, the release can go missing, and the player
+  saw a row until the pointer next moved. Now a build press is a line only
+  once the pointer has gone `Line.StartPixels` from the press (latched).
+  **Do not end a left drag on the beat because `IsKeyDown('LBUTTON')` reads
+  up** (tried, CONFIRMED broken by report): an observer coach's box drags
+  stopped streaming and their build drags ended at once -- it read up
+  mid-drag. It is only used to confirm a motion event's own Modifiers.
+- **"X is trying to cheat!"** is not TeamMouse's: the sim flags any command
+  source that orders units it does not control (`Sync.Cheaters`) and every
+  client prints it in `lua/UserSync.lua`. It cannot be cancelled once the
+  engine has sent the command (`OnCommandIssued` comes after).
+- **The cheat message is gone (CONFIRMED by report)** with the press filter.
+  Keyboard and button orders are now covered too: for live observers the
+  command globals (`IssueCommand`, `IssueUnitCommand(ToUnit)`,
+  `IssueDockCommand`, `SetPaused(OfUnit)`, `ToggleScriptBit`,
+  `Set/ToggleFireState`, `SetAuto(Surface)Mode`, and `SimCallback` when it
+  carries the selection) do nothing (`BlockObserverCommands`), and so does a
+  unit's `ProcessInfo` once a selected unit is seen (`BlockUnitMethods`,
+  through its metatable; UNVERIFIED that engine units expose it there). Not
+  covered: `upgrade-structure.lua` keeps its own copy of
+  `IssueBlueprintCommandToUnit` from load. All put back on teardown.
+- **A coach's right click that never moved is a ghost order, not a dot**
+  (`EndStroke` -> `env.ghostOrder` -> `GhostOrder`): one point is never sent
+  as a stroke.
+- **Following, the camera holds still during a left drag** (`FollowPass`,
+  while `localSelecting`), so a row of structures being laid is not slid
+  away from. (The reported "left drags fail while following" was build
+  drags, and was the IsKeyDown beat check above.)
+- **A coach on their own interface** shows the player nothing (no HUD ghost,
+  no cursor): the observer's interface means nothing to them.
+- **Replays had no TeamMouse panel (found in the logs):** nothing was
+  recorded. The dev autolobby only sets what `/gameoptions` lists, so
+  `TeamMouseReplay` was never on (the launch script now passes
+  `TeamMouseReplay:on`); and FAF's full lobby drops the option at launch
+  unless TeamMouse is in Game.prefs' `active_mods` ("marked for removal
+  because none of these mods are enabled"). A replay's panel lists only
+  players whose recorded data arrives, so an unrecorded game shows none.
+- **An observer's drags did not move until released (reported), and the
+  cause was calibration, not the drag code:** an observer only ran the send
+  logic once following, with `FollowPass` moving the camera every frame;
+  `GetMouseWorldPos` lags a camera moved that way, so the first resting
+  comparison in `CalibratePointerMap` disagreed and failed calibration for
+  good -- and without it `UnProjectAt` (the grid's far end) returns nil.
+  Now: no calibration within 0.5 s of `FollowPass` moving the camera
+  (`pointerMap.camMovedT`), observers calibrate on every beat
+  (`ObserverCalibrate`), and it gives up only after 5 disagreements in a row.
+- **`SetFocusArmy` via ConExecute is a moderator event in every log**, and the
+  focus takes a moment to change: re-asserted at most once a second
+  (`Coach` `SyncFocus`), not every frame (reported: a screenful).

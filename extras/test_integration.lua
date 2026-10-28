@@ -1330,6 +1330,11 @@ do
     SM.InitTeamMouse(false)
 
     RestOnMap(env, SM, 400, 200, { 200, 0, 100 })
+    -- (One odd reading is not enough to give up: it takes several in a row.)
+    for _ = 1, 5 do
+        env.__clock.t = env.__clock.t + 0.1
+        SM.OnBeat()
+    end
 
     Mock.HoverHud(env, 800, 600)
     env.__clock.t = env.__clock.t + 0.1
@@ -1971,6 +1976,11 @@ do
     env.__commandMode = { 'build', { name = 'ueb0101' } }
     env.__mouseWorld = { 50, 0, 50 }
     view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    env.__clock.t = env.__clock.t + 0.1
+    SM.OnBeat()
+    Check('a build press that has not moved is one structure, not a row',
+        not env.__sent[table.getn(env.__sent)].msg.l)
+    view:HandleEvent({ Type = 'MouseMotion', MouseX = 140, MouseY = 100, Modifiers = { Left = true } })
     env.__clock.t = env.__clock.t + 0.2
     SM.OnBeat()
     local msg = env.__sent[table.getn(env.__sent)].msg
@@ -2015,6 +2025,7 @@ do
     local view = env2.__views['WorldCamera']
     env2.__commandMode = { 'build', { name = 'ueb0101' } }
     view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    view:HandleEvent({ Type = 'MouseMotion', MouseX = 140, MouseY = 100, Modifiers = { Left = true } })
     env2.__clock.t = env2.__clock.t + 0.2
     SM.OnBeat()
     local msg = env2.__sent[table.getn(env2.__sent)].msg
@@ -3743,6 +3754,7 @@ do
     env.__commandMode = { 'build', { name = 'ueb0101' } }
     env.__views['WorldCamera']:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100,
         Modifiers = { Left = true, Shift = true } })
+    env.__views['WorldCamera']:HandleEvent({ Type = 'MouseMotion', MouseX = 140, MouseY = 100, Modifiers = { Left = true } })
     env.__clock.t = env.__clock.t + 0.1
     SM.OnBeat()
     local msg = env.__sent[table.getn(env.__sent)].msg
@@ -3873,14 +3885,14 @@ end
 --------------------------------------------------------------------------------
 Section('the drawing trail')
 --------------------------------------------------------------------------------
+--- Lines of a teammate's drawing in progress (drawn as the game draws a
+--- drawing: a shape of UI_DrawLine segments), 0 when it is not up.
 local function TrailDots(visual)
-    local n = 0
-    if visual.trail.line then
-        for i = 1, visual.trail.line.max do
-            if Mock.IsVisible(visual.trail.line.dots[i]) then n = n + 1 end
-        end
+    local shape = visual.trailShape
+    if not shape or shape.Hidden or shape.n < 2 then
+        return 0
     end
-    return n
+    return shape.n - 1
 end
 
 do
@@ -3903,14 +3915,21 @@ do
         driver:OnFrame(0.01)
     end
     Check('a stroke leaves a trail', visual.trail.n >= 4, visual.trail.n)
-    Check('drawn as dots', TrailDots(visual) >= 6, TrailDots(visual))
-    local line = visual.trail.line
-    local first, lastDot = line.dots[1], line.dots[line.shown]
-    Check('starting where the stroke did', first.Left() == 200 - 1.5 and first.Top() == 200 - 1.5,
-        first.Left() .. ',' .. first.Top())
-    Check('and reaching where it has got to',
-        math.abs(lastDot.Left() - (600 - 1.5)) < 12 and math.abs(lastDot.Top() - (500 - 1.5)) < 12,
-        lastDot.Left() .. ',' .. lastDot.Top())
+    Check('drawn as lines on the map, as the game draws a drawing', TrailDots(visual) >= 3, TrailDots(visual))
+    local shape = visual.trailShape
+    local first, lastPt = shape.pts[1], shape.pts[shape.n]
+    Check('starting where the stroke did', first[1] == 100 and first[3] == 100, first[1] .. ',' .. first[3])
+    Check('and reaching where it has got to', math.abs(lastPt[1] - 300) < 6 and math.abs(lastPt[3] - 250) < 6,
+        lastPt[1] .. ',' .. lastPt[3])
+    Mock.RenderWorld(env)
+    local drawn = 0
+    for _, l in ipairs(env.__lines) do
+        if string.sub(l[3], 3) == string.sub(visual.uiColor, 3) and string.sub(l[3], 1, 2) == 'ff' then
+            drawn = drawn + 1
+        end
+    end
+    Check('in their colour, solid, while it is drawn', drawn == shape.n - 1, drawn)
+    Check('(no dots)', not visual.trail.line or visual.trail.line.shown == 0)
     Check('no box or line drawn for a stroke', not visual.dragBoxShown and not visual.lineShown)
 
     -- The button comes up: the trail fades and goes.
@@ -3921,11 +3940,11 @@ do
     end
     env.__clock.t = T + 0.9
     driver:OnFrame(0.01)
-    local a1 = line.dots[1]:GetAlpha()
-    Check('it stays up for a moment after the stroke', TrailDots(visual) >= 6)
+    local a1 = tonumber(string.sub(shape.color, 1, 2), 16)
+    Check('it stays up for a moment after the stroke', TrailDots(visual) >= 3)
     env.__clock.t = T + 1.6
     driver:OnFrame(0.01)
-    local a2 = line.dots[1]:GetAlpha()
+    local a2 = tonumber(string.sub(shape.color, 1, 2), 16)
     Check('and fades', a2 < a1, a1 .. ' -> ' .. a2)
     env.__clock.t = T + 4.0
     receive('KasperAUS', { v = 1, a = 2, p = { 300, 0, 250 }, o = 0, z = 60, w = true, d = false })
@@ -3965,7 +3984,7 @@ do
         env.__clock.t = T + 1.13 + i * 0.01
         driver:OnFrame(0.01)
     end
-    Check('the next stroke draws normally', TrailDots(visual) >= 3, TrailDots(visual))
+    Check('the next stroke draws normally', TrailDots(visual) >= 2, TrailDots(visual))
 end
 
 do
@@ -3986,7 +4005,7 @@ do
     end
     local visual = Mock.FindCursors(env, 'WorldCamera')[1]
     Check('a long stroke keeps within the point limit', visual.trail.n <= 100, visual.trail.n)
-    Check('and the dot pool', TrailDots(visual) <= 80)
+    Check('and so do its lines', TrailDots(visual) <= 99)
     Check('no errors', NoErrors(env))
 end
 
@@ -4087,6 +4106,7 @@ do
     env.__commandMode = { 'build', { name = 'ueb0101' } }
     env.__views['WorldCamera']:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100,
         Modifiers = { Left = true } })
+    env.__views['WorldCamera']:HandleEvent({ Type = 'MouseMotion', MouseX = 140, MouseY = 100, Modifiers = { Left = true } })
     env.__cursor:SetTexture(HAND, 0, 0)
     env.__clock.t = env.__clock.t + 0.1
     SM.OnBeat()
@@ -4791,6 +4811,27 @@ do
     Check('placing a structure is announced', type(msg.mo) == 'table' and msg.mo[2] == 50 and msg.mo[4] == 50)
     Check('with the structure it is', type(msg.mob) == 'table' and msg.mob[1] == 'ueb0101')
     Check('and no line for a single one', msg.mo and msg.mo[5] == 50 and msg.mo[6] == 50)
+end
+
+do
+    -- Regression test for: an observer coach's box and build drags ending on
+    -- their first beat (the drag was ended whenever IsKeyDown('LBUTTON') read
+    -- up, and it can, mid-drag): the drag streams for as long as it lasts.
+    local env, SM, view = BuildSession()
+    local isKeyDown = env.IsKeyDown
+    env.IsKeyDown = function(key) if key == 'LBUTTON' then return false end return isKeyDown(key) end
+    env.__commandMode = { false, false }
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    local boxes = 0
+    for i = 1, 4 do
+        view:HandleEvent({ Type = 'MouseMotion', MouseX = 100 + i * 20, MouseY = 100, Modifiers = { Left = true } })
+        env.__clock.t = env.__clock.t + 0.1
+        SM.OnBeat()
+        if env.__sent[table.getn(env.__sent)].msg.s then boxes = boxes + 1 end
+    end
+    Check('a box drag streams to the end, whatever IsKeyDown says', boxes == 4, boxes)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 180, MouseY = 100, Modifiers = {} })
+    env.IsKeyDown = isKeyDown
 end
 
 do
@@ -5639,11 +5680,19 @@ do
     Check('and leaving takes it down', env.__tip == nil)
 
     -- A short name is left alone.
-    local env2, SM2 = NewSession()
+    local env2, SM2 = NewSession({ stubs = function(c)
+        return { ['/lua/ui/game/tooltip.lua'] = {
+            CreateMouseoverDisplay = function(control, tip) c.env.__tip = tip end,
+            DestroyMouseoverDisplay = function() c.env.__tip = nil end,
+        } }
+    end })
     SM2.InitTeamMouse(false)
     local p2 = env2.import('/mods/TeamMouse/modules/panel.lua').Get()
     Check('a short name is whole', p2.rows[1].label._text == 'KasperAUS', p2.rows[1].label._text)
-    Check('and has no tooltip (the pointer goes through it)', p2.rows[1].label._hitTestDisabled == true)
+    p2.rows[1].label:HandleEvent({ Type = 'MouseEnter' })
+    Check('and is clickable to follow them, which hovering says', not p2.rows[1].label._hitTestDisabled
+        and env2.__tip and env2.__tip.text == 'KasperAUS' and string.find(env2.__tip.body or '', 'follow', 1, true))
+    p2.rows[1].label:HandleEvent({ Type = 'MouseExit' })
     Check('no errors', NoErrors(env) and NoErrors(env2))
 end
 
@@ -6604,6 +6653,11 @@ local function PanelRow(env, army)
     end
 end
 
+--- Click a player's name in the panel: follow them, or stop (coach.lua).
+local function ClickName(row)
+    row.label:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true }, MouseX = 10, MouseY = 10 })
+end
+
 --- Run the replay's frames for `seconds`, `dt` apart.
 local function Frames(renv, seconds, dt)
     local driver = Mock.FindDriver(renv)
@@ -6638,8 +6692,8 @@ do
     renv.import('/mods/TeamMouse/modules/config.lua').Follow.FitView = false
     Play()
     local row = PanelRow(renv, 1)
-    Check('in a replay each player has a "follow" box, unticked', row and row.followCheck
-        and not row.followCheck:IsChecked())
+    Check('in a replay each player\'s name can be clicked to follow them; nobody followed yet',
+        row and row.label.HandleEvent and not row.record.follow)
 
     renv.__camera = { Focus = { 0, 0, 0 }, Heading = 3.14159, Pitch = 1.0 }
     renv.__setZoom(500)
@@ -6647,7 +6701,7 @@ do
     Frames(renv, 0.2, 0.1)
     Check('nobody followed: the camera is left alone', table.getn(renv.__restored) == restoredBefore)
 
-    row.followCheck:Click()
+    ClickName(row)
     Frames(renv, 0.016, 0.016)
     local f1 = renv.__camera.Focus[1]
     Check('ticked: the camera sets off towards theirs, from where it was', f1 > 0 and f1 < 100, f1)
@@ -6684,12 +6738,11 @@ do
         M = { v = 1, a = 2, p = { 300, 0, 300 }, o = 0, z = 80, w = true } } })
     Frames(renv, 0.1, 0.1)
     local other = PanelRow(renv, 2)
-    other.followCheck:Click()
+    ClickName(other)
     -- (The panel was rebuilt when army 2 appeared: look the row up again.)
     row = PanelRow(renv, 1)
-    Check('following another unticks the first', not row.followCheck:IsChecked()
-        and not row.record.follow and other.record.follow)
-    other.followCheck:Click()
+    Check('following another stops following the first', not row.record.follow and other.record.follow)
+    ClickName(other)
     local n = table.getn(renv.__restored)
     Frames(renv, 0.5, 0.1)
     Check('unticked: the camera is yours again', table.getn(renv.__restored) == n)
@@ -6705,19 +6758,20 @@ do
     local renv, _, Play = ReplayOf(env)
     Play()
     renv.__camera = { Focus = { 100, 0, 100 }, Heading = 3.0, Pitch = 1.1 }
-    PanelRow(renv, 1).followCheck:Click()
+    ClickName(PanelRow(renv, 1))
     Frames(renv, 0.05, 0.016)
     Check('the heading turns the short way round', renv.__camera.Heading > 3.0, renv.__camera.Heading)
 end
 
 
 do
-    -- Not in a live game (for now).
+    -- A live game: following a teammate.
     local env, SM = NewSession()
     SM.InitTeamMouse(false)
     env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 60, w = true })
     local row = PanelRow(env, 2)
-    Check('a live game has no "follow" boxes', row and not row.followCheck)
+    Check('a live game: a teammate\'s name can be clicked to follow, and no coach boxes',
+        row and row.label.HandleEvent and not row.coachCheck)
 end
 
 --------------------------------------------------------------------------------
@@ -7438,7 +7492,7 @@ do
     Packet('v')         -- unit 31
     Frames(renv, 0.3, 0.1)
     Check('not following: your selection is your own', table.getn(renv.__selectCalls) == 0)
-    PanelRow(renv, 2).followCheck:Click()
+    ClickName(PanelRow(renv, 2))
     Frames(renv, 0.1, 0.1)
     local call = renv.__selectCalls[table.getn(renv.__selectCalls)]
     Check('following in a replay: you select what they select', call and call[1] == units['31'] and call[2] == nil)
@@ -7458,15 +7512,28 @@ do
         [4] = { name = 'Caster', ['local'] = true } } })
     SM.InitTeamMouse(false)
     local row = PanelRow(env, 2)
-    Check('a live observer has "follow" boxes', row and row.followCheck)
+    Check('a live observer can click names to follow, and has "coach" boxes', row and row.label.HandleEvent
+        and row.coachCheck)
     env.__camera = { Focus = { 0, 0, 0 }, Heading = 3.14159, Pitch = 1.1 }
     env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
         cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
-    row.followCheck:Click()
+    ClickName(row)
     Frames(env, 3, 0.016)
     Check('and following moves their camera to the player\'s', math.abs(env.__camera.Focus[1] - 300) < 0.5
         and math.abs(env.__camera.Focus[3] - 200) < 0.5, env.__camera.Focus[1])
-    Check('a live observer does not take their selection', table.getn(env.__selectCalls) == 0)
+    Check('following, an observer\'s focus is that army (SetFocusArmy is 0-based)',
+        env.__console[table.getn(env.__console)] == 'SetFocusArmy 1', env.__console[table.getn(env.__console)])
+    env.GetUnitById = function(id) return { id = id } end
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 }, sel = 'v' })
+    Frames(env, 0.1, 0.05)
+    local call = env.__selectCalls[table.getn(env.__selectCalls)]
+    Check('and their selection is copied', call and call[1] and call[1].id == '31')
+    local said = table.getn(env.__console)
+    ClickName(PanelRow(env, 2))
+    Frames(env, 0.1, 0.05)
+    Check('stopping leaves the focus on that army', env.GetFocusArmy() == 2
+        and table.getn(env.__console) == said)
 end
 
 --------------------------------------------------------------------------------
@@ -8732,6 +8799,7 @@ do
     local m = Beat()
     Check('the building in hand is sent with Build.Enabled off', m.b == 'ueb0101', m.b)
     view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    view:HandleEvent({ Type = 'MouseMotion', MouseX = 140, MouseY = 100, Modifiers = { Left = true } })
     env.__mouseWorld = { 140, 0, 100 }
     m = Beat()
     Check('a structure line is sent with Line.Enabled off', m.l == true)
@@ -8803,10 +8871,10 @@ do
         driver:OnFrame(0.1)
     end
     local trail = visual.trail
-    Check('(their drawing is up)', trail.line and trail.line.shown > 0)
+    Check('(their drawing is up)', TrailDots(visual) > 0)
     cfg.Draw.Enabled = false
     Frame()
-    Check('Draw.Enabled off: it goes at once', trail.line.shown == 0)
+    Check('Draw.Enabled off: it goes at once', TrailDots(visual) == 0)
     Check('no errors', NoErrors(env))
 end
 
@@ -8979,7 +9047,7 @@ do
         renv.__camera = { Focus = { fx, 0, fz }, Heading = 3.14, Pitch = 1.1 }
         renv.__setZoom(100)
         Frames(renv, 0.1, 0.1)
-        PanelRow(renv, 2).followCheck:Click()
+        ClickName(PanelRow(renv, 2))
         for _ = 1, 40 do
             Packet()
             Frames(renv, 0.1, 0.05)
@@ -9034,7 +9102,7 @@ do
     renv.__camera = { Focus = { 500, 0, 500 }, Heading = 3.14, Pitch = 1.1 }
     renv.__setZoom(60)
     Frames(renv, 0.1, 0.1)
-    PanelRow(renv, 2).followCheck:Click()
+    ClickName(PanelRow(renv, 2))
     local target = 100 * 252 / 192
     local k = 1 - math.exp(-cfg.Follow.Rate * 0.05)
     local zooms = {}
@@ -9069,7 +9137,7 @@ do
         renv.import('/mods/TeamMouse/modules/config.lua').Follow.FitView = false
         Play()
         local row = PanelRow(renv, 1)
-        row.followCheck:Click()
+        ClickName(row)
         Frames(renv, 0.2, 0.05)
         local view = renv.__views['WorldCamera']
         local function Scroll(n)
@@ -9084,14 +9152,14 @@ do
     local cfg = renv.import('/mods/TeamMouse/modules/config.lua')
     Scroll(cfg.Follow.BreakScrolls - 2)
     Frames(renv, 0.1, 0.05)
-    Check('a stray notch or two: still following', row.record.follow and row.followCheck:IsChecked())
+    Check('a stray notch or two: still following', row.record.follow)
     renv.__clock.t = renv.__clock.t + 2
     Scroll(cfg.Follow.BreakScrolls - 1)
     Check('notches spread out over time do not add up', row.record.follow)
     renv.__clock.t = renv.__clock.t + 2
     Scroll(cfg.Follow.BreakScrolls)
     Check('a strong scroll stops following', not row.record.follow)
-    Check('and unticks its box', not PanelRow(renv, 1).followCheck:IsChecked())
+    Check('and their name is no longer highlighted', PanelRow(renv, 1).label._color == 'ffffffff')
     local n = table.getn(renv.__restored)
     Frames(renv, 0.3, 0.05)
     Check('and the camera is yours again', table.getn(renv.__restored) == n)
@@ -9101,6 +9169,741 @@ do
     Scroll2(20)
     Check('Follow.BreakScrolls = 0: scrolling never stops it', row2.record.follow)
     Check('no errors', NoErrors(renv) and NoErrors(renv2))
+end
+
+--------------------------------------------------------------------------------
+Section('coaching: following a teammate, drawing on their screen (coach.lua)')
+--------------------------------------------------------------------------------
+--- Messages coach.lua sent (env.__sentCoach) from index `first` with field `key`.
+local function CoachSent(env, key, first)
+    local out = {}
+    for i = first or 1, table.getn(env.__sentCoach) do
+        local s = env.__sentCoach[i]
+        if s.msg[key] ~= nil then table.insert(out, s) end
+    end
+    return out
+end
+
+--- A list of client indices as text, to compare.
+local function To(s)
+    return s and table.concat(s.clients, ',') or ''
+end
+
+do
+    -- The follower: Lightningbulb follows teammate KasperAUS.
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    local Coach = env.import('/mods/TeamMouse/modules/coach.lua')
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    cfg.Follow.FitView = false
+    env.__camera = { Focus = { 50, 0, 50 }, Heading = 3.14159, Pitch = 1.2 }
+    env.__setZoom(200)
+    local row = PanelRow(env, 2)
+    ClickName(row)
+    local said = CoachSent(env, 'tmf')
+    Check('clicking a teammate\'s name follows them, and tells them (them only)', row.record.follow
+        and table.getn(said) == 1 and said[1].msg.tmf == 1 and said[1].msg.ta == 2 and To(said[1]) == '2',
+        To(said[1]))
+    Check('their name is highlighted: a band behind it, and the name in gold', row.label._color ~= 'ffffffff'
+        and row.highlight and row.highlight:GetAlpha() > 0.5)
+    local _, draw0 = Coach.Get()
+    local capture = draw0.capture
+    local panelRoot = env.import('/mods/TeamMouse/modules/panel.lua').Get().root
+    Check('following, a layer over the whole screen takes clicks (the interface too)', capture
+        and Mock.IsVisible(capture) and capture.Depth() == cfg.Coach.CaptureDepth)
+    Check('and the panel is raised above it, so its names still work',
+        panelRoot.Depth() == cfg.Coach.PanelRaisedDepth)
+
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    Frames(env, 3, 0.016)
+    Check('our camera follows theirs', math.abs(env.__camera.Focus[1] - 300) < 0.5
+        and math.abs(env.__camera.Focus[3] - 200) < 0.5, env.__camera.Focus[1])
+
+    -- A right-drag: on their screen, not in the game.
+    local view = env.__views['WorldCamera']
+    local sim0, sent0, coach0 = table.getn(env.__simCallbacks), table.getn(env.__sent), table.getn(env.__sentCoach)
+    local consumed = capture:HandleEvent({ Type = 'ButtonPress', Modifiers = { Right = true }, MouseX = 200, MouseY = 200 })
+    Check('a right press while following is ours: the game never sees it', consumed == true)
+    for i = 1, 10 do
+        capture:HandleEvent({ Type = 'MouseMotion', Modifiers = { Right = true }, MouseX = 200 + i * 10, MouseY = 200 + i })
+        Frames(env, 0.03, 0.03)
+        SM.OnBeat()
+    end
+    capture:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Right = true }, MouseX = 300, MouseY = 210 })
+    local strokes = CoachSent(env, 'tml', coach0 + 1)
+    local last = strokes[table.getn(strokes)]
+    local nums = 0
+    for _, s in ipairs(strokes) do
+        for _ in string.gfind(s.msg.tml, '[^,]+') do nums = nums + 1 end
+    end
+    Check('it is sent to them as it is drawn, in pieces', table.getn(strokes) >= 2, table.getn(strokes))
+    Check('to them alone, and the last piece says it is finished', last and last.msg.te == 1
+        and To(last) == '2', last and To(last))
+    Check('every point goes (the first of each piece repeats the last of the one before)',
+        nums >= 2 * 11, nums)
+    local drawn = false
+    for i = sent0 + 1, table.getn(env.__sent) do
+        if env.__sent[i].msg.d then drawn = true end
+    end
+    Check('no drawing reaches the game: no sim callback', table.getn(env.__simCallbacks) == sim0)
+    Check('and teammates are not shown it as a drawing either', not drawn)
+    local _, draw = Coach.Get()
+    Check('we see our own stroke', draw.nlens == 1 and draw.lens[1].nd > 10, draw.nlens)
+    -- Regression test for: a white box from the corner of the screen to the
+    -- stroke -- a dot shown before its Left/Top were set.
+    local pinned = true
+    for j = 1, draw.lens[1].nd do
+        local d = draw.lens[1].dots[j]
+        if d.Width() ~= cfg.Coach.LensThickness or d.Right() - d.Left() ~= cfg.Coach.LensThickness
+            or d.Bottom() - d.Top() ~= cfg.Coach.LensThickness or d.Left() < 190 then
+            pinned = false
+        end
+    end
+    Check('every dot is a small square where it belongs, never a box from the corner', pinned)
+    local dot = draw.lens[1].dots[1]
+    Check('on top of everything (the interface too)', dot and dot.parent and dot.parent.Depth()
+        == cfg.Coach.LensDepth and Mock.IsVisible(dot))
+    Frames(env, 0.5, 0.05)
+    Check('it fades once finished', draw.nlens == 1 and draw.lens[1].alpha < 0.7 and draw.lens[1].alpha > 0.3,
+        draw.lens[1] and draw.lens[1].alpha)
+    Frames(env, 0.6, 0.05)
+    Check('and is gone after Coach.LensFadeSeconds (1 s)', draw.nlens == 0 and not Mock.IsVisible(dot))
+
+    -- A left click: a ring on their screen, and no click in the game.
+    local clicks0 = table.getn(CoachSent(env, 'tmk'))
+    consumed = capture:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true }, MouseX = 400, MouseY = 300 })
+    capture:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Left = true }, MouseX = 400, MouseY = 300 })
+    local rings = CoachSent(env, 'tmk')
+    Check('a left click is a ring on their screen, not a click', consumed == true
+        and table.getn(rings) == clicks0 + 1 and To(rings[table.getn(rings)]) == '2')
+    Check('which we see too', draw.nrings == 1)
+    local ringOk = true
+    for _, d in ipairs(draw.rings[1].dots) do
+        if d.Right() - d.Left() ~= cfg.Coach.LensThickness or math.abs(d.Left() - 400) > 20 then ringOk = false end
+    end
+    Check('its dots start round the click, not in the corner', ringOk)
+    Frames(env, 1, 0.05)
+    Check('and it is over in a moment', draw.nrings == 0)
+
+    -- Click the name again: back to where we were.
+    ClickName(PanelRow(env, 2))
+    said = CoachSent(env, 'tmf')
+    Check('clicking again stops, and tells them', not row.record.follow and said[table.getn(said)].msg.tmf == 0)
+    Check('and puts our camera back where it was', math.abs(env.__camera.Focus[1] - 50) < 0.01
+        and math.abs(env.GetCamera('WorldCamera'):GetZoom() - 200) < 0.01, env.__camera.Focus[1])
+    Check('the layer goes, and the panel back down', not Mock.IsVisible(capture)
+        and panelRoot.Depth() == cfg.Panel.Depth)
+    Check('and the band behind their name', PanelRow(env, 2).highlight:GetAlpha() == 0)
+    consumed = view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true }, MouseX = 400, MouseY = 300 })
+    view:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Left = true }, MouseX = 400, MouseY = 300 })
+    Check('not following, clicks are the game\'s again', consumed == false)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- Breaking free by scrolling: the camera stays, they are told.
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    ClickName(PanelRow(env, 2))
+    Frames(env, 1, 0.05)
+    local view = env.__views['WorldCamera']
+    for _ = 1, 6 do
+        view:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120, MouseX = 500, MouseY = 400, Modifiers = {} })
+    end
+    local said = CoachSent(env, 'tmf')
+    local focus = env.__camera.Focus[1]
+    Frames(env, 0.5, 0.05)
+    Check('scrolling hard stops following and tells them', not PanelRow(env, 2).record.follow
+        and said[table.getn(said)].msg.tmf == 0)
+    Check('and leaves the camera where it is', env.__camera.Focus[1] == focus)
+end
+
+do
+    -- The followed player: KasperAUS follows us (Lightningbulb).
+    local env, SM = NewSession()
+    SM.InitTeamMouse(false)
+    local Coach = env.import('/mods/TeamMouse/modules/coach.lua')
+    local _, draw = Coach.Get()
+    local receive = env.__chatFuncs['TeamMouse']
+    receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true })
+    MoveTo(env, SM, 100, 0, 100, 200, 200)
+    local camBefore = false
+    for _, s in ipairs(env.__sent) do if s.msg.cam then camBefore = true end end
+    Check('teammates are not sent our camera while none follows us', not camBefore)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    Check('a stroke from someone not following us is ignored', draw.nlens == 0)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tmf = 1, ta = 1 })
+    local first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 110, 0, 100, 220, 200)
+    local cam = false
+    for i = first, table.getn(env.__sent) do if env.__sent[i].msg.cam then cam = true end end
+    Check('once a teammate follows us, our camera goes to teammates', cam)
+    Frames(env, 0.1, 0.05)
+    local cursor = CursorFor(env, 2)
+    Check('and their cursor is not shown while they look through our eyes',
+        cursor and not Mock.IsVisible(cursor.mouseIcon))
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    Check('their stroke is drawn on our screen', draw.nlens == 1 and draw.lens[1].nd > 10)
+    local l, t = env.__views['WorldCamera'].Left(), env.__views['WorldCamera'].Top()
+    local w = env.__views['WorldCamera'].Width()
+    local d1 = draw.lens[1].dots[1]
+    Check('where they drew it on our view', d1 and math.abs(d1.Left() - (l + 0.1 * w)) <= 3, d1 and d1.Left())
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '500,500,900,500', ti = 1, te = 1 })
+    Check('one stroke, carried on', draw.nlens == 1)
+    Frames(env, 2.2, 0.05)
+    Check('and faded away once finished', draw.nlens == 0)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 2 })
+    Frames(env, 0.5, 0.05)
+    Check('a stroke never finished (its end lost) still goes', draw.nlens == 1)
+    Frames(env, 5, 0.1)
+    Check('after Coach.StaleSeconds and the fade', draw.nlens == 0)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tmk = '500,500' })
+    Check('their click is a ring on our screen', draw.nrings == 1)
+
+    local panel = env.import('/mods/TeamMouse/modules/panel.lua').Get()
+    Check('players have a "drawings on my screen" box, ticked', panel.lensCheck and panel.lensCheck:IsChecked())
+    panel.lensCheck:Click()
+    Check('unticked, what is up goes', draw.nrings == 0)
+    receive('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 3 })
+    Check('and nothing more is drawn', draw.nlens == 0)
+
+    receive('KasperAUS', { Identifier = 'TeamMouse', tmf = 0, ta = 1 })
+    receive('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    Check('they stop following: their cursor is back', Mock.IsVisible(CursorFor(env, 2).mouseIcon))
+    first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 140, 0, 100, 280, 200)
+    MoveTo(env, SM, 160, 0, 120, 320, 240)
+    cam = false
+    for i = first, table.getn(env.__sent) do if env.__sent[i].msg.cam then cam = true end end
+    Check('and teammates are no longer sent our camera', not cam)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- ReUI's "Coach drawings on my screen" off: the box starts unticked.
+    local env = Mock.CreateEnvironment({ armies = Armies(), clients = Clients(), focusArmy = 1 })
+    env.import('/mods/TeamMouse/modules/config.lua').Coach.ShowLens = false
+    local SM = env.import('/mods/TeamMouse/modules/teammouse.lua')
+    SM.InitTeamMouse(false)
+    local panel = env.import('/mods/TeamMouse/modules/panel.lua').Get()
+    Check('Coach.ShowLens off: the box starts unticked', panel.lensCheck and not panel.lensCheck:IsChecked())
+    env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tmf = 1, ta = 1 })
+    env.__chatFuncs['TeamMouse']('KasperAUS', { Identifier = 'TeamMouse', tml = '100,100,500,500', ti = 1 })
+    local _, draw = env.import('/mods/TeamMouse/modules/coach.lua').Get()
+    Check('and nothing is drawn', draw.nlens == 0)
+end
+
+--------------------------------------------------------------------------------
+Section('coaching: an observer coaching a player (coach.lua)')
+--------------------------------------------------------------------------------
+do
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    local units = { ['31'] = MUnit('31', 1, 0, 1) }
+    env.GetUnitById = function(id) return units[id] end
+    local first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 120, 0, 130, 240, 260)
+    Check('an observer not coaching sends nothing', table.getn(env.__sent) == first - 1)
+
+    local row = PanelRow(env, 2)
+    row.coachCheck:Click()
+    local said = CoachSent(env, 'tmh')
+    Check('ticking "coach" tells that player alone', table.getn(said) == 1 and said[1].msg.tmh == 1
+        and To(said[1]) == '2', To(said[1]))
+
+    MoveTo(env, SM, 120, 0, 130, 240, 260)
+    MoveTo(env, SM, 140, 0, 150, 280, 300)
+    local only, any = true, false
+    for i = first, table.getn(env.__sent) do
+        any = true
+        if To(env.__sent[i]) ~= '2' then only = false end
+        if env.__sent[i].msg.cam then only = false end
+    end
+    Check('our cursor goes to the coached player, and to nobody else', any and only)
+    Check('and never into the replay', table.getn(env.__simCallbacks) == 0)
+
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true, sel = 'v' })
+    Frames(env, 0.1, 0.05)
+    local call = env.__selectCalls[table.getn(env.__selectCalls)]
+    Check('our selection follows theirs', call and call[1] == units['31'])
+
+    -- Right-drag on the map, not following: drawn on their map.
+    local view = env.__views['WorldCamera']
+    local c0 = table.getn(env.__sentCoach)
+    env.__mouseWorld = { 10, 0, 10 }
+    local consumed = view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Right = true }, MouseX = 20, MouseY = 20 })
+    for i = 1, 5 do
+        env.__mouseWorld = { 10 + i * 5, 0, 10 }
+        view:HandleEvent({ Type = 'MouseMotion', Modifiers = { Right = true }, MouseX = 20 + i * 10, MouseY = 20 })
+    end
+    view:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Right = true }, MouseX = 70, MouseY = 20 })
+    local ink = CoachSent(env, 'tmw', c0 + 1)
+    Check('a coach\'s right-drag is theirs, not the game\'s painting', consumed == true)
+    Check('and goes to the coached player as a stroke on the map', table.getn(ink) >= 1
+        and ink[table.getn(ink)].msg.te == 1 and To(ink[1]) == '2')
+    Check('in world tenths', ink[1] and string.find(ink[1].msg.tmw, '^100,0,100,150,0,100', 1) ~= nil,
+        ink[1] and ink[1].msg.tmw)
+    Mock.RenderWorld(env)
+    Check('we see it on our map too', table.getn(env.__lines) >= 5, table.getn(env.__lines))
+    Frames(env, 2.2, 0.05)
+    Mock.RenderWorld(env)
+    Check('and it fades within Coach.FadeSeconds', table.getn(env.__lines) == 0)
+
+    row.coachCheck:Click()
+    said = CoachSent(env, 'tmh')
+    Check('unticking tells them', said[table.getn(said)].msg.tmh == 0)
+    first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 160, 0, 150, 320, 300)
+    Check('and our cursor stops going', table.getn(env.__sent) == first - 1)
+
+    -- One at a time.
+    PanelRow(env, 2).coachCheck:Click()
+    PanelRow(env, 3).coachCheck:Click()
+    Check('coaching another unticks the first', not PanelRow(env, 2).coachCheck:IsChecked()
+        and PanelRow(env, 3).coachCheck:IsChecked() and not PanelRow(env, 2).record.coached)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- The coached player: an observer, Caster, coaches us.
+    local clients = Clients()
+    clients[4] = { name = 'Caster' }
+    local env, SM = NewSession({ clients = clients })
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
+    local before = table.getn(Mock.FindCursors(env, 'WorldCamera'))
+    receive('Caster', { v = 1, a = -1, p = { 100, 0, 100 }, o = 0, z = 80, w = true })
+    Check('an observer\'s cursor is not shown unless they coach us',
+        table.getn(Mock.FindCursors(env, 'WorldCamera')) == before)
+    receive('Caster', { Identifier = 'TeamMouse', tmh = 1 })
+    Check('coaching us, they get a cursor', table.getn(Mock.FindCursors(env, 'WorldCamera')) == before + 1)
+    receive('Caster', { v = 1, a = -1, p = { 120, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    local shown = false
+    for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
+        if c.record and c.record.coach and Mock.IsVisible(c.mouseIcon) then shown = true end
+    end
+    Check('and it moves like a teammate\'s', shown)
+
+    receive('Caster', { Identifier = 'TeamMouse', tmw = '100,0,100,200,0,100,300,0,150', ti = 1, te = 1 })
+    Mock.RenderWorld(env)
+    local white = 0
+    for _, line in ipairs(env.__lines) do
+        if string.sub(line[3], 3) == 'ffffff' then white = white + 1 end
+    end
+    Check('their strokes are drawn on our map', white == 2, white)
+    Frames(env, 2.2, 0.05)
+    Mock.RenderWorld(env)
+    white = 0
+    for _, line in ipairs(env.__lines) do
+        if string.sub(line[3], 3) == 'ffffff' then white = white + 1 end
+    end
+    Check('and fade within Coach.FadeSeconds', white == 0, white)
+
+    receive('Caster', { Identifier = 'TeamMouse', tmh = 0 })
+    Check('they stop: their cursor goes', table.getn(Mock.FindCursors(env, 'WorldCamera')) == before)
+    receive('Caster', { Identifier = 'TeamMouse', tmw = '100,0,100,200,0,100', ti = 2, te = 1 })
+    Mock.RenderWorld(env)
+    Check('and their strokes are no longer taken', table.getn(env.__lines) == 0)
+    Frames(env, 0.3, 0.05)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- An observer coaching (not following): what they do reaches the player
+    -- like a teammate's, and none of it reaches the game.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    Check('an observer not coaching has no drag grid', table.getn(Mock.FindDragOverlays(env)) == 0)
+    PanelRow(env, 2).coachCheck:Click()
+    Calibrate(env, SM)
+    Check('coaching, they get one (their drags go to the player)', table.getn(Mock.FindDragOverlays(env)) == 1)
+    Check('and their focus is locked to that army', env.GetFocusArmy() == 2)
+    local asked = table.getn(env.__console)
+    env.ConExecute('SetFocusArmy 2')
+    Frames(env, 1.2, 0.05)
+    Check('looking at another army from elsewhere: put back (within a second), without a request every frame',
+        env.GetFocusArmy() == 2 and table.getn(env.__console) - asked <= 2, table.getn(env.__console) - asked)
+
+    local view = env.__views['WorldCamera']
+    local first = table.getn(env.__sent) + 1
+
+    -- Build mode: a ghost placement for the player, no order to the game.
+    env.__commandMode = { 'build', { name = 'ueb0101' } }
+    env.__mouseWorld = { 50, 0, 50 }
+    local press = { Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } }
+    local consumed = view:HandleEvent(press)
+    Check('a build click is kept from the game (no "trying to cheat")', consumed == true and view._lastEvent ~= press)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 100, MouseY = 100, Modifiers = {} })
+    Check('and leaves build mode on release, as a placed building does', env.__commandMode[1] == false)
+    MoveTo(env, SM, 50, 0, 50, 100, 100)
+    Frames(env, 1, 0.05)
+    SM.OnBeat()
+    local placed = false
+    for i = first, table.getn(env.__sent) do
+        local m = env.__sent[i].msg
+        if type(m.mob) == 'table' and m.mob[1] == 'ueb0101' and To(env.__sent[i]) == '2' then placed = true end
+    end
+    Check('and the player is shown the placement', placed)
+
+    -- A right click with units selected: an order marker, no order.
+    env.__commandMode = { false, false }
+    env.__selectedUnits = { MUnit('31', 1, 0, 1) }
+    first = table.getn(env.__sent) + 1
+    local c0 = table.getn(env.__sentCoach)
+    env.__mouseWorld = { 80, 0, 80 }
+    press = { Type = 'ButtonPress', MouseX = 160, MouseY = 160, Modifiers = { Right = true } }
+    consumed = view:HandleEvent(press)
+    Check('a right click with units selected is kept from the game', consumed == true and view._lastEvent ~= press)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 160, MouseY = 160, Modifiers = {} })
+    Check('and is not a drawing', table.getn(CoachSent(env, 'tmw', c0 + 1)) == 0)
+    MoveTo(env, SM, 80, 0, 80, 160, 160)
+    local ordered = false
+    for i = first, table.getn(env.__sent) do
+        local m = env.__sent[i].msg
+        if type(m.mo) == 'table' and m.mo[2] == 80 then ordered = true end
+    end
+    Check('the player is shown the order', ordered)
+
+    -- Upgrades and factory queues from the build menu: never sent.
+    local issued0 = table.getn(env.__issued)
+    env.IssueBlueprintCommand('UNITCOMMAND_Upgrade', 'ueb0201', 1, false)
+    Check('a blueprint command from an observer never reaches the game', table.getn(env.__issued) == issued0)
+
+    -- A plain left click (selecting) is still the game's.
+    env.__selectedUnits = {}
+    press = { Type = 'ButtonPress', MouseX = 200, MouseY = 200, Modifiers = { Left = true } }
+    view:HandleEvent(press)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 200, MouseY = 200, Modifiers = {} })
+    Check('selecting is still the game\'s', view._lastEvent ~= nil and view._lastEvent.Type == 'ButtonRelease')
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- Regression test for: an observer's blocked placements doing nothing
+    -- (clicking showed nothing once any command had gone through the hook;
+    -- dragging did nothing while only following), and no feedback on their
+    -- own screen.
+    local env, SM = NewSession(ObserverOpts())
+    InstallCommandHook(env)   -- as in game: hook/lua/ui/game/commandmode.lua is loaded
+    SM.InitTeamMouse(false)
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    cfg.Coach.CoachFollowed = false
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    ClickName(PanelRow(env, 2))   -- following only: not coaching
+    MoveTo(env, SM, 40, 0, 40, 80, 80)
+    Calibrate(env, SM)
+    -- Any command at all through the hook: silence used to mean "refused".
+    env.OnCommandIssued({ CommandType = 'Move', Units = {} })
+
+    local view = env.__views['WorldCamera']
+    local cell = Mock.FindDragOverlays(env)[1].children[1]
+    env.__commandMode = { 'build', { name = 'ueb0101' } }
+    env.__mouseWorld = { 50, 0, 50 }
+    local consumed = view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    cell:HandleEvent({ Type = 'MouseEnter', MouseX = 300, MouseY = 200, Modifiers = { Left = true } })
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 300, MouseY = 200, Modifiers = {} })
+    Check('following only, a build drag is still kept from the game', consumed == true)
+    for _ = 1, 3 do
+        env.__clock.t = env.__clock.t + 0.2
+        SM.OnBeat()
+        Frames(env, 0.1, 0.05)
+    end
+    local own
+    for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
+        if c.record and c.record.self then own = c end
+    end
+    local placed = 0
+    local record = own and own.record
+    for i = 1, record and record.orderCount or 0 do
+        if record.orders[i].bp == 'ueb0101' then placed = placed + 1 end
+    end
+    Check('the row they dragged is placed, and shown on their own screen', placed > 0, placed)
+    Check('without a second cursor of their own', own and not Mock.IsVisible(own.mouseIcon))
+    Check('not sent to anyone (only following, not coaching)', table.getn(env.__sent) == 0, table.getn(env.__sent))
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- An observer following: their clicks stay theirs (the build menu), no
+    -- capture layer, no rings; a right-drag still draws on the player's screen.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    ClickName(PanelRow(env, 2))
+    Frames(env, 0.1, 0.05)
+    local _, draw = env.import('/mods/TeamMouse/modules/coach.lua').Get()
+    Check('an observer following gets no capture layer', not (draw.capture and Mock.IsVisible(draw.capture)))
+    local said = CoachSent(env, 'tmh')
+    Check('following a player ticks their "coach" box too (Coach.CoachFollowed)',
+        PanelRow(env, 2).coachCheck:IsChecked() and said[table.getn(said)] and said[table.getn(said)].msg.tmh == 1)
+    local view = env.__views['WorldCamera']
+    local c0 = table.getn(env.__sentCoach)
+    local consumed = view:HandleEvent({ Type = 'ButtonPress', MouseX = 300, MouseY = 300, Modifiers = { Left = true } })
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 300, MouseY = 300, Modifiers = { Left = true } })
+    Check('and their left clicks are not rings', not consumed and table.getn(CoachSent(env, 'tmk', c0 + 1)) == 0)
+    -- A right press coming up from the interface to the root frame.
+    local frame = env.__frame
+    frame:HandleEvent({ Type = 'ButtonPress', MouseX = 900, MouseY = 1000, Modifiers = { Right = true } })
+    frame:HandleEvent({ Type = 'MouseMotion', MouseX = 950, MouseY = 1000, Modifiers = { Right = true } })
+    frame:HandleEvent({ Type = 'ButtonRelease', MouseX = 980, MouseY = 1000, Modifiers = { Right = true } })
+    local strokes = CoachSent(env, 'tml', c0 + 1)
+    Check('a right-drag over the interface still draws on their screen', table.getn(strokes) >= 1
+        and strokes[table.getn(strokes)].msg.te == 1)
+
+    -- In build mode a right click leaves it, as in the game: no drawing.
+    env.__commandMode = { 'build', { name = 'ueb0101' } }
+    c0 = table.getn(env.__sentCoach)
+    local press = { Type = 'ButtonPress', MouseX = 300, MouseY = 300, Modifiers = { Right = true } }
+    consumed = view:HandleEvent(press)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 300, MouseY = 300, Modifiers = { Right = true } })
+    Check('following, a right click in build mode cancels the build, not a drawing', not consumed
+        and view._lastEvent ~= nil and table.getn(CoachSent(env, 'tml', c0 + 1)) == 0)
+    env.__commandMode = { false, false }
+end
+
+do
+    -- The coached player, with the coach following them: no arrow, but what
+    -- they hold and drag still shows.
+    local clients = Clients()
+    clients[4] = { name = 'Caster' }
+    local env, SM = NewSession({ clients = clients })
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
+    receive('Caster', { Identifier = 'TeamMouse', tmh = 1 })
+    receive('Caster', { Identifier = 'TeamMouse', tmf = 1, ta = 1 })
+    receive('Caster', { v = 1, a = -1, p = { 120, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    receive('Caster', { v = 1, a = -1, p = { 121, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    local coach
+    for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
+        if c.record and c.record.coach then coach = c end
+    end
+    Check('a coach following us, doing nothing: no arrow', coach and not Mock.IsVisible(coach.mouseIcon))
+    Check('and no name', coach and not (coach.label and Mock.IsVisible(coach.label)))
+    receive('Caster', { v = 1, a = -1, p = { 122, 0, 100 }, o = 0, z = 80, w = true, b = 'ueb0101' })
+    Frames(env, 0.3, 0.05)
+    Check('a building in their hand: it shows, and their arrow with it', coach.buildIcon
+        and Mock.IsVisible(coach.buildIcon) and Mock.IsVisible(coach.mouseIcon))
+    receive('Caster', { v = 1, a = -1, p = { 123, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.05, 0.05)
+    local mid = coach.mouseIcon:GetAlpha()
+    Check('put down, the arrow fades', Mock.IsVisible(coach.mouseIcon) and mid > 0 and mid < (coach.curAlpha or 1),
+        mid)
+    Frames(env, env.import('/mods/TeamMouse/modules/config.lua').Coach.CursorFadeSeconds + 0.05, 0.05)
+    Check('and is gone after Coach.CursorFadeSeconds', not Mock.IsVisible(coach.mouseIcon))
+    env.import('/mods/TeamMouse/modules/config.lua').Coach.AlwaysShowCursor = true
+    Frames(env, 0.1, 0.05)
+    Check('Coach.AlwaysShowCursor: always shown', Mock.IsVisible(coach.mouseIcon))
+    env.import('/mods/TeamMouse/modules/config.lua').Coach.AlwaysShowCursor = false
+    receive('Caster', { Identifier = 'TeamMouse', tmf = 0, ta = 1 })
+    receive('Caster', { v = 1, a = -1, p = { 122, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    Check('they stop following: the arrow is back', Mock.IsVisible(coach.mouseIcon))
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- A player following: the menu bar stays clickable above the layer.
+    local env, SM = NewSession({ stubs = function(c)
+        local parent = c.Group(c.env.__frame)
+        parent.Depth:Set(100)
+        return { ['/lua/ui/game/tabs.lua'] = { controls = { parent = parent } } }
+    end })
+    SM.InitTeamMouse(false)
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local menu = env.import('/lua/ui/game/tabs.lua').controls.parent
+    ClickName(PanelRow(env, 2))
+    Frames(env, 0.05, 0.05)
+    Check('following, the menu bar is raised above the drawing layer',
+        menu.Depth() > cfg.Coach.CaptureDepth, menu.Depth())
+    ClickName(PanelRow(env, 2))
+    Check('and goes back after', menu.Depth() == 100, menu.Depth())
+    local row = PanelRow(env, 2)
+    Check('the band behind a followed name leaves their colour square showing',
+        row.highlight.Left() > row.swatch.Left() + 10, row.highlight.Left() .. ' vs ' .. row.swatch.Left())
+end
+
+do
+    -- A coach's single right click is an order (a ghost of one), not a dot.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    PanelRow(env, 2).coachCheck:Click()
+    MoveTo(env, SM, 60, 0, 60, 120, 120)
+    local view = env.__views['WorldCamera']
+    local c0, first = table.getn(env.__sentCoach), table.getn(env.__sent) + 1
+    env.__mouseWorld = { 70, 0, 70 }
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 140, MouseY = 140, Modifiers = { Right = true } })
+    Frames(env, 0.2, 0.05)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 140, MouseY = 140, Modifiers = { Right = true } })
+    MoveTo(env, SM, 70, 0, 70, 140, 140)
+    Check('coaching, a right click without a drag draws nothing', table.getn(CoachSent(env, 'tmw', c0 + 1)) == 0)
+    local ordered = false
+    for i = first, table.getn(env.__sent) do
+        local m = env.__sent[i].msg
+        if type(m.mo) == 'table' and m.mo[2] == 70 and m.mo[4] == 70 then ordered = true end
+    end
+    Check('it is an order there, for the player (a ghost: the game gets none)', ordered)
+    local _, draw = env.import('/mods/TeamMouse/modules/coach.lua').Get()
+    Frames(env, 0.1, 0.05)
+    Check('and no dot of it is left on our map', draw.nink == 0)
+
+    -- Following: the same, and nothing on their screen.
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    ClickName(PanelRow(env, 2))
+    c0, first = table.getn(env.__sentCoach), table.getn(env.__sent) + 1
+    env.__mouseWorld = { 90, 0, 90 }
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 180, MouseY = 180, Modifiers = { Right = true } })
+    Frames(env, 0.2, 0.05)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 180, MouseY = 180, Modifiers = { Right = true } })
+    MoveTo(env, SM, 90, 0, 90, 180, 180)
+    Check('following, a right click puts no dot on their screen', table.getn(CoachSent(env, 'tml', c0 + 1)) == 0)
+    ordered = false
+    for i = first, table.getn(env.__sent) do
+        local m = env.__sent[i].msg
+        if type(m.mo) == 'table' and m.mo[2] == 90 then ordered = true end
+    end
+    Check('but a ghost order', ordered)
+
+    -- Following, a left drag holds the camera still until the button is up.
+    local restored = table.getn(env.__restored)
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 200, MouseY = 200, Modifiers = { Left = true } })
+    Frames(env, 0.3, 0.05)
+    Check('following, the camera holds still during a left drag', table.getn(env.__restored) == restored)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 260, MouseY = 240, Modifiers = { Left = true } })
+    Frames(env, 0.2, 0.05)
+    Check('and follows again once it is over', table.getn(env.__restored) > restored)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- Keyboard orders (hotkeys, order buttons) never reach the game from an
+    -- observer: the sim would call it cheating.
+    local env, SM = NewSession(ObserverOpts())
+    local calls = {}
+    local function Rec(name) return function() table.insert(calls, name) end end
+    for _, name in ipairs({ 'IssueCommand', 'IssueUnitCommand', 'IssueUnitCommandToUnit', 'IssueDockCommand',
+        'SetPaused', 'ToggleScriptBit', 'SetFireState', 'SetAutoMode' }) do
+        env[name] = Rec(name)
+    end
+    local sims = {}
+    env.SimCallback = function(cb, sel) table.insert(sims, cb.Func) end
+    SM.InitTeamMouse(false)
+    env.IssueUnitCommand({}, 'Stop')
+    env.IssueCommand('UNITCOMMAND_Dive')
+    env.SetPaused({}, true)
+    env.ToggleScriptBit({}, 1, true)
+    env.SetFireState({}, 1)
+    Check('an observer\'s keyboard orders never reach the game', table.getn(calls) == 0, table.concat(calls, ','))
+    env.SimCallback({ Func = 'DischargeShields', Args = {} }, true)
+    env.SimCallback({ Func = 'Harmless', Args = {} })
+    Check('nor a sim callback carrying their selection; one without it still goes',
+        table.getn(sims) == 1 and sims[1] == 'Harmless', table.concat(sims, ','))
+
+    -- A unit's own ProcessInfo (repeat build), once one is selected.
+    local infos = 0
+    local methods = { ProcessInfo = function() infos = infos + 1 end }
+    local unit = setmetatable({ GetEntityId = function() return '7' end }, { __index = methods })
+    env.__selectedUnits = { unit }
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true })
+    env.import('/mods/TeamMouse/modules/panel.lua').Get().rows[2].coachCheck:Click()
+    env.__clock.t = env.__clock.t + 0.2
+    SM.OnBeat()
+    unit:ProcessInfo('SetRepeatQueue', 'true')
+    Check('nor a unit\'s ProcessInfo (repeat build)', infos == 0, infos)
+
+    SM.Destroy()
+    env.IssueUnitCommand({}, 'Stop')
+    unit:ProcessInfo('SetRepeatQueue', 'true')
+    Check('all put back when the session ends', table.getn(calls) == 1 and infos == 1)
+end
+
+do
+    -- A coach on their own interface: no interface ghost, no cursor.
+    local clients = Clients()
+    clients[4] = { name = 'Caster' }
+    local env, SM = NewSession({ clients = clients })
+    SM.InitTeamMouse(false)
+    local receive = env.__chatFuncs['TeamMouse']
+    receive('Caster', { Identifier = 'TeamMouse', tmh = 1 })
+    receive('Caster', { v = 1, a = -1, p = { 120, 0, 100 }, o = 0, z = 80, w = false, hx = 0.5, hy = 0.9 })
+    Frames(env, 0.3, 0.05)
+    receive('Caster', { v = 1, a = -1, p = { 120, 0, 100 }, o = 0, z = 80, w = false, hx = 0.6, hy = 0.9 })
+    Frames(env, 0.3, 0.05)
+    local coach
+    for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
+        if c.record and c.record.coach then coach = c end
+    end
+    Check('a coach on their interface: no interface ghost', coach and not (coach.hud and Mock.IsVisible(coach.hud)))
+    Check('and no cursor', coach and not Mock.IsVisible(coach.mouseIcon))
+    receive('Caster', { v = 1, a = -1, p = { 130, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    Check('back on the map: their cursor is back', Mock.IsVisible(coach.mouseIcon))
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- Regression test for: an observer coach's drags not moving until released.
+    -- They only began calibrating UnProject once following, with the camera
+    -- moving every frame; the engine's reading lagged it, one disagreement
+    -- failed calibration for good, and no drag's far end could be found.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    env.__chatFuncs['TeamMouse']('KasperAUS', { v = 1, a = 2, p = { 100, 0, 100 }, o = 0, z = 80, w = true,
+        cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
+    -- Following (and so coaching) at once: the engine's reading lags the camera.
+    ClickName(PanelRow(env, 2))
+    local lagging = true
+    local getMouse = env.GetMouseWorldPos
+    env.GetMouseWorldPos = function() if lagging then return { 5000, 0, 5000 } end return getMouse() end
+    for _ = 1, 10 do
+        Mock.HoverWorld(env, 100, 100)
+        env.__clock.t = env.__clock.t + 0.1
+        SM.OnBeat()
+        Frames(env, 0.05, 0.05)
+    end
+    lagging = false
+    -- A moment with the pointer still and the camera holding (a left press is
+    -- coming, and it holds while one is open): calibration settles.
+    local view = env.__views['WorldCamera']
+    env.__mouseWorld = { 50, 0, 50 }
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    for _ = 1, 3 do
+        env.__clock.t = env.__clock.t + 0.6
+        SM.OnBeat()
+    end
+    local first = table.getn(env.__sent) + 1
+    local cell
+    view:HandleEvent({ Type = 'ButtonPress', MouseX = 100, MouseY = 100, Modifiers = { Left = true } })
+    local overlay = Mock.FindDragOverlays(env)[1]
+    cell = overlay and overlay.children[30]
+    if cell then
+        cell:HandleEvent({ Type = 'MouseEnter', MouseX = 300, MouseY = 240, Modifiers = { Left = true } })
+    end
+    env.__clock.t = env.__clock.t + 0.1
+    SM.OnBeat()
+    local moving = false
+    for i = first, table.getn(env.__sent) do
+        local m = env.__sent[i].msg
+        if m.s and m.bx and math.abs(m.bx - 150) < 1 then moving = true end
+    end
+    Check('a following observer\'s box drag moves as it is dragged', moving)
+    view:HandleEvent({ Type = 'ButtonRelease', MouseX = 300, MouseY = 240, Modifiers = {} })
+    Check('no errors', NoErrors(env))
 end
 
 --------------------------------------------------------------------------------

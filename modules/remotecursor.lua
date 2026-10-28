@@ -724,6 +724,27 @@ local function PutRectEdge(shape, n, ax, az, bx, bz, y)
     return n
 end
 
+--- A shape for one teammate's drawing as they make it: lines through its
+--- points, in their colour, as the game draws a finished one (and as a
+--- coach's strokes are drawn: coach.lua). pts is the trail's own list.
+---@return table
+local function NewTrailShape()
+    local shape = { Hidden = true, n = 0, pts = {}, color = 'ffffffff', thick = 0 }
+    shape.OnRender = function(self, delta)
+        local pts = self.pts
+        for i = 2, self.n do
+            UI_DrawLine(pts[i - 1], pts[i], self.color, self.thick)
+        end
+    end
+    shape.Render = function(self, delta)
+        if not self.Hidden and self.n > 1 then
+            self:OnRender(delta)
+        end
+    end
+    shape.Destroy = function(self) end
+    return shape
+end
+
 --- A shape for one teammate's view outline: four lines in their colour.
 ---@return table
 local function NewViewShape()
@@ -1235,6 +1256,102 @@ RemoteCursor = Class(Group) {
         self.rowShown = true
     end,
 
+    --- Hide the cursor itself -- arrow, name, zoom bar, interface ghost --
+    --- and leave the rest (the building in hand, a drag box, a line).
+    --- Called after UpdateFrame, each frame it is wanted.
+    ---@param self RemoteCursor
+    HideCursorOnly = function(self)
+        self.cursorOnlyHidden = true
+        self.mouseIcon:SetHidden(true)
+        if self.label then
+            self.label:SetHidden(true)
+        end
+        if self.nameStroke then
+            ResyncStroke(self.nameStroke, true)
+        end
+        if self.nameBar then
+            self.nameBar:SetHidden(true)
+            if self.nameBarStroke then
+                self.nameBarStroke:SetHidden(true)
+            end
+        end
+        if self.hud then
+            self.hud:SetHidden(true)
+        end
+    end,
+
+    --- A coach following us, between doing things: their arrow and name at
+    --- `a` (0..1) of what they would be, gone at 0. Called after UpdateFrame;
+    --- the cursor's alpha is pushed afresh each frame meanwhile.
+    ---@param self RemoteCursor
+    ---@param a number
+    CursorFade = function(self, a)
+        if a <= 0 then
+            self:HideCursorOnly()
+            return
+        end
+        if self.cursorOnlyHidden then
+            self:ShowCursorAgain()
+        end
+        local alpha = (self.curAlpha or 1) * a
+        self.mouseIcon:SetAlpha(alpha)
+        if self.label then
+            self.label:SetAlpha(alpha)
+            ShowStroke(self.nameStroke, alpha)
+        end
+        if self.hud then
+            self.hud:SetHidden(true)
+        end
+        if self.nameBar then
+            self.nameBar:SetHidden(true)
+            if self.nameBarStroke then
+                self.nameBarStroke:SetHidden(true)
+            end
+        end
+        -- So ApplyAlpha puts the real values back once this stops.
+        self.cursorFaded = true
+        self.appliedAlpha = -1
+        self.appliedLabelAlpha = -1
+    end,
+
+    --- Our own record (an observer's own orders and placements, which the
+    --- game does not show them: teammouse.lua FeedSelf): only those -- no
+    --- arrow, name, building in hand or selection box, which the game
+    --- already draws for them. Called after UpdateFrame.
+    ---@param self RemoteCursor
+    HideOwnPieces = function(self)
+        self:HideCursorOnly()
+        if self.buildIcon then
+            self.buildIcon:SetHidden(true)
+            self.buildFrame:SetHidden(true)
+        end
+        if self.dragTop then
+            self.dragTop:SetHidden(true)
+            self.dragBottom:SetHidden(true)
+            self.dragLeft:SetHidden(true)
+            self.dragRight:SetHidden(true)
+        end
+    end,
+
+    --- Undo HideCursorOnly (they stopped following us).
+    ---@param self RemoteCursor
+    ShowCursorAgain = function(self)
+        self.cursorOnlyHidden = false
+        self.cursorFaded = false
+        self.appliedAlpha = -1
+        self.appliedLabelAlpha = -1
+        if self.hidden then
+            return   -- shown again, children and all, when it next is
+        end
+        if self.label then
+            self.label:SetHidden(false)
+        end
+        if self.nameStroke then
+            ResyncStroke(self.nameStroke, false)
+        end
+        self:ResyncChildren()
+    end,
+
     --- Hide the cursor and everything drawn for this player on the map.
     ---@param self RemoteCursor
     HideEverything = function(self)
@@ -1255,6 +1372,9 @@ RemoteCursor = Class(Group) {
             self:HideOrderMark(mark)
         end
         self.orderShown = 0
+        if self.trailShape then
+            self.trailShape.Hidden = true
+        end
         local trail = self.trail
         if trail.line and trail.line.shown > 0 then
             HideDotLine(trail.line)
@@ -1379,6 +1499,9 @@ RemoteCursor = Class(Group) {
         local cfg = Config.Draw
         local trail = self.trail
 
+        if self.trailShape then
+            self.trailShape.Hidden = true
+        end
         if not cfg.Enabled then
             if trail.n > 0 then
                 trail.n = 0
@@ -1470,6 +1593,29 @@ RemoteCursor = Class(Group) {
             end
         end
 
+        -- Lines on the map, as the game draws a drawing, where the view can
+        -- take shapes; a stroke shorter on screen than MinLength is a click.
+        local shape = self.trailShape or self:MakeShape('trailShape', 'TeamMouseTrail', NewTrailShape)
+        if shape then
+            local length = 0
+            for i = 2, count do
+                local dx, dy = xs[i] - xs[i - 1], ys[i] - ys[i - 1]
+                length = length + math.sqrt(dx * dx + dy * dy)
+            end
+            if trail.line and trail.line.shown > 0 then
+                HideDotLine(trail.line)
+            end
+            if length < cfg.MinLength then
+                return
+            end
+            shape.pts, shape.n = trail.pts, trail.n
+            shape.color = WithAlpha(self.uiColor, cfg.Alpha * fade)
+            shape.thick = cfg.Thickness
+            shape.Hidden = false
+            return
+        end
+
+        -- (A game without shapes: dots.)
         if not trail.line then
             trail.line = CreateDotLine(self:GetMapRoot(), self.uiColor, cfg.MaxDots, cfg.DotSize)
         end
@@ -2027,8 +2173,10 @@ RemoteCursor = Class(Group) {
     UpdateFrame = function(self, viewInfo, now)
         local record = self.record
 
-        -- Hidden from the panel: nothing of theirs at all.
-        if record.disabled then
+        -- Hidden from the panel, or a teammate following our view
+        -- (coach.lua): nothing of theirs at all. (A coach following us keeps
+        -- what they hold and drag: HideCursorOnly.)
+        if record.disabled or (record.followsMe and not record.coach) then
             self:HideEverything()
             return
         end

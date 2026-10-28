@@ -12,6 +12,9 @@
 --** once their recorded cursor data has actually turned up (the panel is rebuilt
 --** then), so players without the mod, or without recording on, are not listed.
 --** Each row also shows the version of TeamMouse that player is on (version.lua).
+--** Click a player's name to follow their view (coach.lua); click it again to
+--** stop. Live observers also get a "coach" box per player (one at a time),
+--** and players a "drawings on my screen" box under the list.
 --** Choices last for the game only.
 --**
 --** While TeamMouse's options window is open (optionswindow.lua -> SetEditing)
@@ -41,8 +44,8 @@ local VERSION_WIDTH = 30
 local panel = false
 
 --- What the panel is built from, kept so it can be rebuilt: the records, the
---- toggle callback, whether there is a follow column, and whether only players
---- whose data has arrived are listed (replays).
+--- toggle callback, the coaching hooks, and whether only players whose data
+--- has arrived are listed (replays).
 local source = false
 
 --- Folded or not, carried across a rebuild (nil: Panel.StartCollapsed).
@@ -52,10 +55,13 @@ local collapsedPref = nil
 --- for config.lua's spot (Panel.X / Panel.Y), or { edge, along }: the edge
 --- ('l', 'r' or 't') and how far along it, 0..1 of the room there is.
 --- loaded: place has been read from the profile.
-local layout = { editing = false, place = false, loaded = false }
+local layout = { editing = false, place = false, loaded = false, raised = false }
 
 local PREF_KEY = 'TeamMousePanelPlace'
 local HINT_COLOR = 'ffffd24a'
+--- A followed player's name, and the band behind it.
+local FOLLOW_COLOR = 'ffffd24a'
+local FOLLOW_BACK = 'ff6b5200'
 
 --- Whether the game's interface is hidden (screen capture mode).
 ---@return boolean
@@ -76,6 +82,11 @@ local function Paint(row)
     local on = not row.record.disabled
     row.swatch:SetSolidColor(on and row.color or OFF_COLOR)
     row.label:SetAlpha(on and 1 or 0.4)
+    row.label:SetColor(row.record.follow and FOLLOW_COLOR or 'ffffffff')
+    -- Through its alpha, not Hide: showing the panel shows every child.
+    if row.highlight then
+        row.highlight:SetAlpha(row.record.follow and 0.9 or 0)
+    end
     if row.check.IsChecked and row.check:IsChecked() ~= on then
         row.check:SetCheck(on, true)
     end
@@ -221,22 +232,35 @@ local function Tip(control, tip)
 end
 
 --- A player's name on their row, cut to fit `room`; when it is cut, hovering
---- it shows the whole name.
+--- it shows the whole name. With `onClick`, a left click on it calls
+--- onClick() (following them), and hovering it says so.
 ---@param label Text
 ---@param name string
 ---@param room number
-local function ShowName(label, name, room)
+---@param onClick? function
+local function ShowName(label, name, room, onClick)
     local shown = FitName(label, name, room)
     label:SetText(shown)
-    if shown == name then
+    if shown == name and not onClick then
         label:DisableHitTest()
         return
     end
+    local tip = { text = name }
+    if onClick then
+        tip.body = 'Click to follow their view. Click again to go back to where you were looking;'
+            .. ' scrolling hard also breaks free.'
+    end
     label.HandleEvent = function(self, event)
-        if event.Type == 'MouseEnter' then
-            Tip(self, { text = name })
-        elseif event.Type == 'MouseExit' then
+        local t = event.Type
+        if t == 'MouseEnter' then
+            Tip(self, tip)
+        elseif t == 'MouseExit' then
             Tip()
+        elseif onClick and (t == 'ButtonPress' or t == 'ButtonDClick')
+            and not (event.Modifiers and event.Modifiers.Right) then
+            Play('UI_Menu_MouseDown_Sml')
+            onClick()
+            return true
         end
         return false
     end
@@ -478,11 +502,15 @@ end
 --- Build the panel.
 ---@param records table[]   # the players, in the order to list them; each a peer record
 ---@param onToggle? function   # called with a record after its cursor is hidden or shown
----@param replay? boolean       # each player also gets a "follow" box (replays, observers)
+---@param hooks? table          # coaching (coach.lua): follow(record) for a click on a
+---                               name; coach(record, on) for a "coach" box per player
+---                               (live observers); lens(on), lensOn() for the "drawings
+---                               on my screen" box (players)
 ---@param onlyHeard? boolean    # list a player only once their data has arrived (replays)
-function Create(records, onToggle, replay, onlyHeard)
+function Create(records, onToggle, hooks, onlyHeard)
     Destroy()
-    source = { records = records, onToggle = onToggle, replay = replay, onlyHeard = onlyHeard and true or false }
+    source = { records = records, onToggle = onToggle, hooks = type(hooks) == 'table' and hooks or {},
+        onlyHeard = onlyHeard and true or false }
     Build()
 end
 
@@ -492,7 +520,7 @@ Build = function()
         return
     end
     local records = Listed()
-    local onToggle, replay = source.onToggle, source.replay
+    local onToggle, hooks = source.onToggle, source.hooks
     -- Nobody to list (a solo game): none, unless the options window is open,
     -- so the panel can be seen and placed.
     if not Config.Panel.Enabled or (table.getn(records) == 0 and not layout.editing) then
@@ -509,8 +537,10 @@ Build = function()
     local edge = Edge()
     -- What is drawn keeps clear of the tab: it is on the left, right or top.
     local shift = (edge == 'r' and -14) or (edge == 't' and -7) or 0
-    -- In a replay, a second column of boxes: follow that player's camera.
-    local FOLLOW = replay and Config.Follow.Enabled and 44 or 0
+    -- A live observer: a second column of boxes, coach that player.
+    local FOLLOW = hooks.coach and Config.Coach.Enabled and 44 or 0
+    -- A player: a row under the list, "drawings on my screen".
+    local LENS = hooks.lens and Config.Coach.Enabled and ROW_HEIGHT or 0
     -- Each player's TeamMouse version, in a column of its own.
     local VERSIONS = Config.Panel.ShowVersions and VERSION_WIDTH or 0
     local WIDTH = WIDTH + FOLLOW + VERSIONS
@@ -526,12 +556,12 @@ Build = function()
     local nameRoom = nameRight - 4 - nameLeft
     -- The title, a row of "all" boxes, then a row per player (or one saying
     -- there is nobody).
-    local height = TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT + PAD * 2
+    local height = TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT + PAD * 2 + LENS
 
     local root = Group(frame, 'TeamMousePanel')
     LayoutHelpers.SetDimensions(root, WIDTH, height)
     Place(root)
-    root.Depth:Set(cfg.Depth)
+    root.Depth:Set(layout.raised and Config.Coach.PanelRaisedDepth or cfg.Depth)
     root:DisableHitTest()
 
     -- FAF's own tab, on the edge the panel is on (placed below, once the rows
@@ -573,7 +603,7 @@ Build = function()
     viewHeader:DisableHitTest(true)
     LayoutHelpers.AtLeftTopIn(viewHeader, inner, WIDTH - PAD - CHECK - 4, PAD - 1)
     if FOLLOW > 0 then
-        local followHeader = UIUtil.CreateText(body, 'follow', 9, UIUtil.bodyFont, true)
+        local followHeader = UIUtil.CreateText(body, 'coach', 9, UIUtil.bodyFont, true)
         followHeader:SetColor('ffaaaaaa')
         followHeader:DisableHitTest(true)
         LayoutHelpers.AtLeftTopIn(followHeader, inner, WIDTH - PAD - CHECK * 2 - 18, PAD - 1)
@@ -659,9 +689,25 @@ Build = function()
         LayoutHelpers.SetDimensions(swatch, SWATCH, SWATCH)
         swatch:DisableHitTest()
 
+        -- Behind the name while we follow them (made first: drawn under it).
+        local highlight = Bitmap(body)
+        highlight:SetSolidColor(FOLLOW_BACK)
+        highlight:SetAlpha(0)
+        highlight:DisableHitTest()
+        -- (Right of their colour square, which stays in sight.)
+        LayoutHelpers.AtLeftTopIn(highlight, inner, nameLeft - 3, top + 1)
+        LayoutHelpers.SetDimensions(highlight, nameRight - nameLeft + 3, ROW_HEIGHT - 2)
+
         local label = UIUtil.CreateText(body, record.name or '?', 12, UIUtil.bodyFont, true)
         label:SetColor('ffffffff')
-        ShowName(label, record.name or '?', nameRoom)
+        local onClick = nil
+        if hooks.follow and Config.Follow.Enabled then
+            onClick = function()
+                hooks.follow(record)
+                SyncFollow()
+            end
+        end
+        ShowName(label, record.name or '?', nameRoom, onClick)
         LayoutHelpers.AtLeftTopIn(label, inner, nameLeft, top + 3)
 
         -- Their view's outline on the map (Viewport): off unless ticked, and
@@ -675,25 +721,18 @@ Build = function()
             SyncAll()
         end
 
-        -- In a replay: your camera follows theirs (Config.Follow). One
-        -- player at a time: ticking one unticks the rest.
-        local followCheck = false
+        -- A live observer: coach this player (coach.lua). One player at a
+        -- time: ticking one unticks the rest.
+        local coachCheck = false
         if FOLLOW > 0 then
-            followCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-            LayoutHelpers.AtLeftTopIn(followCheck, inner, WIDTH - PAD - CHECK * 2 - 12,
+            coachCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+            LayoutHelpers.AtLeftTopIn(coachCheck, inner, WIDTH - PAD - CHECK * 2 - 12,
                 top + (ROW_HEIGHT - CHECK) / 2)
-            LayoutHelpers.SetDimensions(followCheck, CHECK, CHECK)
-            followCheck:SetCheck(record.follow and true or false, true)
-            followCheck.OnCheck = function(self, checked)
-                if checked then
-                    for _, other in ipairs(panel.rows) do
-                        if other.record ~= record and other.followCheck then
-                            other.record.follow = false
-                            other.followCheck:SetCheck(false, true)
-                        end
-                    end
-                end
-                record.follow = checked and true or false
+            LayoutHelpers.SetDimensions(coachCheck, CHECK, CHECK)
+            coachCheck:SetCheck(record.coached and true or false, true)
+            coachCheck.OnCheck = function(self, checked)
+                hooks.coach(record, checked and true or false)
+                SyncFollow()
             end
         end
 
@@ -706,7 +745,8 @@ Build = function()
         end
 
         local row = { record = record, check = check, swatch = swatch, label = label,
-            viewCheck = viewCheck, followCheck = followCheck, color = CursorData.SafeUIColor(record.color),
+            viewCheck = viewCheck, coachCheck = coachCheck, highlight = highlight,
+            color = CursorData.SafeUIColor(record.color),
             versionLabel = versionLabel, versionText = false }
         check:SetCheck(not record.disabled, true)
         check.OnCheck = function(self, checked)
@@ -723,6 +763,23 @@ Build = function()
     end
     SyncAll()
     UpdateVersions()
+
+    -- A player: whether what those following (or coaching) them draw shows.
+    if LENS > 0 then
+        local lensTop = PAD + TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT
+        local lensCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+        LayoutHelpers.AtLeftTopIn(lensCheck, inner, PAD + 14, lensTop + (ROW_HEIGHT - CHECK) / 2)
+        LayoutHelpers.SetDimensions(lensCheck, CHECK, CHECK)
+        lensCheck:SetCheck(hooks.lensOn and hooks.lensOn() and true or false, true)
+        lensCheck.OnCheck = function(self, checked)
+            hooks.lens(checked and true or false)
+        end
+        local lensLabel = UIUtil.CreateText(body, 'drawings on my screen', 10, UIUtil.bodyFont, true)
+        lensLabel:SetColor('ffaaaaaa')
+        lensLabel:DisableHitTest()
+        LayoutHelpers.AtLeftTopIn(lensLabel, inner, PAD + 14 + CHECK + 5, lensTop + 4)
+        panel.lensCheck = lensCheck
+    end
 
     if arrow then
         SetUpTab(root, arrow, edge, height)
@@ -767,15 +824,16 @@ function UpdateVersions()
     end
 end
 
---- Show each row's "follow" box as its record says (following was stopped
---- from elsewhere: a strong scroll).
+--- Show each row as its record says: the followed name highlighted, the
+--- coached player's box ticked (changed from elsewhere too: a strong scroll).
 function SyncFollow()
     if not panel then
         return
     end
     for _, row in ipairs(panel.rows) do
-        if row.followCheck and row.followCheck:IsChecked() ~= (row.record.follow and true or false) then
-            row.followCheck:SetCheck(row.record.follow and true or false, true)
+        Paint(row)
+        if row.coachCheck and row.coachCheck:IsChecked() ~= (row.record.coached and true or false) then
+            row.coachCheck:SetCheck(row.record.coached and true or false, true)
         end
     end
 end
@@ -822,6 +880,17 @@ function SetEditing(on)
     layout.editing = on
     Tip()
     Build()
+end
+
+--- While following someone (coach.lua), the panel goes above the layer that
+--- takes every click for drawing on their screen, so a name can still be
+--- clicked to stop; back down afterwards.
+---@param on boolean
+function SetRaised(on)
+    layout.raised = on and true or false
+    if panel then
+        panel.root.Depth:Set(layout.raised and Config.Coach.PanelRaisedDepth or Config.Panel.Depth)
+    end
 end
 
 --- Back to where config.lua puts it (Panel.X / Panel.Y), and forget the

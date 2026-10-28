@@ -33,6 +33,7 @@ local Panel = import(_G.TeamMousePath .. '/modules/panel.lua')
 local Version = import(_G.TeamMousePath .. '/modules/version.lua')
 local WirePack = import(_G.TeamMousePath .. '/modules/wirepack.lua')
 local WireCodec = import(_G.TeamMousePath .. '/modules/wirecodec.lua')
+local Coach = import(_G.TeamMousePath .. '/modules/coach.lua')
 
 
 local WorldViewManager = import('/lua/ui/game/worldview.lua')
@@ -359,6 +360,8 @@ local CheckSelection
 local CheckUpgrades
 local CountClick
 local NoteClickMove
+local CoachInputs
+local BlockUnitMethods
 
 local function Log(msg)
     LOG('TeamMouse: ' .. tostring(msg))
@@ -458,7 +461,10 @@ local function CreateRecord(name, armyIndex, color)
         vp = false,              -- their view's outline, 4 corners of x/y/z (msg.vp)
         cam = false,             -- their camera: focus x/y/z, heading, pitch, zoom (msg.cam)
         camIn = {},              -- scratch for reading one in
-        follow = false,          -- replays: the viewer's camera follows theirs (panel)
+        follow = false,          -- the viewer's camera follows theirs (a click on their name)
+        followsMe = false,       -- they are following our view: their cursor is not shown
+        coach = false,           -- an observer coaching us, not a player (coach.lua)
+        coached = false,         -- (observers) we coach them
         sel = {},                -- their selected units' ids (msg.sel)
         selText = false,         -- ...as it came, to tell a repeat from a change
         selT = 0,                -- when it last changed (live boxes fade from then)
@@ -1057,6 +1063,11 @@ local function ProcessMessage(sender, msg)
         return
     end
 
+    -- Following and coaching (coach.lua) have messages of their own.
+    if plain and Coach.Receive(sender, msg) then
+        return
+    end
+
     -- Someone has hidden our cursor (tmo 0), or shown it again (tmo 1): stop
     -- sending to them, or start again.
     if type(msg) == 'table' and msg.tmo ~= nil then
@@ -1583,6 +1594,15 @@ local function CalibratePointerMap(engineWorld)
         return
     end
 
+    -- Nor while the camera is being moved for us (following someone,
+    -- FollowPass): the engine's reading lags the camera, and a following
+    -- observer's very first beats are all like that -- one disagreement
+    -- failed calibration for good, and with it every drag's far end
+    -- (reported: an observer coach's drags did not move until released).
+    if (GetSystemTimeSeconds() - (pointerMap.camMovedT or -1000)) < 0.5 then
+        return
+    end
+
     local view = localMouse.view
     if not view or not localMouse.x or not IsFiniteVector(engineWorld) then
         return
@@ -1614,6 +1634,7 @@ local function CalibratePointerMap(engineWorld)
     end
 
     if best and bestError <= POINTER_MAP_TOLERANCE then
+        pointerMap.misses = 0
         pointerMap.verified = true
         if not atOrigin then
             pointerMap.mode = best
@@ -1621,9 +1642,25 @@ local function CalibratePointerMap(engineWorld)
                 .. tostring(math.floor(bestError * 10 + 0.5) / 10) .. ')')
         end
     elseif not pointerMap.verified then
-        pointerMap.failed = true
-        Log('UnProject does not agree with GetMouseWorldPos; the ghost will park'
-            .. ' where the pointer last touched the map')
+        -- Only several in a row: one odd reading is not the convention.
+        pointerMap.misses = (pointerMap.misses or 0) + 1
+        if pointerMap.misses >= 5 then
+            pointerMap.failed = true
+            Log('UnProject does not agree with GetMouseWorldPos; the ghost will park'
+                .. ' where the pointer last touched the map')
+        end
+    end
+end
+
+--- An observer, on every beat (not only while coaching or following, when
+--- the camera is usually on the move): learn UnProject's convention while
+--- the pointer rests on the map, so their drags can be followed later.
+local function ObserverCalibrate()
+    if localMouse.overWorld and not pointerMap.verified then
+        local ok, world = pcall(GetMouseWorldPos)
+        if ok then
+            CalibratePointerMap(world)
+        end
     end
 end
 
@@ -1787,6 +1824,7 @@ local function EndDrag()
     sendState.waypoint = false
     sendState.grabKind = 0
     sendState.buildBp = false
+    sendState.lineMoved = false
 end
 
 --- Cell under a screen position, or nil if the position is off this grid.
@@ -2601,7 +2639,9 @@ local function AnnounceBuild()
     end
 
     local bw = buildWatch
-    if Config.Orders.BuildConfirm and rawget(_G, 'TeamMouseCommandHook')
+    -- (An observer's placements never reach the game -- ObserverOrderPress --
+    -- so there are no orders of the game's to wait for: announced as dragged.)
+    if Config.Orders.BuildConfirm and not isObserver and rawget(_G, 'TeamMouseCommandHook')
         and rawget(_G, 'TeamMouseOnCommandIssued') then
         bw.pending = true
         bw.relT = GetSystemTimeSeconds()
@@ -2846,14 +2886,42 @@ end
 --- The state flags for right now.
 ---@param onHud boolean
 ---@return number
+--- Whether a build press has become a row: the pointer has gone
+--- Line.StartPixels from the press (and once it has, it stays one). Until
+--- then it is one structure being placed, and nothing is said about a drag:
+--- a single placement used to show as a short row for as long as its release
+--- took to arrive (reported for observers, whose release can go missing).
+---@return boolean
+local function LineMoved()
+    if sendState.lineMoved then
+        return true
+    end
+    local overlay = activeDragView and dragOverlays[activeDragView]
+    local x, y = localMouse.x, localMouse.y
+    if overlay then
+        x, y = overlay.liveScreen[1], overlay.liveScreen[2]
+    end
+    if not x then
+        return false
+    end
+    local dx, dy = x - sendState.dragX, y - sendState.dragY
+    local min = Config.Line.StartPixels
+    if dx * dx + dy * dy > min * min then
+        sendState.lineMoved = true
+    end
+    return sendState.lineMoved
+end
+
 local function CurrentFlags(onHud)
     local f = 0
     if onHud then f = f + FLAG_HUD end
     if localSelecting then
         if sendState.plain then
             f = f + FLAG_FOLLOW
-        else
-            f = f + (sendState.line and FLAG_LINE or FLAG_BOX)
+        elseif not sendState.line then
+            f = f + FLAG_BOX
+        elseif LineMoved() then
+            f = f + FLAG_LINE
         end
     elseif rightClick.live then
         if rightClick.drawing then
@@ -3060,6 +3128,9 @@ local function CheckStuckDrag(now, state)
         or not state.overWorld) then
         EndDrag()
     end
+    -- (Ending a drag here whenever IsKeyDown('LBUTTON') read up was tried, for
+    -- a lost release: it ended an observer coach's box and build drags on
+    -- their first beat (reported). Not trusted on its own for that.)
 end
 
 --- Fill `beat` for this moment. False if there is no position to report.
@@ -3090,7 +3161,8 @@ local function GatherViewport()
     -- The camera itself, whole (what SaveSettings says), for following a
     -- player's view in a replay: focus x, y, z, heading, pitch, zoom. Only
     -- when recording: following is for replays, and live packets stay small.
-    local camera = (sendState.recording or table.getn(sendState.specTo) > 0) and GetCamera('WorldCamera')
+    local camera = (sendState.recording or table.getn(sendState.specTo) > 0 or Coach.TeamFollowing())
+        and GetCamera('WorldCamera')
     local okCam, settings = pcall(SaveCamera, camera)
     if okCam and type(settings) == 'table' and IsFiniteVector(settings.Focus)
         and type(settings.Heading) == 'number' and type(settings.Pitch) == 'number'
@@ -3307,6 +3379,21 @@ local function Deliver(compactTo, plainTo)
     return wire
 end
 
+--- An observer's own orders and placements never reach the game, so the game
+--- shows them nothing of what they did: the packet the coached player gets is
+--- read back into a record of their own (CoachInputs), drawn without its
+--- cursor -- the row being dragged, structures placed, orders given.
+local function FeedSelf()
+    local record = sendState.selfRecord
+    local a = outgoing.a
+    outgoing.a = record.army
+    local ok, err = pcall(ProcessMessage, false, outgoing)
+    outgoing.a = a
+    if not ok then
+        Log('own feedback error: ' .. tostring(err))
+    end
+end
+
 --- Send `beat`: the full packet to teammates, the legacy packet for older
 --- builds, and optionally the commander-name copy for replays.
 ---@param now number
@@ -3314,7 +3401,7 @@ end
 local function Transmit(now, state)
     -- Anyone to send to? (Not if every one of them has hidden our cursor.)
     local sharing = table.getn(sendState.teamLive) + table.getn(sendState.specLive) > 0
-    if sharing or sendState.recording then
+    if sharing or sendState.recording or sendState.selfRecord then
         local _, dragKind = DecodeFlags(beat.flags)
         local Opt = OptionalValue
         outgoing.a = myArmy
@@ -3415,12 +3502,15 @@ local function Transmit(now, state)
         end
 
         -- Teammates: the packet. Observers: the same, and our camera, which
-        -- they can follow (teammates do not follow, so are not sent it). Each
-        -- as the compact string to those who read it (wirecodec.lua), the
-        -- plain table to the rest; without a camera to add, teammates and
-        -- observers get the one message.
+        -- they can follow (teammates get it only while one of them follows
+        -- us: coach.lua). Each as the compact string to those who read it
+        -- (wirecodec.lua), the plain table to the rest; without a camera to
+        -- add, teammates and observers get the one message.
         local wire
-        if sendCam and table.getn(sendState.specLive) > 0 then
+        if sendCam and Coach.TeamFollowing() then
+            outgoing.cam = beat.cam
+            wire = Deliver(sendState.allC, sendState.allP)
+        elseif sendCam and table.getn(sendState.specLive) > 0 then
             Deliver(sendState.teamC, sendState.teamP)
             outgoing.cam = beat.cam
             wire = Deliver(sendState.specC, sendState.specP)
@@ -3441,6 +3531,9 @@ local function Transmit(now, state)
             ReplayCodec.Record(wire or outgoing, myArmy)
         end
         outgoing.cam = nil
+        if sendState.selfRecord then
+            FeedSelf()
+        end
     end
 
     -- The old SharedMouse format, only to teammates seen using it: every
@@ -3487,8 +3580,21 @@ function OnBeat()
 
     pcall(Panel.Refresh)
 
-    if isObserver or isReplay then
+    -- An observer sends nothing, unless coaching: then their cursor goes to
+    -- that one player (Coach.SetCoach -> SetCoachTarget). Following or
+    -- coaching, it also runs for their own screen (FeedSelf).
+    if isObserver and not isReplay then
+        ObserverCalibrate()
+    end
+    if isReplay or (isObserver and not Coach.Acting()) then
         return
+    end
+    if isObserver then
+        CoachInputs()
+        local okSel, units = pcall(GetSelectedUnits)
+        if okSel and type(units) == 'table' then
+            BlockUnitMethods(units[1])
+        end
     end
 
     local ok, err = pcall(PlayerBeat)
@@ -3665,19 +3771,20 @@ local function NoteFollowScroll(event)
             record.follow = false
             Debug('stopped following ' .. tostring(record.name) .. ': scrolled')
         end
+        pcall(Coach.FollowStopped, record)
         pcall(Panel.SyncFollow)
     end
 end
 
---- Replays: the viewer's camera follows the player whose "follow" box is
---- ticked in the panel. Each frame it moves part of the way to where theirs
+--- The viewer's camera follows the player whose name was clicked in the
+--- panel (coach.lua). Each frame it moves part of the way to where theirs
 --- last was (Follow.Rate), so their updates -- about ten a second, and only
 --- when their camera moves -- read as smooth motion rather than steps. The
 --- heading turns the short way round; the zoom eases on a log scale, so
 --- zooming reads as even.
 ---@param delta number
 local function FollowPass(delta)
-    if not (isReplay or isObserver) or not Config.Follow.Enabled then
+    if not Config.Follow.Enabled then
         return
     end
     local target = false
@@ -3689,6 +3796,13 @@ local function FollowPass(delta)
     end
     if not target then
         follow.army = false
+        return
+    end
+
+    -- Not while a left drag is under way (a box, a row of structures): a row
+    -- is laid on the ground under a camera that should not slide away from
+    -- it. It catches up from where it was once the drag is over.
+    if localSelecting then
         return
     end
 
@@ -3744,18 +3858,20 @@ local function FollowPass(delta)
     tzoom = tzoom * FollowFit(target, tzoom)
     follow.zoom = math.exp(math.log(follow.zoom) + (math.log(tzoom) - math.log(follow.zoom)) * k)
 
+    pointerMap.camMovedT = GetSystemTimeSeconds()
     pcall(function()
         camera:RestoreSettings({ Focus = { follow.fx, follow.fy, follow.fz },
             Heading = follow.heading, Pitch = follow.pitch, Zoom = follow.zoom })
     end)
 end
 
---- What only a replay does each frame: hold cursors still while paused, and
---- follow a player's camera.
+--- Each frame, besides the cursors: hold them still while a replay is
+--- paused, follow a player's camera, and coaching's marks (coach.lua).
 ---@param delta number
 local function ReplayFrame(delta)
     HoldWhilePaused(delta)
     FollowPass(delta)
+    Coach.Frame(delta)
     -- A player's row appears as soon as their recorded data does.
     if isReplay then
         pcall(Panel.Sync)
@@ -3859,6 +3975,20 @@ local function UpdateFrame(delta)
                 -- against a control that has already been destroyed.
                 if visual and visual.view == view then
                     visual:UpdateFrame(viewInfo, now)
+                    -- A coach looking through our eyes (coach.lua): their
+                    -- arrow only while they do something (coachFade), but
+                    -- the building in their hand and their drags show.
+                    if record.self then
+                        visual:HideOwnPieces()
+                    elseif record.followsMe and record.coach then
+                        visual:CursorFade(record.renderHud and 0 or record.coachFade or 0)
+                    elseif record.coach and record.renderHud then
+                        -- On their own (observer's) interface: nothing of it
+                        -- means anything to the player -- no ghost, no cursor.
+                        visual:HideCursorOnly()
+                    elseif visual.cursorOnlyHidden or visual.cursorFaded then
+                        visual:ShowCursorAgain()
+                    end
                 end
             end
         end
@@ -4041,6 +4171,11 @@ local function HookUpgrades()
         upgradeOriginals[name] = original
         rawset(_G, name, function(a, b, c, d, e)
             pcall(unitsOf, a, b, c)
+            -- An observer's would be refused, and called cheating: TeamMouse
+            -- has told the player they coach; the game is not told.
+            if isObserver and not isReplay then
+                return
+            end
             return original(a, b, c, d, e)
         end)
     end
@@ -4062,6 +4197,75 @@ local function HookUpgrades()
             NoteUpgrade({ unit }, bp)
         end
     end)
+end
+
+--- The game's command functions as they were, while an observer's are
+--- kept from the game (BlockObserverCommands).
+local blockedCommands = {}
+
+--- Every way the interface gives units an order without a click on the map
+--- -- hotkeys and order buttons: stop, pause, fire states, toggles, dive,
+--- dock, ... (FAF engine/User.lua) -- does nothing for a live observer: their
+--- units are not theirs, and the sim would call it cheating. SimCallback
+--- only when it carries the selection (with it the sim checks ownership
+--- itself, quietly). Also each unit's ProcessInfo (repeat build, auto mode),
+--- once a unit is seen (BlockUnitMethods). Not covered: a module that kept
+--- its own copy of one at load (upgrade-structure.lua's
+--- IssueBlueprintCommandToUnit).
+local function BlockObserverCommands()
+    local names = { 'IssueCommand', 'IssueUnitCommand', 'IssueUnitCommandToUnit', 'IssueDockCommand',
+        'SetPaused', 'SetPausedOfUnit', 'ToggleScriptBit', 'SetFireState', 'ToggleFireState',
+        'SetAutoMode', 'SetAutoSurfaceMode', 'SimCallback' }
+    for _, entry in ipairs(names) do
+        local name = entry
+        local original = rawget(_G, name)
+        if type(original) == 'function' and not blockedCommands[name] then
+            blockedCommands[name] = original
+            rawset(_G, name, function(a, b, c, d, e)
+                if name == 'SimCallback' and not b then
+                    return original(a, b, c, d, e)
+                end
+                Debug('kept from the game (observer): ' .. name)
+            end)
+        end
+    end
+end
+
+--- A unit's own ProcessInfo (repeat build, a pod's auto mode), through the
+--- methods its metatable holds. UNVERIFIED that the engine's unit objects
+--- expose them this way; quietly nothing if not.
+---@param unit any
+BlockUnitMethods = function(unit)
+    if blockedCommands.ProcessInfo or not unit then
+        return
+    end
+    pcall(function()
+        local mt = getmetatable(unit)
+        local methods = type(mt) == 'table' and (type(mt.__index) == 'table' and mt.__index or mt)
+        local original = methods and rawget(methods, 'ProcessInfo')
+        if type(original) == 'function' then
+            blockedCommands.ProcessInfo = { methods, original }
+            rawset(methods, 'ProcessInfo', function() end)
+        end
+    end)
+end
+
+local function UnblockObserverCommands()
+    for name, original in pairs(blockedCommands) do
+        if name == 'ProcessInfo' then
+            pcall(rawset, original[1], 'ProcessInfo', original[2])
+        else
+            rawset(_G, name, original)
+        end
+    end
+    blockedCommands = {}
+end
+
+--- A live observer, at the start: their upgrades, factory queues and
+--- keyboard orders never reach the game.
+local function ObserverInputs()
+    HookUpgrades()
+    BlockObserverCommands()
 end
 
 local function UnhookUpgrades()
@@ -4420,25 +4624,70 @@ local function DragStillNear()
     return dx * dx + dy * dy <= max * max
 end
 
+--- A live observer never gives orders: their units are not theirs, and the
+--- game would tell everyone they are trying to cheat (the sim flags it:
+--- Sync.Cheaters). With their focus on a player's army (coach.lua) they can
+--- still select that army's units and pick from its build menu, so a press
+--- that would order anything is kept from the game -- after TeamMouse has
+--- seen it, so the player they coach is shown it, and so are they
+--- (FeedSelf). A build press also leaves build mode on its release, as an
+--- issued build order does (sendState.blockedBuild).
+---@param t string
+---@param event table
+---@return boolean   # true: the game must not see this event
+local function ObserverOrderPress(t, event)
+    if not isObserver or isReplay or (t ~= 'ButtonPress' and t ~= 'ButtonDClick') then
+        return false
+    end
+    local m = event.Modifiers or {}
+    local inMode = CommandMode.InCommandMode()
+    if m.Right then
+        -- In a command mode a right click only leaves it: let it.
+        return not inMode and HasSelection()
+    end
+    if m.Left and inMode then
+        sendState.blockedBuild = IsBuildMode() and true or false
+        return true
+    end
+    return false
+end
+
+--- The release of a build press kept from the game: leave build mode, as the
+--- game does once it has placed something (Shift keeps it, as in the game).
+---@param event table
+local function EndBlockedBuild(event)
+    if not sendState.blockedBuild then
+        return
+    end
+    sendState.blockedBuild = false
+    if not (event.Modifiers and event.Modifiers.Shift) then
+        pcall(CommandMode.EndCommandMode, true)
+    end
+end
+
 local function HookViewEvents(view)
     if view._TeamMouseHooked then
         return
     end
     view._TeamMouseHooked = true
 
-    local trackSelection = Config.Selection.Enabled and not isObserver and not isReplay
+    -- Players, and an observer while coaching (coach.lua: what they do goes
+    -- to the player they coach, as a teammate's would).
+    local trackSelection = Config.Selection.Enabled and not isReplay
 
     -- The right button matters to players for two reasons -- the grid has to
     -- lift out of its way, and its orders are shared -- and to nobody else.
-    local trackRight = not isObserver and not isReplay
+    local trackRight = not isReplay
 
-    if trackSelection and Config.Selection.DragTracking then
+    -- (An observer's comes when they start coaching: CoachInputs.)
+    if trackSelection and Config.Selection.DragTracking and not isObserver then
         CreateDragOverlayForView(view)
     end
 
     local originalHandleEvent = view.HandleEvent
     view.HandleEvent = function(self, event)
         local t = event.Type
+        local tracking = not isObserver or Coach.Acting()
 
         if t == 'WheelRotation' then
             NoteFollowScroll(event)
@@ -4451,7 +4700,12 @@ local function HookViewEvents(view)
                 localMouse.view = self
             end
         end
-        if trackRight and (t == 'ButtonPress' or t == 'ButtonDClick' or t == 'ButtonRelease'
+        -- Following or coaching (coach.lua), right-drags and clicks are its
+        -- own: drawn for that player, never seen by the game.
+        if t ~= 'MouseEnter' and t ~= 'MouseExit' and t ~= 'WheelRotation' and Coach.ViewEvent(self, event) then
+            return true
+        end
+        if trackRight and tracking and (t == 'ButtonPress' or t == 'ButtonDClick' or t == 'ButtonRelease'
             or (t == 'MouseMotion' and sendState.clickT)) then
             NoteClick(t, event)
         end
@@ -4475,10 +4729,10 @@ local function HookViewEvents(view)
             localMouse.pendingHud = false
         end
         --LOG("Pending: " .. tostring(localMouse.pendingHud))
-        if trackRight and (t == 'ButtonPress' or t == 'ButtonRelease') then
+        if trackRight and tracking and (t == 'ButtonPress' or t == 'ButtonRelease') then
             HandleRightButton(t, event, self)
         end
-        if trackSelection then
+        if trackSelection and (tracking or localSelecting) then
             if t == 'ButtonPress' then
                 HandleLeftPress(self, event)
             elseif t == 'ButtonRelease' then
@@ -4504,6 +4758,12 @@ local function HookViewEvents(view)
             end
         end
 
+        if t == 'ButtonRelease' then
+            EndBlockedBuild(event)
+        end
+        if ObserverOrderPress(t, event) then
+            return true
+        end
         return originalHandleEvent(self, event)
     end
 end
@@ -4669,6 +4929,11 @@ local function HookRootFrame()
         if t == 'ButtonRelease' and (rightClick.press or rightClick.middle) then
             HandleRightButton(t, event)
         end
+        -- A stroke drawn for a player we follow carries on over the interface
+        -- (and an observer's starts there too).
+        if (t == 'MouseMotion' or t == 'ButtonRelease' or t == 'ButtonPress') and Coach.RootEvent(event) then
+            return true
+        end
         
         if x then
             local y = event.MouseY
@@ -4716,6 +4981,127 @@ local function StartVersions(listed)
             ReplayCodec.Record(msg, myArmy)
         end)
     end
+end
+
+--- An observer coaching us (coach.lua): their cursor, as a teammate's. They
+--- have no army: theirs is 1000 + their client index.
+---@param name string
+local function AddCoachRecord(name)
+    local index = sendState.clientIndex[name]
+    if peers[name] or not index then
+        return
+    end
+    local record = CreateRecord(name, 1000 + index, Config.Coach.Color)
+    record.coach = true
+    peers[name] = record
+    peersByArmy[record.army] = record
+    SyncViews()
+end
+
+---@param name string
+local function RemoveCoachRecord(name)
+    local record = peers[name]
+    if not record or not record.coach then
+        return
+    end
+    for viewKey, visual in pairs(record.visuals) do
+        pcall(visual.Destroy, visual)
+        record.visuals[viewKey] = nil
+    end
+    peers[name] = nil
+    peersByArmy[record.army] = nil
+end
+
+--- An observer starts coaching: from now on what they do goes to that player
+--- as a teammate's would -- drags tracked (the grid), structures placed
+--- (the commandmode hook, upgrades). Not their selection: theirs copies the
+--- player's. Once a session.
+CoachInputs = function()
+    if sendState.coachInputs then
+        return
+    end
+    sendState.coachInputs = true
+    HookPlayerInputs()
+    sendState.selWatch = false
+    -- STOP, PAUSED, ... for the player they coach (never reaching the game).
+    if Config.Actions.Share then
+        pcall(Actions.Install, QueueAction)
+    end
+    -- What they do, drawn for them too (FeedSelf): army 2000, never sent.
+    if not sendState.selfRecord then
+        local record = CreateRecord(myName, 2000, Config.Coach.Color)
+        record.self = true
+        record.showView = false
+        sendState.selfRecord = record
+        peers[myName] = record
+        peersByArmy[record.army] = record
+        SyncViews()
+    end
+    if Config.Selection.Enabled and Config.Selection.DragTracking then
+        for _, view in pairs(knownViews) do
+            if not dragOverlays[view] then
+                CreateDragOverlayForView(view)
+            end
+        end
+    end
+end
+
+--- A right click that coach.lua took (following, or coaching) and that was
+--- not a drawing: an order where the pointer is, announced as a right
+--- click's would be, never given.
+local function GhostOrder()
+    local ok, world = pcall(GetMouseWorldPos)
+    if not ok or not IsFiniteVector(world) or not Config.Orders.Share then
+        return
+    end
+    local kind = CursorData.IndexFromKey(cursor and cursor.TeamMouseOrder)
+    if kind == 0 or kind == CursorData.IndexFromKey('selectable')
+        or kind == CursorData.IndexFromKey('selectable-invalid') then
+        kind = CursorData.IndexFromKey('move')
+    end
+    local x, y, z = Round1(world[1]), Round1(world[2]), Round1(world[3])
+    QueueOrder(kind, x, y, z, x, z, 0)
+end
+
+--- Following and coaching (coach.lua): what it needs from here, and what
+--- the panel offers. Out of InitTeamMouse for the upvalue limit.
+---@return table   # the panel's hooks
+local function StartCoach()
+    local myColor = Config.Coach.Color
+    if not isObserver and not isReplay then
+        local armies = GetArmiesTable().armiesTable
+        local mine = armies and armies[myArmy]
+        if mine and mine.color then
+            myColor = CursorData.SafeUIColor(mine.color)
+        end
+    end
+    Coach.Start({
+        send = function(index, msg) SessionSendChatMessage({ index }, msg) end,
+        clientIndex = sendState.clientIndex,
+        peers = peers,
+        myArmy = myArmy, observer = isObserver, replay = isReplay, myColor = myColor,
+        addCoach = AddCoachRecord,
+        removeCoach = RemoveCoachRecord,
+        -- An observer's cursor goes to the player they coach, and nobody else.
+        setCoachTarget = function(index)
+            if index then
+                CoachInputs()
+            end
+            sendState.teamTo = index and { index } or {}
+            RebuildTargets()
+        end,
+        forceView = function() sendState.vpT = false end,
+        ghostOrder = GhostOrder,
+        panelSync = Panel.SyncFollow,
+        raisePanel = Panel.SetRaised,
+    })
+    local hooks = { follow = Coach.ToggleFollow }
+    if isObserver and not isReplay then
+        hooks.coach = Coach.SetCoach
+    elseif not isReplay then
+        hooks.lens, hooks.lensOn = Coach.SetShow, Coach.Showing
+    end
+    return hooks
 end
 
 --- Throw every cursor away and build them again, for settings only read
@@ -4856,7 +5242,7 @@ function InitTeamMouse(replay)
         end
         table.sort(listed, function(a, b) return a.army < b.army end)
         -- In a replay, a player is only listed once their data turns up.
-        Panel.Create(listed, OnPanelToggle, isReplay or isObserver, isReplay)
+        Panel.Create(listed, OnPanelToggle, StartCoach(), isReplay)
 
         -- Stop, repeat build and pause, for teammates to see.
         if Config.Actions.Share and not isObserver and not isReplay then
@@ -4906,6 +5292,8 @@ function InitTeamMouse(replay)
         -- so a refused placement is not shown to teammates.
         if not isObserver and not isReplay then
             HookPlayerInputs()
+        elseif isObserver and not isReplay then
+            ObserverInputs()
         end
 
         initialised = true
@@ -4941,6 +5329,9 @@ function Destroy()
     rawset(_G, 'TeamMouseRebuild', nil)
     UnhookUpgrades()
     sendState.selWatch = false
+    sendState.coachInputs = false
+    sendState.selfRecord = false
+    sendState.blockedBuild = false
     sendState.upgradeTold, sendState.upgradeToldCount = {}, 0
     ReplayCodec.ResetOption()
     buildWatch.armed = false
@@ -4948,6 +5339,8 @@ function Destroy()
     buildWatch.n = 0
     buildWatch.seen = false
     Actions.Uninstall()
+    UnblockObserverCommands()
+    Coach.Destroy()
     Panel.Destroy()
     Version.Reset()
     sendState.actCount = 0
@@ -5026,5 +5419,7 @@ function Destroy()
     pointerMap.verified = false
     pointerMap.mode = false
     pointerMap.failed = false
+    pointerMap.misses = 0
+    pointerMap.camMovedT = false
     pointerMap.lastX, pointerMap.lastY = -1, -1
 end

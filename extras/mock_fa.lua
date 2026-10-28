@@ -497,7 +497,7 @@ function M.CreateEnvironment(opts)
     env.GetSystemTimeSeconds = function() return clock.t end
     env.GetGameTimeSeconds = function() return clock.t end
 
-    env.GetFocusArmy = function() return opts.focusArmy or 1 end
+    env.GetFocusArmy = function() return env.__focusArmy or opts.focusArmy or 1 end
     env.GetArmiesTable = function()
         return { armiesTable = opts.armies, focusArmy = opts.focusArmy or 1 }
     end
@@ -550,6 +550,13 @@ function M.CreateEnvironment(opts)
         table.insert(env.__issued, { 'IssueBlueprintCommandToUnit', command, bp })
     end
     -- SelectUnits: each call's units kept in env.__selectCalls.
+    -- Console commands (ConExecute), kept in env.__console.
+    env.__console = {}
+    env.ConExecute = function(command)
+        table.insert(env.__console, command)
+        local _, _, n = string.find(command, '^SetFocusArmy (%-?%d+)$')
+        if n then env.__focusArmy = tonumber(n) >= 0 and tonumber(n) + 1 or -1 end
+    end
     env.__selectCalls = {}
     env.SelectUnits = function(units) table.insert(env.__selectCalls, units) end
 
@@ -616,6 +623,7 @@ function M.CreateEnvironment(opts)
     env.__sentVersion = {}
     env.__sentMute = {}
     env.__sentHello = {}
+    env.__sentCoach = {}
     local function DeepCopy(t)
         if type(t) ~= 'table' then return t end
         local out = {}
@@ -627,6 +635,11 @@ function M.CreateEnvironment(opts)
         -- "the first/last packet sent" still means cursor data.
         if msg.tmv ~= nil then
             table.insert(env.__sentVersion, { clients = clients, msg = msg })
+            return
+        end
+        -- Following and coaching (coach.lua): kept apart too.
+        if msg.tmf ~= nil or msg.tmh ~= nil or msg.tml ~= nil or msg.tmk ~= nil or msg.tmw ~= nil then
+            table.insert(env.__sentCoach, { clients = clients, msg = DeepCopy(msg) })
             return
         end
         -- "I read the compact format" (tmc): kept apart too.
@@ -854,6 +867,7 @@ function M.CreateEnvironment(opts)
         ['/lua/ui/game/commandmode.lua'] = {
             GetCommandMode = function() return env.__commandMode end,
             InCommandMode = function() return env.__commandMode[1] ~= false end,
+            EndCommandMode = function() env.__commandMode = { false, false } end,
         },
         ['/lua/ui/game/gamecommon.lua'] = {
             GetUnitIconFileNames = function(bp)

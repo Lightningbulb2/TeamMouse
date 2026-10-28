@@ -26,7 +26,9 @@ Built on top of the SharedMouse mod by Eternal- that was cleaned up by KasperAUS
 
 • (optional) show camera perspective of your teammates
 
-• (optional) follow player perspective and selections --- (for observer and replays)
+• (optional) follow player perspective and selections --- click a name in the panel (teammates, observers and replays)
+
+• coaching: while following someone, draw on their screen and click-ping for them; observers can coach one player (their cursor and map drawings go to that player only)
 
 • show drawings earlier before it's applied to the simulation
 
@@ -66,6 +68,7 @@ modules/remotecursor.lua            the visual for one player in one view
 modules/hudghost.lua                the stylised panel shown when someone is in their UI
 modules/replaycodec.lua             zero-width encoding for replay playback
 modules/teammouse.lua             session setup, send, receive, view sync
+modules/coach.lua                 following and coaching: drawing on a player's screen
 extras/mock_fa.lua                  mock game environment for tests (Lua 5.0 table semantics)
 extras/test_integration.lua         111+ tests over the whole pipeline, including regressions
 extras/test_replaycodec.lua         17 tests over the codec
@@ -138,8 +141,8 @@ cursor beside it, plus a line for a right-drag formation (`Orders`).
 
 ### Right-click drawing
 
-A right-drag is shown while it is being drawn, and stays up after the release
-until the order has reached the sim.
+A right-drag drawing is shown while it is being drawn, as solid lines on the
+map like the game's own, and fades after the release.
 
 ### State is drawn from the moment being drawn
 

@@ -87,7 +87,23 @@ V4:
 
 • Fix: upgrade ReUI support to latest version
 
-• add coaching
+• add coaching: click a player's name in the panel to follow their view (teammates too, not just observers and replays); click it again to go back to where you were looking, or scroll to break free
+
+• while following someone, right-drag draws straight on their screen (over their interface, never in the game or the replay) and fades after 2 seconds; left click plays a ring on their screen
+
+• "drawings on my screen" box in the panel (and a ReUI option for how it starts) to show or hide what people following you draw
+
+• observers: a "coach" box per player sends your cursor to that player alone, copies their selection, and draws your map drawings on their map, fading after 2 seconds
+
+• coaching observers: focus locks to the coached army, and your selection boxes, build drags, placements and move orders show for the player as a teammate's would (following them too: your cursor shows only while you hold a building, drag, click or draw, unless "Always show a following coach's cursor" is on)
+
+• observers coach whoever they last followed (ReUI option, on by default)
+
+• observers' build placements, move orders and upgrades never reach the game (no "trying to cheat" message), and neither do their keyboard orders (stop, pause, fire states, ...); placements and orders still go to the coached player, and show on the observer's own screen
+
+• a coach's single right click is a ghost order for the player, not a dot; the follow camera holds still during a left drag; a coach on their own interface shows the player nothing
+
+• teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots
 
 
 ]]
