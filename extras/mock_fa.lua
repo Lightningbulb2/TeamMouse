@@ -550,6 +550,16 @@ function M.CreateEnvironment(opts)
         table.insert(env.__issued, { 'IssueBlueprintCommandToUnit', command, bp })
     end
     -- SelectUnits: each call's units kept in env.__selectCalls.
+    -- UserSync's hashed sync callbacks: env.__sync[category][id] = fn. A test
+    -- plays the sync's part with M.Sync(env, category, data).
+    env.__sync = {}
+    env.AddOnSyncHashedCallback = function(cb, cat, id)
+        env.__sync[cat] = env.__sync[cat] or {}
+        env.__sync[cat][id] = cb
+    end
+    env.RemoveOnSyncHashedCallback = function(cat, id)
+        if env.__sync[cat] then env.__sync[cat][id] = nil end
+    end
     -- Console commands (ConExecute), kept in env.__console.
     env.__console = {}
     env.ConExecute = function(command)
@@ -638,7 +648,7 @@ function M.CreateEnvironment(opts)
             return
         end
         -- Following and coaching (coach.lua): kept apart too.
-        if msg.tmf ~= nil or msg.tmh ~= nil or msg.tml ~= nil or msg.tmk ~= nil or msg.tmw ~= nil then
+        if msg.tmf ~= nil or msg.tmh ~= nil or msg.tml ~= nil or msg.tmw ~= nil or msg.tmp ~= nil then
             table.insert(env.__sentCoach, { clients = clients, msg = DeepCopy(msg) })
             return
         end
@@ -1009,6 +1019,14 @@ function M.SimRoundTrip(fromEnv, toEnv, first, commandSource)
     end
     toEnv.import('/lua/userplayerquery.lua').ProcessQueries(queries)
     return table.getn(queries)
+end
+
+--- The sim's sync bringing `data` for `category` up to the interface: every
+--- hashed callback for it is called (UserSync.OnSync).
+function M.Sync(env, category, data)
+    for _, cb in pairs(env.__sync[category] or {}) do
+        cb(data)
+    end
 end
 
 --- One frame of the engine rendering the world: every shape on every view

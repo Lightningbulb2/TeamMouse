@@ -987,14 +987,17 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   replays. The follower says `{ tmf = 1, ta = army }` to the followed
   player's client alone (again every 2 s while no camera comes); while any
   teammate follows, a player's packets to teammates carry `cam` too
-  (`Coach.TeamFollowing`), and the followed player hides the follower's
-  cursor (`record.followsMe`). Clicking the name again restores the camera
+  (`Coach.TeamFollowing`). A following teammate's cursor stays in sight; a
+  following coach's shows only while they act (`record.followsMe`,
+  `CursorFade`). Clicking the name again restores the camera
   saved when following began (`SaveSettings` / `RestoreSettings`); a hard
   scroll (`NoteFollowScroll` -> `Coach.FollowStopped`) leaves it.
-- **While following live, presses are consumed**: the view hook asks
-  `Coach.ViewEvent` first and returns true for a right press (a lens stroke)
-  and a left press (a click ring), so neither FAF's painting (which would
-  send a SimCallback, into the replay) nor any order or selection happens.
+- **While following live, a right press with nothing selected is consumed**:
+  the view hook asks `Coach.ViewEvent` first and returns true for it (a lens
+  stroke), so FAF's painting (a SimCallback, into the replay) never starts.
+  Left presses, and a player's right press with units selected (an order for
+  their own units), go to the game as usual; an observer's right press is
+  always a stroke (their selection is the player's, copied).
   This relies on a handled ButtonPress stopping the engine's native
   handling, confirmed for the LEFT button only ("The native drag capture");
   **needs confirming for the right button**. A stroke ends on a release, or,
@@ -1017,15 +1020,11 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   space (`tmw`), drawn with UI_DrawLine in a shape on every world view;
   FAF's painting would be no use here anyway, since it refuses to start with
   units selected and the coach's selection copies the player's.
-- **Drawing over the interface (replaces the view-hook path while following):**
-  following live, coach.lua raises a transparent, hit-testable Bitmap over the
-  whole screen (`Coach.CaptureDepth`); every press, drag and release goes to
-  it, so right-drags draw and left clicks ring even over the interface, and
-  the game sees none of them. The wheel is passed on to the main world view
-  (zooming, `NoteFollowScroll`). The panel is raised above it
-  (`Panel.SetRaised`, `Coach.PanelRaisedDepth`) so a name can still be
-  clicked to stop. The whole interface is unusable meanwhile, by design;
-  keyboard hotkeys still work.
+- **(Removed) a capture layer over the whole screen while a player followed**
+  (every click a ring or a stroke, the panel and FAF's menu bar raised above
+  it). It made the follower's own interface unusable; a player following now
+  works as an observer does, minus the copied selection: see "Anyone
+  following" below.
 - **A white box from the screen's corner to a stroke (CONFIRMED by
   screenshot):** dots were shown before their Left/Top were set -- the
   circular-default trap above. Every dot is now hidden at creation, its
@@ -1063,15 +1062,19 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
 - **A coach following us** keeps sending their cursor; the player hides only
   the arrow, name, zoom bar and interface ghost (`HideCursorOnly`, each
   frame after `UpdateFrame`; `ShowCursorAgain` when they stop), so their
-  building in hand and drag box still show. A teammate following still
-  hides everything. Following, a right click in a command mode leaves the
+  building in hand and drag box still show. A teammate following stays in
+  sight. Following, a right click in a command mode leaves the
   mode (the game's own behaviour) instead of starting a stroke.
-- **An observer following has no capture layer** (their left clicks are
-  theirs: the build menu, ghost placements for the player). Their right
-  presses over the interface reach `Coach.RootEvent` by bubbling up to the
-  root frame -- only from interface controls that do not take right clicks
-  themselves. A player's capture layer raises FAF's menu bar
-  (`tabs.lua` `controls.parent` / `collapseArrow`) above it with the panel.
+- **Anyone following** keeps their own clicks (an observer's build menu and
+  ghost placements; a player's selections, builds and orders). Right presses
+  over the interface reach `Coach.RootEvent` by bubbling up to the root
+  frame -- only from interface controls that do not take right clicks
+  themselves -- and start a stroke there as on the map.
+- **(Removed) "coaches visible on my screen".** Observers are listed in a
+  player's panel instead (records made at the start, army 1000 + client
+  index, `record.observer`; a cursor packet from one is taken only while
+  they coach us), each with the ordinary box. Hiding one is not told to
+  them (no `tmo`).
 - **A teammate's drawing in progress is world lines now** (`NewTrailShape`
   in remotecursor.lua, `'TeamMouseTrail' .. army` on each view): UI_DrawLine
   through the trail's own points in their colour (`Draw.Alpha`,
@@ -1163,3 +1166,46 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   a cancelled build drag still placed one building). The view hook only
   hands a press without `Modifiers.Right` to HandleLeftPress, and a right
   press cancels a build drag in progress (`CancelBuildDrag`), as the game does.
+- **A teammate's early drawing goes when the game's own copy is drawn**, not
+  at the release: TeamMouse adds its own `AddOnSyncHashedCallback(fn,
+  'SharePaintingBrushStroke', 'TeamMouse')` beside FAF's painting adapters
+  (UserSync calls every id for a category with `Sync[category]`, a list of
+  `{ ShareablePainting = { PeerName, ... } }`; the sim passes PeerName on as
+  the drawer sent it). Each arrival counts on the drawer's record
+  (`paintSeq`/`paintT`); a finished trail goes once the count has passed what
+  it was when the trail began, or after `Draw.SimWait` (painting off), and
+  `Draw.FadeTime` (ReUI) fades from that moment. Removed on teardown.
+- **teammouse.lua is at Lua 5.0's 200 file-level locals** ("too many local
+  variables (limit=200)" at load, CONFIRMED with the real 5.0 compiler; the
+  5.1 suite does not catch it). New functions go inside an existing one (as
+  `OnSimPaintings` inside `StartCoach`), into an existing table, or into
+  another module.
+- **The panel title is "TeamMouse - v4"**, underlined (as Sim Speed
+  Balancer's): hovering lists everyone's version (`Panel.VersionList`;
+  observers now send theirs too, on every beat: `ObserverBeat`). The version
+  column and `Panel.ShowVersions` are gone.
+- **Dead teammates** (`armiesTable[army].outOfGame`, read each beat by
+  `Panel.Refresh`): `record.dead`; a red line through the name on the panel
+  and the cursor (a bitmap tied to the label, shown through its alpha), and
+  the cursor hidden unless `Config.Panel.ShowDead` ("show dead cursors").
+- **Following shows their panel**: the followed player sends `{ tmp =
+  Panel.State() }` ("army:cv,...|dN") when followed and on every change;
+  the follower outlines each of their boxes they have ticked
+  (`Panel.SetOverlay`), and clears it on unfollowing. Observers'
+  armies (1000 + client index) are the same on every client.
+- **The outline was behind the panel** (reported: "misses the view
+  checkboxes, the all checkbox"): a ring at `box.Depth() - 1` sat at the
+  body's own depth, under the background bitmap (body + 1). Now four 2px
+  lines just outside the box at `box.Depth() + 2`. "all" never gets one
+  (asked for: it is ours alone), and the followed player's row shows their
+  box for us (`hooks.me`: our army, or 1000 + our client index).
+- **An observer's cursor did not fade the first time they followed**
+  (reported): their `tmf` came before their `tmh`, when there was no record
+  to mark. Now the record exists from the start, and `tmh` marks it too.
+- **Observers kept to one team** (lobby option `TeamMouseObserverTeam`:
+  'any' or '1'..'8'; `observerteam.lua`). Teams are the lobby's numbers:
+  `SessionGetScenarioInfo().ArmySetup[army.name].Team - 1` (lobby Team 1 is
+  "no team"); without ArmySetup, alliances in army order (IsAlly). Not yet
+  checked in a real game that the UI's scenario info carries ArmySetup. An
+  observer's focus is put back on the team's first live army each beat it is
+  off it (at most once a second: each SetFocusArmy is a moderator event).

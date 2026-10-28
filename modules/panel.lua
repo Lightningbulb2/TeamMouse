@@ -11,10 +11,18 @@
 --** Built at the start of the game. In a replay, a player only gets a row
 --** once their recorded cursor data has actually turned up (the panel is rebuilt
 --** then), so players without the mod, or without recording on, are not listed.
---** Each row also shows the version of TeamMouse that player is on (version.lua).
+--** The title, "TeamMouse - v4", is underlined: hovering it lists everyone's
+--** version of TeamMouse (version.lua), as Sim Speed Balancer's panel does.
 --** Click a player's name to follow their view (coach.lua); click it again to
---** stop. Live observers also get a "coach" box per player (one at a time),
---** and players a "drawings on my screen" box under the list.
+--** stop (hovering a name lights its band first). Live observers also get a
+--** "coach" box per player (one at a time). Observers are listed under their
+--** own heading, "observers - Team: any" (or the team the lobby keeps them to:
+--** observerteam.lua), with no "view" box, and cannot be followed (a player
+--** sees an observer's cursor while they coach). A teammate whose army is out
+--** of the game has a red line through their name, and their cursor shows only
+--** with "show dead cursors" ticked (Panel.ShowDead starts it). Following
+--** someone, their own panel's ticks are drawn as green outlines round your
+--** boxes (not "all"), and their box for you round theirs (SetOverlay).
 --** Choices last for the game only.
 --**
 --** While TeamMouse's options window is open (optionswindow.lua -> SetEditing)
@@ -27,6 +35,7 @@
 local Config = import(_G.TeamMousePath .. '/modules/config.lua')
 local CursorData = import(_G.TeamMousePath .. '/modules/cursordata.lua')
 local Version = import(_G.TeamMousePath .. '/modules/version.lua')
+local ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
 local LayoutHelpers = import('/lua/maui/layouthelpers.lua')
 local UIUtil = import('/lua/ui/uiutil.lua')
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
@@ -39,7 +48,15 @@ local PAD = 6
 local SWATCH = 10
 local TITLE_HEIGHT = 16
 local OFF_COLOR = 'ff3a3a3a'
-local VERSION_WIDTH = 30
+--- Colours (one table: Build is near Lua 5.0's 32 upvalues). follow, followBack:
+--- a followed player's name and the band behind it. dead: the line through a
+--- dead teammate's name. overlay: the outline round a box the player we follow
+--- has ticked in their own panel. title, titleOther: the title, and the same
+--- while someone is on another version.
+local COLORS = {
+    follow = 'ffffd24a', followBack = 'ff6b5200', dead = 'ffe02020', overlay = 'ff3cd23c',
+    title = 'ffaaaaaa', titleOther = 'ffff9933',
+}
 
 local panel = false
 
@@ -55,13 +72,15 @@ local collapsedPref = nil
 --- for config.lua's spot (Panel.X / Panel.Y), or { edge, along }: the edge
 --- ('l', 'r' or 't') and how far along it, 0..1 of the room there is.
 --- loaded: place has been read from the profile.
-local layout = { editing = false, place = false, loaded = false, raised = false }
+local layout = { editing = false, place = false, loaded = false }
+
+--- The panel of the player we follow, as they sent it (coach.lua): army ->
+--- { c = cursor ticked, v = view ticked }; dead = their "show dead cursors";
+--- me = our army as they list us. False: nobody's.
+local overlay = false
 
 local PREF_KEY = 'TeamMousePanelPlace'
 local HINT_COLOR = 'ffffd24a'
---- A followed player's name, and the band behind it.
-local FOLLOW_COLOR = 'ffffd24a'
-local FOLLOW_BACK = 'ff6b5200'
 
 --- Whether the game's interface is hidden (screen capture mode).
 ---@return boolean
@@ -79,13 +98,20 @@ end
 --- Show a row as on or off.
 ---@param row table
 local function Paint(row)
-    local on = not row.record.disabled
+    local record = row.record
+    local on = not record.disabled
     row.swatch:SetSolidColor(on and row.color or OFF_COLOR)
     row.label:SetAlpha(on and 1 or 0.4)
-    row.label:SetColor(row.record.follow and FOLLOW_COLOR or 'ffffffff')
+    row.label:SetColor(record.follow and COLORS.follow or 'ffffffff')
     -- Through its alpha, not Hide: showing the panel shows every child.
-    if row.highlight then
-        row.highlight:SetAlpha(row.record.follow and 0.9 or 0)
+    row.highlight:SetAlpha((record.follow and 0.9) or (row.hover and 0.45) or 0)
+    row.strike:SetAlpha(record.dead and 1 or 0)
+    -- (The player we follow has no row for themselves: theirs stands in for
+    -- their box for us.)
+    local theirs = overlay and overlay[record.follow and overlay.me or record.army]
+    row.checkRing:SetAlpha(theirs and theirs.c and 1 or 0)
+    if row.viewRing then
+        row.viewRing:SetAlpha(theirs and theirs.v and 1 or 0)
     end
     if row.check.IsChecked and row.check:IsChecked() ~= on then
         row.check:SetCheck(on, true)
@@ -157,6 +183,93 @@ local function FitName(label, name, room)
         end
     end
     return string.sub(name, 1, n) .. '...'
+end
+
+--- A green outline round `box`: four thin lines just outside it, over the
+--- panel (a ring behind the box was under the panel's own background).
+--- Shown through SetAlpha: the player we follow has that box ticked.
+---@param parent Control
+---@param box Control
+---@return table   # SetAlpha(a), GetAlpha()
+local function Ring(parent, box)
+    local lines = {}
+    for i = 1, 4 do
+        local line = Bitmap(parent)
+        line:SetSolidColor(COLORS.overlay)
+        line:DisableHitTest()
+        line.Depth:Set(function() return box.Depth() + 2 end)
+        line:SetAlpha(0)
+        lines[i] = line
+    end
+    local top, bottom, left, right = lines[1], lines[2], lines[3], lines[4]
+    for _, line in ipairs({ top, bottom }) do
+        line.Left:Set(function() return box.Left() - 2 end)
+        line.Width:Set(function() return box.Width() + 4 end)
+        line.Height:Set(2)
+    end
+    top.Top:Set(function() return box.Top() - 2 end)
+    bottom.Top:Set(function() return box.Top() + box.Height() end)
+    for _, line in ipairs({ left, right }) do
+        line.Top:Set(function() return box.Top() end)
+        line.Height:Set(function() return box.Height() end)
+        line.Width:Set(2)
+    end
+    left.Left:Set(function() return box.Left() - 2 end)
+    right.Left:Set(function() return box.Left() + box.Width() end)
+    local ring = { alpha = 0 }
+    function ring:SetAlpha(alpha)
+        if alpha ~= self.alpha then
+            self.alpha = alpha
+            for _, line in ipairs(lines) do
+                line:SetAlpha(alpha)
+            end
+        end
+    end
+    function ring:GetAlpha()
+        return self.alpha
+    end
+    return ring
+end
+
+--- Our own name, as the session knows it.
+---@return string | nil
+local function MyName()
+    local ok, clients = pcall(GetSessionClients)
+    for _, client in ipairs(ok and clients or {}) do
+        if client['local'] then
+            return client.name
+        end
+    end
+end
+
+--- Every listed player's (and observer's) TeamMouse version, one a line,
+--- ours first: the title's tooltip.
+---@return string
+function VersionList()
+    local lines = {}
+    -- (Not in a replay -- the panel lists only players heard there -- the
+    -- viewer is nobody, whatever their name.)
+    local me = not (source and source.onlyHeard) and MyName()
+    if me then
+        table.insert(lines, me .. ': v' .. Config.ModVersion .. ' (you)')
+    end
+    for _, record in ipairs(source and source.records or {}) do
+        local text = Version.Describe(record.name)
+        table.insert(lines, tostring(record.name) .. ': ' .. text)
+    end
+    return table.concat(lines, '\n')
+end
+
+--- Whether anyone listed is on another version than ours (the title goes orange).
+---@return boolean
+local function VersionsDiffer()
+    for _, record in ipairs(source and source.records or {}) do
+        local text = Version.Describe(record.name)
+        if text ~= '?' and text ~= 'v' .. Config.ModVersion then
+            return true
+        end
+    end
+    return false
 end
 
 --- The edge the panel is on.
@@ -232,13 +345,15 @@ local function Tip(control, tip)
 end
 
 --- A player's name on their row, cut to fit `room`; when it is cut, hovering
---- it shows the whole name. With `onClick`, a left click on it calls
---- onClick() (following them), and hovering it says so.
+--- it shows the whole name. With `onClick`, a left click on it -- or on the
+--- band behind it -- calls onClick() (following them), and hovering lights
+--- the band and says so.
 ---@param label Text
 ---@param name string
 ---@param room number
 ---@param onClick? function
-local function ShowName(label, name, room, onClick)
+---@param row? table
+local function ShowName(label, name, room, onClick, row)
     local shown = FitName(label, name, room)
     label:SetText(shown)
     if shown == name and not onClick then
@@ -250,12 +365,20 @@ local function ShowName(label, name, room, onClick)
         tip.body = 'Click to follow their view. Click again to go back to where you were looking;'
             .. ' scrolling hard also breaks free.'
     end
+    local function Hover(on)
+        if onClick and row then
+            row.hover = on
+            Paint(row)
+        end
+    end
     label.HandleEvent = function(self, event)
         local t = event.Type
         if t == 'MouseEnter' then
             Tip(self, tip)
+            Hover(true)
         elseif t == 'MouseExit' then
             Tip()
+            Hover(false)
         elseif onClick and (t == 'ButtonPress' or t == 'ButtonDClick')
             and not (event.Modifiers and event.Modifiers.Right) then
             Play('UI_Menu_MouseDown_Sml')
@@ -263,6 +386,10 @@ local function ShowName(label, name, room, onClick)
             return true
         end
         return false
+    end
+    if onClick and row then
+        row.highlight:EnableHitTest()
+        row.highlight.HandleEvent = label.HandleEvent
     end
 end
 
@@ -499,13 +626,145 @@ local function SetUpTab(root, arrow, edge, height)
     end
 end
 
+--- The title, "TeamMouse - v4", underlined: hovering it lists everyone's
+--- version (VersionList).
+---@param body Group
+---@param inner Group
+---@return Text, Bitmap
+local function Title(body, inner)
+    local title = UIUtil.CreateText(body, 'TeamMouse - v' .. Config.ModVersion, 10, UIUtil.bodyFont, true)
+    title:SetText('TeamMouse - v' .. Config.ModVersion)
+    title:SetColor(COLORS.title)
+    LayoutHelpers.AtLeftTopIn(title, inner, PAD + 14, PAD - 2)
+    title.HandleEvent = function(self, event)
+        if event.Type == 'MouseEnter' then
+            Tip(self, { text = 'TeamMouse versions', body = VersionList() })
+        elseif event.Type == 'MouseExit' then
+            Tip()
+        end
+        return false
+    end
+    local underline = Bitmap(body)
+    underline:SetSolidColor(COLORS.title)
+    underline:DisableHitTest()
+    underline.Left:Set(function() return title.Left() end)
+    -- (The text's box has room under the letters: up into it a little.)
+    underline.Top:Set(function() return title.Top() + title.Height() - LayoutHelpers.ScaleNumber(2) end)
+    underline.Width:Set(function() return title.Width() end)
+    underline.Height:Set(function() return math.max(1, math.floor(LayoutHelpers.ScaleNumber(1))) end)
+    return title, underline
+end
+
+--- One row: a player's (or an observer's) boxes, colour and name. `ctx` is
+--- what Build laid out: body, inner, hooks, onToggle, width, nameLeft,
+--- nameRight, nameRoom, coachColumn, syncAll.
+---@param ctx table
+---@param record table
+---@param top number
+---@return table
+local function MakeRow(ctx, record, top)
+    local body, inner, hooks = ctx.body, ctx.inner, ctx.hooks
+    local mid = top + (ROW_HEIGHT - CHECK) / 2
+
+    -- FAF's own checkbox, as its panels use (multifunction.lua): it does
+    -- its own clicks, hover and sound. Ticked = shown.
+    local check = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+    LayoutHelpers.AtLeftTopIn(check, inner, PAD + 14, mid)
+    LayoutHelpers.SetDimensions(check, CHECK, CHECK)
+
+    local swatch = Bitmap(body)
+    LayoutHelpers.AtLeftTopIn(swatch, inner, PAD + 14 + CHECK + 5, top + (ROW_HEIGHT - SWATCH) / 2)
+    LayoutHelpers.SetDimensions(swatch, SWATCH, SWATCH)
+    swatch:DisableHitTest()
+
+    -- Behind the name while we follow them, or hover it (made first: drawn
+    -- under it). Right of their colour square, which stays in sight.
+    local highlight = Bitmap(body)
+    highlight:SetSolidColor(COLORS.followBack)
+    highlight:SetAlpha(0)
+    highlight:DisableHitTest()
+    LayoutHelpers.AtLeftTopIn(highlight, inner, ctx.nameLeft - 3, top + 1)
+    LayoutHelpers.SetDimensions(highlight, ctx.nameRight - ctx.nameLeft + 3, ROW_HEIGHT - 2)
+
+    local label = UIUtil.CreateText(body, record.name or '?', 12, UIUtil.bodyFont, true)
+    label:SetColor('ffffffff')
+    local row = { record = record, check = check, swatch = swatch, label = label, highlight = highlight,
+        color = CursorData.SafeUIColor(record.color) }
+    local onClick = nil
+    -- (An observer has no camera to follow.)
+    if hooks.follow and Config.Follow.Enabled and not record.observer then
+        onClick = function()
+            hooks.follow(record)
+            SyncFollow()
+        end
+    end
+    ShowName(label, record.name or '?', ctx.nameRoom, onClick, row)
+    LayoutHelpers.AtLeftTopIn(label, inner, ctx.nameLeft, top + 3)
+
+    -- A red line through a dead teammate's name (Paint shows it).
+    local strike = Bitmap(body)
+    strike:SetSolidColor(COLORS.dead)
+    strike:DisableHitTest()
+    strike.Left:Set(function() return label.Left() - 1 end)
+    strike.Top:Set(function() return label.Top() + math.floor(label.Height() / 2) end)
+    strike.Width:Set(function() return label.Width() + 2 end)
+    strike.Height:Set(2)
+    strike.Depth:Set(function() return label.Depth() + 1 end)
+    strike:SetAlpha(0)
+    row.strike = strike
+
+    -- (An observer has no view to outline, and is not coached.)
+    if not record.observer then
+        -- Their view's outline on the map (Viewport): off unless ticked, and
+        -- not remembered between games.
+        local viewCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+        LayoutHelpers.AtLeftTopIn(viewCheck, inner, ctx.width - PAD - CHECK, mid)
+        LayoutHelpers.SetDimensions(viewCheck, CHECK, CHECK)
+        viewCheck:SetCheck(record.showView and true or false, true)
+        viewCheck.OnCheck = function(self, checked)
+            record.showView = checked and true or false
+            ctx.syncAll()
+            Changed()
+        end
+        row.viewCheck = viewCheck
+        row.viewRing = Ring(body, viewCheck)
+
+        -- A live observer: coach this player (coach.lua). One player at a
+        -- time: ticking one unticks the rest.
+        if ctx.coachColumn then
+            local coachCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+            LayoutHelpers.AtLeftTopIn(coachCheck, inner, ctx.width - PAD - CHECK * 2 - 12, mid)
+            LayoutHelpers.SetDimensions(coachCheck, CHECK, CHECK)
+            coachCheck:SetCheck(record.coached and true or false, true)
+            coachCheck.OnCheck = function(self, checked)
+                hooks.coach(record, checked and true or false)
+                SyncFollow()
+            end
+            row.coachCheck = coachCheck
+        end
+    end
+
+    row.checkRing = Ring(body, check)
+    check:SetCheck(not record.disabled, true)
+    check.OnCheck = function(self, checked)
+        record.disabled = not checked
+        Paint(row)
+        if ctx.onToggle then
+            pcall(ctx.onToggle, record)
+        end
+        ctx.syncAll()
+        Changed()
+    end
+    Paint(row)
+    return row
+end
+
 --- Build the panel.
 ---@param records table[]   # the players, in the order to list them; each a peer record
 ---@param onToggle? function   # called with a record after its cursor is hidden or shown
 ---@param hooks? table          # coaching (coach.lua): follow(record) for a click on a
 ---                               name; coach(record, on) for a "coach" box per player
----                               (live observers); lens(on), lensOn() for the "drawings
----                               on my screen" box (players)
+---                               (live observers); changed() when a box changes
 ---@param onlyHeard? boolean    # list a player only once their data has arrived (replays)
 function Create(records, onToggle, hooks, onlyHeard)
     Destroy()
@@ -538,30 +797,27 @@ Build = function()
     -- What is drawn keeps clear of the tab: it is on the left, right or top.
     local shift = (edge == 'r' and -14) or (edge == 't' and -7) or 0
     -- A live observer: a second column of boxes, coach that player.
-    local FOLLOW = hooks.coach and Config.Coach.Enabled and 44 or 0
-    -- A player: a row under the list, "drawings on my screen".
-    local LENS = hooks.lens and Config.Coach.Enabled and ROW_HEIGHT or 0
-    -- Each player's TeamMouse version, in a column of its own.
-    local VERSIONS = Config.Panel.ShowVersions and VERSION_WIDTH or 0
-    local WIDTH = WIDTH + FOLLOW + VERSIONS
-    -- The version column sits just left of the right-hand box columns.
-    local versionLeft = WIDTH - PAD - CHECK - 4 - VERSION_WIDTH
-    if FOLLOW > 0 then
-        versionLeft = WIDTH - PAD - CHECK * 2 - 22 - VERSION_WIDTH
-    end
-    -- Room for a name: up to the version column, or else the first column of boxes.
+    local COACH = hooks.coach and Config.Coach.Enabled and 44 or 0
+    local WIDTH = WIDTH + COACH
+    -- Room for a name: up to the first column of boxes.
     local nameLeft = PAD + 14 + CHECK + 5 + SWATCH + 5
-    local nameRight = (VERSIONS > 0 and versionLeft)
-        or (FOLLOW > 0 and WIDTH - PAD - CHECK * 2 - 12) or (WIDTH - PAD - CHECK)
-    local nameRoom = nameRight - 4 - nameLeft
-    -- The title, a row of "all" boxes, then a row per player (or one saying
-    -- there is nobody).
-    local height = TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT + PAD * 2 + LENS
+    local nameRight = (COACH > 0 and WIDTH - PAD - CHECK * 2 - 12) or (WIDTH - PAD - CHECK)
+    -- The players, then the observers under their own heading -- which an
+    -- observer kept to one team by the lobby sees too.
+    local players, observers = {}, {}
+    for _, record in ipairs(records) do
+        table.insert(record.observer and observers or players, record)
+    end
+    local obsHeading = table.getn(observers) > 0 or (hooks.coach and ObserverTeam.Forced() and true or false)
+    -- The title, a row of "all" boxes, a row per player (or one saying there
+    -- is nobody), the observers, then "show dead cursors".
+    local lines = math.max(table.getn(players), 1) + (obsHeading and table.getn(observers) + 1 or 0)
+    local height = TITLE_HEIGHT + (lines + 2) * ROW_HEIGHT + PAD * 2
 
     local root = Group(frame, 'TeamMousePanel')
     LayoutHelpers.SetDimensions(root, WIDTH, height)
     Place(root)
-    root.Depth:Set(layout.raised and Config.Coach.PanelRaisedDepth or cfg.Depth)
+    root.Depth:Set(cfg.Depth)
     root:DisableHitTest()
 
     -- FAF's own tab, on the edge the panel is on (placed below, once the rows
@@ -592,34 +848,24 @@ Build = function()
     LayoutHelpers.SetDimensions(inner, WIDTH, height)
     inner:DisableHitTest()
 
-    local title = UIUtil.CreateText(body, 'TeamMouse cursors', 10, UIUtil.bodyFont, true)
-    title:SetColor('ffaaaaaa')
-    title:DisableHitTest(true)
-    LayoutHelpers.AtLeftTopIn(title, inner, PAD + 14, PAD - 2)
+    local title, underline = Title(body, inner)
 
     -- Over the right-hand column of boxes: their view's outline (Viewport).
     local viewHeader = UIUtil.CreateText(body, 'view', 9, UIUtil.bodyFont, true)
     viewHeader:SetColor('ffaaaaaa')
     viewHeader:DisableHitTest(true)
     LayoutHelpers.AtLeftTopIn(viewHeader, inner, WIDTH - PAD - CHECK - 4, PAD - 1)
-    if FOLLOW > 0 then
+    if COACH > 0 then
         local followHeader = UIUtil.CreateText(body, 'coach', 9, UIUtil.bodyFont, true)
         followHeader:SetColor('ffaaaaaa')
         followHeader:DisableHitTest(true)
         LayoutHelpers.AtLeftTopIn(followHeader, inner, WIDTH - PAD - CHECK * 2 - 18, PAD - 1)
     end
 
-    if VERSIONS > 0 then
-        local versionHeader = UIUtil.CreateText(body, 'ver', 9, UIUtil.bodyFont, true)
-        versionHeader:SetColor('ffaaaaaa')
-        versionHeader:DisableHitTest(true)
-        LayoutHelpers.AtLeftTopIn(versionHeader, inner, versionLeft, PAD - 1)
-    end
-
-    panel = { root = root, body = body, rows = {}, collapsed = false, versions = VERSIONS > 0,
+    panel = { root = root, body = body, rows = {}, collapsed = false, title = title, underline = underline,
         edge = edge, editing = layout.editing }
 
-    if table.getn(records) == 0 then
+    if table.getn(players) == 0 then
         local none = UIUtil.CreateText(body, 'no other players', 12, UIUtil.bodyFont, true)
         none:SetColor('ff777777')
         none:DisableHitTest()
@@ -646,13 +892,16 @@ Build = function()
 
     --- Show the "all" boxes ticked while every player's box is.
     local function SyncAll()
-        local cursors, views = true, true
+        local cursors, views, anyView = true, true, false
         for _, row in ipairs(panel.rows) do
             if not row.check:IsChecked() then cursors = false end
-            if not row.viewCheck:IsChecked() then views = false end
+            if row.viewCheck then
+                anyView = true
+                if not row.viewCheck:IsChecked() then views = false end
+            end
         end
         allCursors:SetCheck(cursors and table.getn(panel.rows) > 0, true)
-        allViews:SetCheck(views and table.getn(panel.rows) > 0, true)
+        allViews:SetCheck(views and anyView, true)
     end
     allCursors.OnCheck = function(self, checked)
         for _, row in ipairs(panel.rows) do
@@ -664,122 +913,57 @@ Build = function()
     end
     allViews.OnCheck = function(self, checked)
         for _, row in ipairs(panel.rows) do
-            if row.viewCheck:IsChecked() ~= checked then
+            if row.viewCheck and row.viewCheck:IsChecked() ~= checked then
                 row.viewCheck:SetCheck(checked)
             end
         end
         SyncAll()
     end
 
-    for i, entry in ipairs(records) do
-        -- A local of this iteration's own. In Lua 5.0 a closure made in a
-        -- for loop captures the loop variable itself, which is nil once the
-        -- loop has finished: OnCheck below would find no record at all.
-        local record = entry
-        local top = PAD + TITLE_HEIGHT + i * ROW_HEIGHT
-
-        -- FAF's own checkbox, as its panels use (multifunction.lua): it does
-        -- its own clicks, hover and sound. Ticked = shown.
-        local check = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-        LayoutHelpers.AtLeftTopIn(check, inner, PAD + 14, top + (ROW_HEIGHT - CHECK) / 2)
-        LayoutHelpers.SetDimensions(check, CHECK, CHECK)
-
-        local swatch = Bitmap(body)
-        LayoutHelpers.AtLeftTopIn(swatch, inner, PAD + 14 + CHECK + 5, top + (ROW_HEIGHT - SWATCH) / 2)
-        LayoutHelpers.SetDimensions(swatch, SWATCH, SWATCH)
-        swatch:DisableHitTest()
-
-        -- Behind the name while we follow them (made first: drawn under it).
-        local highlight = Bitmap(body)
-        highlight:SetSolidColor(FOLLOW_BACK)
-        highlight:SetAlpha(0)
-        highlight:DisableHitTest()
-        -- (Right of their colour square, which stays in sight.)
-        LayoutHelpers.AtLeftTopIn(highlight, inner, nameLeft - 3, top + 1)
-        LayoutHelpers.SetDimensions(highlight, nameRight - nameLeft + 3, ROW_HEIGHT - 2)
-
-        local label = UIUtil.CreateText(body, record.name or '?', 12, UIUtil.bodyFont, true)
-        label:SetColor('ffffffff')
-        local onClick = nil
-        if hooks.follow and Config.Follow.Enabled then
-            onClick = function()
-                hooks.follow(record)
-                SyncFollow()
-            end
+    local ctx = { body = body, inner = inner, hooks = hooks, onToggle = onToggle, width = WIDTH,
+        nameLeft = nameLeft, nameRight = nameRight, nameRoom = nameRight - 4 - nameLeft,
+        coachColumn = COACH > 0, syncAll = SyncAll }
+    local line = 1
+    for _, record in ipairs(players) do
+        table.insert(panel.rows, MakeRow(ctx, record, PAD + TITLE_HEIGHT + line * ROW_HEIGHT))
+        line = line + 1
+    end
+    -- (Nobody: "no other players" has the first line.)
+    line = math.max(line, 2)
+    if obsHeading then
+        local text = 'observers - Team: ' .. ObserverTeam.Label()
+        local heading = UIUtil.CreateText(body, text, 10, UIUtil.bodyFont, true)
+        heading:SetText(text)
+        heading:SetColor('ffaaaaaa')
+        heading:DisableHitTest()
+        LayoutHelpers.AtLeftTopIn(heading, inner, PAD + 14, PAD + TITLE_HEIGHT + line * ROW_HEIGHT + 5)
+        panel.obsHeading = heading
+        line = line + 1
+        for _, record in ipairs(observers) do
+            table.insert(panel.rows, MakeRow(ctx, record, PAD + TITLE_HEIGHT + line * ROW_HEIGHT))
+            line = line + 1
         end
-        ShowName(label, record.name or '?', nameRoom, onClick)
-        LayoutHelpers.AtLeftTopIn(label, inner, nameLeft, top + 3)
-
-        -- Their view's outline on the map (Viewport): off unless ticked, and
-        -- not remembered between games.
-        local viewCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-        LayoutHelpers.AtLeftTopIn(viewCheck, inner, WIDTH - PAD - CHECK, top + (ROW_HEIGHT - CHECK) / 2)
-        LayoutHelpers.SetDimensions(viewCheck, CHECK, CHECK)
-        viewCheck:SetCheck(record.showView and true or false, true)
-        viewCheck.OnCheck = function(self, checked)
-            record.showView = checked and true or false
-            SyncAll()
-        end
-
-        -- A live observer: coach this player (coach.lua). One player at a
-        -- time: ticking one unticks the rest.
-        local coachCheck = false
-        if FOLLOW > 0 then
-            coachCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-            LayoutHelpers.AtLeftTopIn(coachCheck, inner, WIDTH - PAD - CHECK * 2 - 12,
-                top + (ROW_HEIGHT - CHECK) / 2)
-            LayoutHelpers.SetDimensions(coachCheck, CHECK, CHECK)
-            coachCheck:SetCheck(record.coached and true or false, true)
-            coachCheck.OnCheck = function(self, checked)
-                hooks.coach(record, checked and true or false)
-                SyncFollow()
-            end
-        end
-
-        -- Their TeamMouse version (filled in by Refresh as it is heard).
-        local versionLabel = false
-        if VERSIONS > 0 then
-            versionLabel = UIUtil.CreateText(body, '?', 10, UIUtil.bodyFont, true)
-            versionLabel:DisableHitTest(true)
-            LayoutHelpers.AtLeftTopIn(versionLabel, inner, versionLeft, top + 4)
-        end
-
-        local row = { record = record, check = check, swatch = swatch, label = label,
-            viewCheck = viewCheck, coachCheck = coachCheck, highlight = highlight,
-            color = CursorData.SafeUIColor(record.color),
-            versionLabel = versionLabel, versionText = false }
-        check:SetCheck(not record.disabled, true)
-        check.OnCheck = function(self, checked)
-            record.disabled = not checked
-            Paint(row)
-            if onToggle then
-                pcall(onToggle, record)
-            end
-            SyncAll()
-        end
-
-        Paint(row)
-        table.insert(panel.rows, row)
     end
     SyncAll()
     UpdateVersions()
 
-    -- A player: whether what those following (or coaching) them draw shows.
-    if LENS > 0 then
-        local lensTop = PAD + TITLE_HEIGHT + (math.max(table.getn(records), 1) + 1) * ROW_HEIGHT
-        local lensCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-        LayoutHelpers.AtLeftTopIn(lensCheck, inner, PAD + 14, lensTop + (ROW_HEIGHT - CHECK) / 2)
-        LayoutHelpers.SetDimensions(lensCheck, CHECK, CHECK)
-        lensCheck:SetCheck(hooks.lensOn and hooks.lensOn() and true or false, true)
-        lensCheck.OnCheck = function(self, checked)
-            hooks.lens(checked and true or false)
-        end
-        local lensLabel = UIUtil.CreateText(body, 'drawings on my screen', 10, UIUtil.bodyFont, true)
-        lensLabel:SetColor('ffaaaaaa')
-        lensLabel:DisableHitTest()
-        LayoutHelpers.AtLeftTopIn(lensLabel, inner, PAD + 14 + CHECK + 5, lensTop + 4)
-        panel.lensCheck = lensCheck
+    -- Whether a dead teammate's cursor shows (Panel.ShowDead starts it).
+    local deadTop = PAD + TITLE_HEIGHT + line * ROW_HEIGHT
+    local deadCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+    LayoutHelpers.AtLeftTopIn(deadCheck, inner, PAD + 14, deadTop + (ROW_HEIGHT - CHECK) / 2)
+    LayoutHelpers.SetDimensions(deadCheck, CHECK, CHECK)
+    deadCheck:SetCheck(Config.Panel.ShowDead and true or false, true)
+    deadCheck.OnCheck = function(self, checked)
+        Config.Panel.ShowDead = checked and true or false
+        Changed()
     end
+    local deadLabel = UIUtil.CreateText(body, 'show dead cursors', 10, UIUtil.bodyFont, true)
+    deadLabel:SetColor('ffaaaaaa')
+    deadLabel:DisableHitTest()
+    LayoutHelpers.AtLeftTopIn(deadLabel, inner, PAD + 14 + CHECK + 5, deadTop + 4)
+    panel.deadCheck = deadCheck
+    panel.deadRing = Ring(body, deadCheck)
+    PaintOverlay()
 
     if arrow then
         SetUpTab(root, arrow, edge, height)
@@ -807,19 +991,90 @@ Build = function()
     end
 end
 
---- Bring each row's version up to date. Only touches a row whose text changed.
+--- The title orange while anyone is on another version than ours.
 function UpdateVersions()
-    if not panel or not panel.versions then
+    if not panel or not panel.title then
+        return
+    end
+    local color = VersionsDiffer() and COLORS.titleOther or COLORS.title
+    if color ~= panel.titleColor then
+        panel.titleColor = color
+        panel.title:SetColor(color)
+        panel.underline:SetSolidColor(color)
+    end
+end
+
+--- What our panel shows, for whoever follows us (coach.lua sends it): each
+--- row's army and its two boxes, and "show dead cursors". "2:11,1003:10|d0".
+---@return string
+function State()
+    local parts = {}
+    for _, record in ipairs(source and source.records or {}) do
+        table.insert(parts, string.format('%d:%d%d', record.army, record.disabled and 0 or 1,
+            record.showView and not record.observer and 1 or 0))
+    end
+    return table.concat(parts, ',') .. '|d' .. (Config.Panel.ShowDead and 1 or 0)
+end
+
+--- Something in our panel changed: whoever follows us is told (coach.lua).
+function Changed()
+    local hooks = source and source.hooks
+    if hooks and hooks.changed then
+        pcall(hooks.changed)
+    end
+end
+
+--- Their ticks (State's string, from the player we follow), drawn as green
+--- outlines round our boxes; false takes them away. Ours stay as they are.
+---@param state string | false
+function SetOverlay(state)
+    overlay = false
+    if type(state) == 'string' and string.len(state) < 4000 then
+        overlay = { me = source and source.hooks.me }
+        for army, c, v in string.gfind(state, '(%d+):(%d)(%d)') do
+            overlay[tonumber(army)] = { c = c == '1', v = v == '1' }
+        end
+        local _, _, dead = string.find(state, '|d(%d)')
+        overlay.dead = dead == '1'
+    end
+    PaintOverlay()
+end
+
+--- Show the overlay as it stands on every row and the "show dead" box.
+--- ("all" never: it is ours alone.)
+function PaintOverlay()
+    if not panel then
         return
     end
     for _, row in ipairs(panel.rows) do
-        if row.versionLabel then
-            local text, color = Version.Describe(row.record.name)
-            if text ~= row.versionText then
-                row.versionText = text
-                row.versionLabel:SetText(text)
-                row.versionLabel:SetColor(color)
+        Paint(row)
+    end
+    if panel.deadRing then
+        panel.deadRing:SetAlpha(overlay and overlay.dead and 1 or 0)
+    end
+end
+
+--- Which teammates' armies are out of the game (dead): a line through their
+--- name, and no cursor unless "show dead cursors" is ticked. Each beat.
+local function UpdateDead()
+    local ok, armies = pcall(function() return GetArmiesTable().armiesTable end)
+    if not ok or type(armies) ~= 'table' then
+        return
+    end
+    local changed = false
+    for _, record in ipairs(source.records) do
+        if not record.observer then
+            local army = armies[record.army]
+            local dead = army and army.outOfGame and true or false
+            if dead ~= (record.dead or false) then
+                record.dead = dead
+                changed = true
             end
+        end
+    end
+    if changed and panel then
+        for _, row in ipairs(panel.rows) do
+            Paint(row)
         end
     end
 end
@@ -839,8 +1094,8 @@ function SyncFollow()
 end
 
 --- Rebuild when the panel no longer matches what it should list: in a replay,
---- a player whose data has just arrived; the panel switched on or off, or its
---- version column (both ReUI options). Cheap when nothing changed.
+--- a player whose data has just arrived; the panel switched on or off (a ReUI
+--- option). Cheap when nothing changed.
 function Sync()
     if not source then
         return
@@ -860,11 +1115,9 @@ function Sync()
         want = table.getn(source.records)
     end
     local have = panel and table.getn(panel.rows) or 0
-    local versions = Config.Panel.ShowVersions and true or false
     -- (Nobody listed, the panel is there only while the options window is.)
     local shown = panel and true or false
-    if want ~= have or shown ~= (want > 0 or layout.editing)
-        or (panel and panel.versions ~= versions) then
+    if want ~= have or shown ~= (want > 0 or layout.editing) then
         Build()
     end
 end
@@ -882,17 +1135,6 @@ function SetEditing(on)
     Build()
 end
 
---- While following someone (coach.lua), the panel goes above the layer that
---- takes every click for drawing on their screen, so a name can still be
---- clicked to stop; back down afterwards.
----@param on boolean
-function SetRaised(on)
-    layout.raised = on and true or false
-    if panel then
-        panel.root.Depth:Set(layout.raised and Config.Coach.PanelRaisedDepth or Config.Panel.Depth)
-    end
-end
-
 --- Back to where config.lua puts it (Panel.X / Panel.Y), and forget the
 --- saved spot.
 function ResetPlace()
@@ -904,6 +1146,9 @@ end
 --- Called every beat: follow the rest of the interface in and out of screen
 --- capture mode.
 function Refresh()
+    if source then
+        UpdateDead()
+    end
     Sync()
     if not panel then
         return
@@ -931,4 +1176,5 @@ function Destroy()
     DestroyControls()
     source = false
     collapsedPref = nil
+    overlay = false
 end

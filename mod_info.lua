@@ -89,9 +89,19 @@ V4:
 
 • add coaching: click a player's name in the panel to follow their view (teammates too, not just observers and replays); click it again to go back to where you were looking, or scroll to break free
 
-• while following someone, right-drag draws straight on their screen (over their interface, never in the game or the replay) and fades after 2 seconds; left click plays a ring on their screen
+• while following someone, your clicks stay your own (select, build, order your units); a right-drag with nothing selected draws straight on their screen instead (over their interface, never in the game or the replay), fading after a second, and a single right click there is a ghost order
 
-• "drawings on my screen" box in the panel (and a ReUI option for how it starts) to show or hide what people following you draw
+• the panel's title is "TeamMouse - v4": hover it for everyone's version (the version column is gone)
+
+• observers are listed in the panel under their own heading, with no "view" box, and cannot be followed
+
+• lobby option "TeamMouse: observers watch": keep observers to one team (default any)
+
+• hovering a name in the panel lights its band before you click to follow
+
+• a dead teammate has a red line through their name, on the panel and on their cursor; "show dead cursors" box (ReUI option to start it ticked)
+
+• following someone, their panel's ticks show as green outlines round your boxes (not "all"; their box for you round their own row)
 
 • observers: a "coach" box per player sends your cursor to that player alone, copies their selection, and draws your map drawings on their map, fading after 2 seconds
 
@@ -103,7 +113,7 @@ V4:
 
 • a coach's single right click is a ghost order for the player, not a dot; the follow camera holds still during a left drag; a coach on their own interface shows the player nothing
 
-• teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots
+• teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots, and go once the game draws its own copy (ReUI option: seconds to fade from then instead)
 
 
 ]]

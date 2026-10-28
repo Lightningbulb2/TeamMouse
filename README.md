@@ -67,6 +67,7 @@ modules/cursordata.lua              cursor name <-> wire index <-> texture, colo
 modules/remotecursor.lua            the visual for one player in one view
 modules/hudghost.lua                the stylised panel shown when someone is in their UI
 modules/replaycodec.lua             zero-width encoding for replay playback
+modules/observerteam.lua            lobby option: observers kept to one team
 modules/teammouse.lua             session setup, send, receive, view sync
 modules/coach.lua                 following and coaching: drawing on a player's screen
 extras/mock_fa.lua                  mock game environment for tests (Lua 5.0 table semantics)
@@ -142,7 +143,9 @@ cursor beside it, plus a line for a right-drag formation (`Orders`).
 ### Right-click drawing
 
 A right-drag drawing is shown while it is being drawn, as solid lines on the
-map like the game's own, and fades after the release.
+map like the game's own, and stays until the game's own copy reaches the sim
+and is drawn, then goes ("Their drawings: seconds to fade" in ReUI fades it
+out from then instead).
 
 ### State is drawn from the moment being drawn
 
@@ -159,17 +162,34 @@ formations) and is rebuilt whenever its view is resized. Set
 
 ### Player panel
 
-A panel on the left edge lists every player whose cursor you can see. Untick a
-player to hide everything of theirs -- cursor, orders, lines, trails -- and
-tick them again to bring it back. It folds away to its tab with the arrow, and hides in
-screen capture mode. Position and starting state are under `Panel`.
+A panel on the left edge lists every player whose cursor you can see, then the
+observers under their own heading, "observers - Team: any" (an observer's
+cursor shows while they coach you; they have no "view" box, and cannot be
+followed). Untick a player to hide everything of theirs -- cursor, orders,
+lines, trails -- and tick them again to bring it back. Hovering a name lights
+the band behind it; click to follow. A teammate whose army is out of the game
+has a red line through their name, on the panel and on their cursor, and their
+cursor only shows with "show dead cursors" ticked (`Panel.ShowDead`, a ReUI
+option, starts it). Following someone, their own panel's ticks are drawn as
+green outlines round your boxes (not "all"), and their box for you round
+their own row; your ticks stay yours. It folds away to its tab with the arrow,
+and hides in screen capture mode. Position and starting state are under
+`Panel`.
+
+### Observers kept to one team
+
+The host's lobby option "TeamMouse: observers watch" (default "Any team") can
+keep observers to one team: their view is put back on that team whenever it
+leaves it (never the all-seeing observer view), they list, follow and coach
+only its players, and players on other teams send them nothing. The panel's
+heading says which: "observers - Team: 1".
 
 ### Versions
 
-The player panel has a column with the version of TeamMouse each player is on:
-green for yours, orange for another, "old" for a teammate on SharedMouse,
-"none" for a teammate who never answered (`Panel.ShowVersions`). Nothing is
-posted in chat.
+The panel's title, "TeamMouse - v4", is underlined: hover it for everyone's
+version of TeamMouse -- "old" for a teammate on SharedMouse, "none" for a
+teammate who never answered. The title turns orange while anyone is on another
+version. Nothing is posted in chat.
 
 ### Settings (ReUI)
 

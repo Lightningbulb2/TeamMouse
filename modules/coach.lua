@@ -8,16 +8,19 @@
 --** Click the name again and your camera goes back to where it was; a hard
 --** scroll breaks free and leaves it where it is.
 --**
---** Live, while you follow someone:
---**   * a right-drag is not a drawing in the game (nothing reaches the sim or
---**     the replay): it is drawn straight on THEIR screen, as if on the camera
---**     lens -- fixed to the screen, over the interface -- and fades
---**     (Coach.FadeSeconds) once it is finished. You see it too.
---**   * a left click is not a click: an expanding ring plays on their screen
---**     where you clicked.
---**   * they do not see your cursor.
---** A player sees these only with "drawings on my screen" ticked in their
---** panel (Coach.ShowLens starts it).
+--** Live, while you follow someone, your clicks are your own (select, build,
+--** order your own units), except a right-drag with nothing selected: that is
+--** not a drawing in the game (nothing reaches the sim or the replay), it is
+--** drawn straight on THEIR screen, as if on the camera lens -- fixed to the
+--** screen, over the interface -- and fades (Coach.LensFadeSeconds) once it is
+--** finished. You see it too. A right click that never moved is a ghost order:
+--** a marker for them, nothing given. (Observers draw with units selected too:
+--** theirs are the player's, copied.)
+--**
+--** A teammate following you stays in sight, cursor and drawings; an observer
+--** coaching and following you shows their cursor only while they act
+--** (Coach.AlwaysShowCursor: always). Whoever follows you is sent your
+--** panel's ticks, and draws them round their own boxes (panel.lua).
 --**
 --** Coaching (live observers only). The panel's "coach" box on one player:
 --**   * your cursor is sent to that player, and to nobody else (observers are
@@ -31,8 +34,9 @@
 --**   { tmf = 1|0, ta = army }     I follow you / no longer
 --**   { tmh = 1|0 }                I coach you / no longer (observers)
 --**   { tml = <points> }           a lens stroke: thousandths of your main view
---**   { tmk = 'x,y' }              a click ring, in thousandths the same way
 --**   { tmw = <points> }           a coach's stroke on the map, world tenths
+--**   { tmp = <panel> }            my panel's ticks, to whoever follows me
+--**                                (Panel.State; again when they change)
 --** <points> is one string in wirepack.lua's 64 digits (PackPoints): whether
 --** the stroke is done (1 digit), its id (2), the chunk's first point whole
 --** (3 digits a number), then each number as the difference from the point
@@ -65,7 +69,9 @@ local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 ---   setCoachTarget(index) who an observer's cursor goes to (false: nobody)
 ---   forceView()           send our camera with the next packet
 ---   panelSync()           show the panel as following/coaching now is
----   raisePanel(on)        put the panel above the capture layer (or back)
+---   ghostOrder()          an order marker where the pointer is, never given
+---   panelState()          our panel's ticks, as a string (Panel.State)
+---   panelOverlay(state)   draw the followed player's ticks round ours (false: none)
 local env = false
 
 --- Our side of it.
@@ -73,7 +79,6 @@ local env = false
 ---   before      our camera before following began (put back on unclick)
 ---   coaching    the record we coach (observers; false: nobody)
 ---   coachSel    their selVersion last copied into ours
----   show        draw what those following or coaching us send
 ---   followers   client index -> true: who follows us
 ---   followTeam  how many of them are teammates (they need our camera)
 ---   coaches     name -> true: observers coaching us
@@ -83,7 +88,6 @@ local env = false
 local state = {
     following = false, before = false,
     coaching = false, coachSel = -1,
-    show = true,
     followers = {}, followTeam = 0,
     coaches = {},
     stroke = false, nextId = 0,
@@ -93,11 +97,10 @@ local state = {
 }
 
 --- What is drawn.
----   root      the overlay over everything (lens strokes, rings)
+---   root      the overlay over everything (lens strokes)
 ---   free      spare dots, explicit count (nfree)
 ---   lens      lens strokes, explicit count (nlens), each
 ---             { key, color, l, t, w, h, x, y, n, dots, nd, endT, lastT, alpha }
----   rings     click rings, explicit count (nrings), each { x, y, t0, color, dots }
 ---   ink       strokes on the map, explicit count (nink), each
 ---             { key, color, pts, n, endT, lastT, drawColor }
 ---   shape     draws the ink (every world view, FAF's AddShape)
@@ -106,12 +109,8 @@ local draw = {
     root = false,
     free = {}, nfree = 0, made = 0,
     lens = {}, nlens = 0,
-    rings = {}, nrings = 0,
     ink = {}, nink = 0,
     shape = false, shaped = {},
-    -- while following live: a layer over the whole screen (but the panel)
-    -- that takes every click and right-drag for drawing on their screen
-    capture = false, captureShown = false,
 }
 
 --- Scratch for reading numbers off the wire.
@@ -242,7 +241,7 @@ local function GiveDot(dot)
 end
 
 --------------------------------------------------------------------------------
--- Lens strokes and click rings
+-- Lens strokes
 --------------------------------------------------------------------------------
 
 --- Our main view's rectangle on screen (where their marks are drawn), or
@@ -322,34 +321,7 @@ local function LensPoint(s, u, v)
     end
 end
 
---- A click ring at screen point (x, y).
----@param x number
----@param y number
----@param color string
-local function Ring(x, y, color)
-    if draw.nrings >= 6 then
-        local old = draw.rings[1]
-        for j = 1, table.getn(old.dots) do GiveDot(old.dots[j]) end
-        for i = 1, draw.nrings - 1 do draw.rings[i] = draw.rings[i + 1] end
-        draw.rings[draw.nrings] = nil
-        draw.nrings = draw.nrings - 1
-    end
-    local ring = { x = x, y = y, t0 = GetSystemTimeSeconds(), color = color, dots = {} }
-    local r = Config.Coach.RingRadius * 0.25
-    local n = Config.Coach.RingDots
-    for i = 1, n do
-        local a = (i / n) * 2 * math.pi
-        local dot = TakeDot(color, x + math.cos(a) * r, y + math.sin(a) * r)
-        if not dot then
-            break
-        end
-        table.insert(ring.dots, dot)
-    end
-    draw.nrings = draw.nrings + 1
-    draw.rings[draw.nrings] = ring
-end
-
---- Fade finished strokes, grow and fade rings; let go of what is done.
+--- Fade finished strokes; let go of what is done.
 ---@param now number
 local function AnimateLens(now)
     local cfg = Config.Coach
@@ -378,55 +350,6 @@ local function AnimateLens(now)
     end
     for i = keep + 1, draw.nlens do draw.lens[i] = nil end
     draw.nlens = keep
-
-    keep = 0
-    for i = 1, draw.nrings do
-        local ring = draw.rings[i]
-        local k = (now - ring.t0) / cfg.RingSeconds
-        local n = table.getn(ring.dots)
-        if k >= 1 then
-            for j = 1, n do GiveDot(ring.dots[j]) end
-        else
-            local r = cfg.RingRadius * (0.25 + 0.75 * k)
-            local alpha = 1 - k * k
-            for j = 1, n do
-                local a = (j / n) * 2 * math.pi
-                local dot = ring.dots[j]
-                PlaceDot(dot, ring.x + math.cos(a) * r, ring.y + math.sin(a) * r)
-                dot:SetAlpha(alpha)
-            end
-            keep = keep + 1
-            draw.rings[keep] = ring
-        end
-    end
-    for i = keep + 1, draw.nrings do draw.rings[i] = nil end
-    draw.nrings = keep
-end
-
---- Take down every lens mark, or only those whose key starts with `prefix`
---- (one sender's), at once.
----@param prefix? string
-local function ClearLens(prefix)
-    local keep = 0
-    for i = 1, draw.nlens do
-        local s = draw.lens[i]
-        if prefix and string.sub(s.key, 1, string.len(prefix)) ~= prefix then
-            keep = keep + 1
-            draw.lens[keep] = s
-        else
-            for j = 1, s.nd do GiveDot(s.dots[j]) end
-        end
-    end
-    for i = keep + 1, draw.nlens do draw.lens[i] = nil end
-    draw.nlens = keep
-    if not prefix then
-        for i = 1, draw.nrings do
-            local ring = draw.rings[i]
-            for j = 1, table.getn(ring.dots) do GiveDot(ring.dots[j]) end
-            draw.rings[i] = nil
-        end
-        draw.nrings = 0
-    end
 end
 
 --------------------------------------------------------------------------------
@@ -581,11 +504,6 @@ local function TargetRect(view, record)
     return l + lx, t + ty, rw, rh
 end
 
---- A number for the wire: a whole number, as text.
-local function Int(v)
-    return string.format('%d', math.floor(v + 0.5))
-end
-
 --- Start a stroke of ours: 'lens' (following; on their screen) or 'ink'
 --- (coaching; on their map).
 ---@param kind string
@@ -698,42 +616,9 @@ local function EndStroke()
     end
 end
 
---- A click ring on their screen at our screen point (x, y), and on ours.
----@param view WorldView
----@param x number
----@param y number
-local function Click(view, x, y)
-    local target = state.following
-    local l, t, w, h = TargetRect(view, target)
-    local u, v = (x - l) / w, (y - t) / h
-    Ring(x, y, env.myColor)
-    Send(IndexOf(target), { tmk = Int(u * 1000) .. ',' .. Int(v * 1000) })
-end
-
 --------------------------------------------------------------------------------
 -- Receiving
 --------------------------------------------------------------------------------
-
---- Numbers off the wire (comma-separated whole numbers), into `scratch`.
---- (Only the click ring still comes this way.)
----@param s any
----@param max number
----@return number   # how many (0: none, or not readable)
-local function ReadInts(s, max)
-    if type(s) ~= 'string' or string.len(s) > 8 * max then
-        return 0
-    end
-    local n = 0
-    for word in string.gfind(s, '[^,]+') do
-        if n >= max then break end
-        if not string.find(word, '^%-?%d+$') then
-            return 0
-        end
-        n = n + 1
-        scratch[n] = tonumber(word)
-    end
-    return n
-end
 
 --- A whole number's offset, and the range a one-digit difference covers.
 local WHOLE = 131072
@@ -823,7 +708,7 @@ end
 ---@return string
 local function ColorOf(sender)
     local record = env.peers[sender]
-    if record and not record.coach then
+    if record and not record.observer then
         return CursorData.SafeUIColor(record.color)
     end
     return Config.Coach.Color
@@ -857,12 +742,16 @@ local function OnFollowed(sender, index, msg)
     local on = msg.tmf == 1
     local was = state.followers[index]
     if on and not was then
-        state.followers[index] = record and not record.coach and 'team' or 'spec'
+        state.followers[index] = record and not record.observer and 'team' or 'spec'
         if state.followers[index] == 'team' then
             state.followTeam = state.followTeam + 1
         end
-        -- Our camera at once, not on its next refresh.
+        -- Our camera at once, not on its next refresh; and our panel's ticks.
         pcall(env.forceView)
+        local ok, panel = pcall(env.panelState)
+        if ok and type(panel) == 'string' then
+            Send(index, { tmp = panel })
+        end
     elseif not on and was then
         if was == 'team' then
             state.followTeam = state.followTeam - 1
@@ -870,7 +759,7 @@ local function OnFollowed(sender, index, msg)
         state.followers[index] = nil
         EndStrokesOf(sender)
     end
-    -- Their cursor is not shown while they look through our eyes.
+    -- (A coach's cursor shows then only while they act: CoachBusy.)
     if record then
         record.followsMe = on
     end
@@ -884,6 +773,14 @@ local function OnCoached(sender, msg)
     if msg.tmh == 1 and not state.coaches[sender] then
         state.coaches[sender] = true
         pcall(env.addCoach, sender)
+        -- Following us already (their tmf came first, before the record was
+        -- theirs): their cursor fades between actions from the start
+        -- (reported: it did not, the first time they followed in a match).
+        local record = env.peers[sender]
+        local index = env.clientIndex[sender]
+        if record and index and state.followers[index] then
+            record.followsMe = true
+        end
     elseif msg.tmh ~= 1 and state.coaches[sender] then
         state.coaches[sender] = nil
         EndStrokesOf(sender)
@@ -891,13 +788,13 @@ local function OnCoached(sender, msg)
     end
 end
 
---- A message of ours (tmf, tmh, tml, tmk, tmw)? Then it is handled here:
+--- A message of ours (tmf, tmh, tml, tmw, tmp)? Then it is handled here:
 --- true. Anything else: false, for the cursor code.
 ---@param sender any
 ---@param msg table
 ---@return boolean
 function Receive(sender, msg)
-    if msg.tmf == nil and msg.tmh == nil and msg.tml == nil and msg.tmk == nil and msg.tmw == nil then
+    if msg.tmf == nil and msg.tmh == nil and msg.tml == nil and msg.tmw == nil and msg.tmp == nil then
         return false
     end
     if not Live() or type(sender) ~= 'string' then
@@ -915,7 +812,12 @@ function Receive(sender, msg)
         OnCoached(sender, msg)
         return true
     end
-    if not state.show then
+    -- The panel of the player we follow, drawn round ours.
+    if msg.tmp ~= nil then
+        local f = state.following
+        if f and f.name == sender and type(msg.tmp) == 'string' then
+            pcall(env.panelOverlay, msg.tmp)
+        end
         return true
     end
 
@@ -931,11 +833,6 @@ function Receive(sender, msg)
         end
         if done then
             s.endT = GetSystemTimeSeconds()
-        end
-    elseif msg.tmk ~= nil and state.followers[index] then
-        if ReadInts(msg.tmk, 2) == 2 then
-            local l, t, w, h = MainRect()
-            Ring(l + scratch[1] / 1000 * w, t + scratch[2] / 1000 * h, ColorOf(sender))
         end
     elseif msg.tmw ~= nil and state.coaches[sender] then
         local n, id, done = UnpackPoints(msg.tmw, 3, cfg.MaxPoints * 3)
@@ -1013,18 +910,18 @@ function ViewEvent(view, event)
         if m.Right and InCommandMode() then
             return false
         end
+        -- A player following, with units selected: an order for their own
+        -- units, as in the game. (An observer's selection is the player's,
+        -- copied: theirs is always a drawing.)
+        if m.Right and mode == 'lens' and not env.observer and HasSelection() then
+            return false
+        end
         if m.Right then
             if state.stroke then
                 EndStroke()
             end
             StartStroke(mode, view, event.MouseX or 0, event.MouseY or 0)
             StrokePoint(event.MouseX, event.MouseY)
-            return true
-        end
-        -- (An observer's left clicks are their own: the build menu, to show
-        -- the player where to build.)
-        if m.Left and mode == 'lens' and not env.observer then
-            Click(view, event.MouseX or 0, event.MouseY or 0)
             return true
         end
         return false
@@ -1044,10 +941,6 @@ function ViewEvent(view, event)
         EndStroke()
         return true
     end
-    -- The release of a click that was a ring: the game never saw the press.
-    if t == 'ButtonRelease' and mode == 'lens' and m.Left and not env.observer then
-        return true
-    end
     return false
 end
 
@@ -1058,16 +951,16 @@ local function MainView()
     return views and views['WorldCamera']
 end
 
---- The root frame's event: a lens stroke carries on over the interface. An
---- observer following has no capture layer (their clicks are their own),
---- so a right press that comes up from the interface starts one here.
+--- The root frame's event: a lens stroke carries on over the interface, and
+--- a right press that comes up from the interface (one the control under it
+--- did not take) starts one, as on the map.
 ---@param event table
 ---@return boolean   # true: ours
 function RootEvent(event)
     local t = event.Type
     local m = event.Modifiers
-    if t == 'ButtonPress' and m and m.Right and env and env.observer and Mode() == 'lens'
-        and not InCommandMode() then
+    if t == 'ButtonPress' and m and m.Right and env and Mode() == 'lens'
+        and not InCommandMode() and (env.observer or not HasSelection()) then
         local view = MainView()
         if view then
             if state.stroke then
@@ -1092,113 +985,6 @@ function RootEvent(event)
         end
     end
     return false
-end
-
---- An event on the capture layer: while following, the whole screen (but
---- the panel) is for drawing on their screen -- the interface too. A right
---- drag is a stroke, a left click a ring; the wheel goes on to the map, so
---- zooming and scrolling free still work.
----@param event table
----@return boolean
-local function CaptureEvent(event)
-    local t = event.Type
-    local view = MainView()
-    if t == 'WheelRotation' then
-        if view and view.HandleEvent then
-            pcall(view.HandleEvent, view, event)
-        end
-        return true
-    end
-    if Mode() ~= 'lens' or not view then
-        return true
-    end
-    local m = event.Modifiers or {}
-    if t == 'ButtonPress' or t == 'ButtonDClick' then
-        if m.Right and InCommandMode() then
-            -- (The layer has taken the click from the game: leave the mode here.)
-            pcall(function() import('/lua/ui/game/commandmode.lua').EndCommandMode(true) end)
-        elseif m.Right then
-            if state.stroke then
-                EndStroke()
-            end
-            StartStroke('lens', view, event.MouseX or 0, event.MouseY or 0)
-            StrokePoint(event.MouseX, event.MouseY)
-        elseif m.Left then
-            Click(view, event.MouseX or 0, event.MouseY or 0)
-        end
-    elseif t == 'MouseMotion' and state.stroke then
-        if event.Modifiers and not m.Right then
-            EndStroke()
-        else
-            StrokePoint(event.MouseX, event.MouseY)
-        end
-    elseif t == 'ButtonRelease' and state.stroke then
-        StrokePoint(event.MouseX, event.MouseY)
-        EndStroke()
-    end
-    return true
-end
-
---- Raise the capture layer while following live, lower it otherwise. The
---- panel goes above it meanwhile, so a click on the name still stops.
---- FAF's menu bar (lua/ui/game/tabs.lua: menu, pause, ...) above the capture
---- layer while it is up, so the menu still opens; back to where it was after.
----@param on boolean
-local function RaiseMenu(on)
-    pcall(function()
-        local tabs = import('/lua/ui/game/tabs.lua').controls
-        for _, key in ipairs({ 'parent', 'collapseArrow' }) do
-            local control = tabs and tabs[key]
-            if control and control.Depth then
-                if on then
-                    control.TeamMouseDepth = control.TeamMouseDepth or control.Depth()
-                    control.Depth:Set(Config.Coach.PanelRaisedDepth)
-                elseif control.TeamMouseDepth then
-                    control.Depth:Set(control.TeamMouseDepth)
-                    control.TeamMouseDepth = nil
-                end
-            end
-        end
-    end)
-end
-
-local function SyncCapture()
-    -- Players only: an observer's clicks stay theirs (the build menu).
-    local want = Mode() == 'lens' and not env.observer
-    if want == draw.captureShown then
-        return
-    end
-    if want and not draw.capture then
-        local frame = GetFrame(0)
-        if not frame then
-            return
-        end
-        local capture = Bitmap(frame)
-        capture:Hide()
-        capture.Left:Set(function() return frame.Left() end)
-        capture.Top:Set(function() return frame.Top() end)
-        capture.Width:Set(function() return frame.Width() end)
-        capture.Height:Set(function() return frame.Height() end)
-        capture.Right:Set(function() return capture.Left() + capture.Width() end)
-        capture.Bottom:Set(function() return capture.Top() + capture.Height() end)
-        capture.Depth:Set(Config.Coach.CaptureDepth)
-        capture:SetSolidColor('00ffffff')
-        capture.HandleEvent = function(self, event)
-            return CaptureEvent(event)
-        end
-        draw.capture = capture
-    end
-    draw.captureShown = want
-    if want then
-        draw.capture:Show()
-    else
-        if state.stroke then
-            EndStroke()
-        end
-        draw.capture:Hide()
-    end
-    pcall(env.raisePanel, want)
-    RaiseMenu(want)
 end
 
 --------------------------------------------------------------------------------
@@ -1239,11 +1025,15 @@ local function Camera()
     end
 end
 
---- Tell whoever we follow that we have stopped.
+--- Tell whoever we follow that we have stopped (and stop drawing their
+--- panel's ticks round ours).
 local function SayUnfollow()
     local old = state.following
     if old and Live() then
         Send(IndexOf(old), { tmf = 0, ta = old.army })
+    end
+    if old and env then
+        pcall(env.panelOverlay, false)
     end
 end
 
@@ -1258,7 +1048,6 @@ function FollowStopped(record)
     state.following = false
     state.before = false
     SyncFocus()
-    SyncCapture()
 end
 
 --- A player's name was clicked in the panel: follow their view, or stop
@@ -1314,7 +1103,6 @@ function ToggleFollow(record)
         end
     end
     SyncFocus()
-    SyncCapture()
     pcall(env.panelSync)
 end
 
@@ -1346,21 +1134,18 @@ function SetCoach(record, on)
     pcall(env.panelSync)
 end
 
---- The panel's "drawings on my screen" box: show what those following or
---- coaching us draw. Off takes down what is up.
----@param on boolean
-function SetShow(on)
-    state.show = on and true or false
-    if not state.show then
-        ClearLens()
-        draw.nink = 0
-        if draw.shape then draw.shape.Hidden = true end
+--- Our panel changed: whoever follows us sees it (Panel hooks.changed).
+function PanelChanged()
+    if not env or not Live() or not next(state.followers) then
+        return
     end
-end
-
----@return boolean
-function Showing()
-    return state.show
+    local ok, panel = pcall(env.panelState)
+    if not ok or type(panel) ~= 'string' then
+        return
+    end
+    for index in pairs(state.followers) do
+        Send(index, { tmp = panel })
+    end
 end
 
 --- Coaching someone (an observer whose cursor goes to them).
@@ -1414,7 +1199,7 @@ function Frame(delta)
         return
     end
     local now = GetSystemTimeSeconds()
-    if draw.nlens > 0 or draw.nrings > 0 then
+    if draw.nlens > 0 then
         AnimateLens(now)
     end
     if draw.nink > 0 then
@@ -1451,7 +1236,6 @@ function Frame(delta)
     end
 
     -- In case following or coaching changed from elsewhere.
-    SyncCapture()
     SyncFocus()
 
     -- An observer coaching or following someone: our selection is theirs
@@ -1479,7 +1263,6 @@ end
 function Start(e)
     Destroy()
     env = e
-    state.show = Config.Coach.ShowLens and true or false
 end
 
 function Destroy()
@@ -1498,17 +1281,8 @@ function Destroy()
     draw.root = false
     draw.free, draw.nfree, draw.made = {}, 0, 0
     draw.lens, draw.nlens = {}, 0
-    draw.rings, draw.nrings = {}, 0
     draw.ink, draw.nink = {}, 0
     draw.shape, draw.shaped = false, {}
-    if draw.capture then
-        pcall(draw.capture.Destroy, draw.capture)
-    end
-    if draw.captureShown and env then
-        pcall(env.raisePanel, false)
-        RaiseMenu(false)
-    end
-    draw.capture, draw.captureShown = false, false
     state.focusArmy, state.selFrom = -1, false
     state.following, state.before = false, false
     state.coaching, state.coachSel = false, -1

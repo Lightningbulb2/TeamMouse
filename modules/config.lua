@@ -17,7 +17,7 @@ ChatIdentifier = 'TeamMouse'
 --- step with `version` in mod_info.lua (a test checks).
 ModVersion = 4
 
---- Each player's version shows in the player panel (Panel.ShowVersions).
+--- Each player's version shows in the player panel's title tooltip.
 --- A teammate not heard from CheckDelay seconds in shows as "none".
 VersionReport = {
     CheckDelay = 5,
@@ -35,10 +35,9 @@ Panel = {
     --- Start folded away to its tab.
     StartCollapsed = false,
 
-    --- A column with each player's TeamMouse version: green when it is
-    --- yours, orange when it differs, "old" for the old SharedMouse, "none" for
-    --- a teammate who never answered, ? while unknown (or an older replay).
-    ShowVersions = true,
+    --- Show a dead teammate's cursor (their army out of the game). The panel's
+    --- "show dead cursors" box starts like this.
+    ShowDead = false,
 
     Depth = 60,
     BackColor = 'cc0a0e14',
@@ -385,8 +384,16 @@ Draw = {
     DotSize = 3,
     DotSpacing = 8,
 
-    --- Seconds the finished trail takes to fade away once the button is up.
-    FadeTime = 2.0,
+    --- A finished drawing stays until the game's own copy of it has reached
+    --- the sim and is drawn, then goes: at once with 0, or fading over this
+    --- many seconds. (Separate from coaching's fades: Coach.FadeSeconds,
+    --- Coach.LensFadeSeconds.)
+    FadeTime = 0,
+
+    --- ...or, if the game's copy never comes (painting off in the game's
+    --- options, a drawing too short to send), this many seconds after the
+    --- button came up.
+    SimWait = 3,
 
     --- Drawn as lines on the map, as the game draws a drawing: their opacity
     --- and UI_DrawLine thickness. (Dots, above, only where a view cannot draw
@@ -752,9 +759,10 @@ Follow = {
 -- Coaching (modules/coach.lua)
 --==============================================================================
 --
--- Following someone live, your right-drags are drawn on THEIR screen, as if on
--- the camera lens (over their interface), never through the game's painting
--- (nothing reaches the sim or the replay); a left click plays a ring there.
+-- Following someone live, your clicks stay your own, but a right-drag with
+-- nothing selected is drawn on THEIR screen, as if on the camera lens (over
+-- their interface), never through the game's painting (nothing reaches the
+-- sim or the replay).
 -- A live observer can also "coach" one player (the panel's box): their cursor
 -- goes to that player alone, their selection follows the player's, and their
 -- right-drags on the map are drawn on that player's map.
@@ -762,9 +770,6 @@ Follow = {
 Coach = {
     Enabled = true,
 
-    --- Show what people following or coaching you draw (the panel's
-    --- "drawings on my screen" box starts like this).
-    ShowLens = true,
 
     --- Finished strokes fade out over this many seconds: on their screen
     --- (following), and on their map (coaching). Screen strokes fade in steps
@@ -781,12 +786,6 @@ Coach = {
     LensSpacing = 2,
     --- Over everything else on screen.
     LensDepth = 20000,
-    --- While following, a layer at this depth takes clicks and right-drags
-    --- anywhere on screen (over the interface too) for drawing on theirs;
-    --- the panel is raised above it, to PanelRaisedDepth, so its names
-    --- still work.
-    CaptureDepth = 19000,
-    PanelRaisedDepth = 19500,
     --- At most this many dots up at once (strokes and rings together).
     MaxDots = 3000,
 
@@ -798,10 +797,6 @@ Coach = {
     --- A stroke in progress is sent this often.
     SendInterval = 0.1,
 
-    --- The click ring: grows to RingRadius pixels over RingSeconds.
-    RingRadius = 30,
-    RingSeconds = 0.6,
-    RingDots = 28,
 
     --- A coach's strokes on the map: UI_DrawLine thickness.
     InkThickness = 0,

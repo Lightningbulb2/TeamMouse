@@ -462,8 +462,10 @@ local function CreateRecord(name, armyIndex, color)
         cam = false,             -- their camera: focus x/y/z, heading, pitch, zoom (msg.cam)
         camIn = {},              -- scratch for reading one in
         follow = false,          -- the viewer's camera follows theirs (a click on their name)
-        followsMe = false,       -- they are following our view: their cursor is not shown
-        coach = false,           -- an observer coaching us, not a player (coach.lua)
+        followsMe = false,       -- they follow our view (a coach's cursor then shows only while they act)
+        observer = false,        -- an observer, not a player (listed in the panel; coach.lua)
+        dead = false,            -- their army is out of the game (panel.lua)
+        coach = false,           -- an observer coaching us (coach.lua)
         coached = false,         -- (observers) we coach them
         sel = {},                -- their selected units' ids (msg.sel)
         selText = false,         -- ...as it came, to tell a repeat from a change
@@ -1035,7 +1037,8 @@ end
 ---@param record table
 local function OnPanelToggle(record)
     Debug((record.disabled and 'hiding ' or 'showing ') .. tostring(record.name) .. '\'s cursor')
-    if not isReplay then
+    -- (An observer's is only hidden here: they are not told.)
+    if not isReplay and not record.observer then
         NotifyMute(record, record.disabled)
     end
 end
@@ -1107,7 +1110,8 @@ local function ProcessMessage(sender, msg)
     if not record and type(msg.a) == 'number' then
         record = peersByArmy[msg.a]
     end
-    if not record then
+    if not record or (record.observer and not record.coach) then
+        -- (An observer's cursor only while they coach us.)
         return
     end
     NoteTeamMouse(sender)
@@ -1118,7 +1122,9 @@ local function ProcessMessage(sender, msg)
     -- Still hearing from someone whose cursor we hid: they missed our word
     -- (or started after it). Say it again, now and then, and ignore this.
     if record.disabled then
-        if GetSystemTimeSeconds() - (record.muteSentT or -1000) >= 5 then
+        -- (An observer hidden in the panel is not told: they keep coaching,
+        -- and show again when ticked.)
+        if not record.observer and GetSystemTimeSeconds() - (record.muteSentT or -1000) >= 5 then
             NotifyMute(record, true)
         end
         return
@@ -1653,9 +1659,13 @@ local function CalibratePointerMap(engineWorld)
 end
 
 --- An observer, on every beat (not only while coaching or following, when
---- the camera is usually on the move): learn UnProject's convention while
---- the pointer rests on the map, so their drags can be followed later.
-local function ObserverCalibrate()
+--- the camera is usually on the move): their version goes out (players'
+--- panels list it), and UnProject's convention is learnt while the pointer
+--- rests on the map, so their drags can be followed later.
+local function ObserverBeat()
+    Version.Tick(GetSystemTimeSeconds())
+    -- (The lobby may keep observers to one team: observerteam.lua.)
+    import(_G.TeamMousePath .. '/modules/observerteam.lua').Enforce(GetSystemTimeSeconds())
     if localMouse.overWorld and not pointerMap.verified then
         local ok, world = pcall(GetMouseWorldPos)
         if ok then
@@ -3584,7 +3594,7 @@ function OnBeat()
     -- that one player (Coach.SetCoach -> SetCoachTarget). Following or
     -- coaching, it also runs for their own screen (FeedSelf).
     if isObserver and not isReplay then
-        ObserverCalibrate()
+        ObserverBeat()
     end
     if isReplay or (isObserver and not Coach.Acting()) then
         return
@@ -4989,6 +4999,12 @@ local function StartVersions(listed)
             SessionSendChatMessage(recipients, msg)
         end, GetSystemTimeSeconds())
     end
+    -- An observer's goes to everyone (for players' panels).
+    if isObserver and not isReplay and table.getn(sendState.everyone) > 0 then
+        Version.Start({}, function(msg)
+            SessionSendChatMessage(sendState.everyone, msg)
+        end, GetSystemTimeSeconds())
+    end
     if sendState.recording then
         Version.SetRecorder(function(msg)
             msg.a = myArmy
@@ -5002,10 +5018,20 @@ end
 ---@param name string
 local function AddCoachRecord(name)
     local index = sendState.clientIndex[name]
-    if peers[name] or not index then
+    local record = peers[name]
+    if record then
+        if record.observer then
+            record.coach = true
+        end
         return
     end
-    local record = CreateRecord(name, 1000 + index, Config.Coach.Color)
+    if not index then
+        return
+    end
+    -- (Players list every observer from the start: StartCoach. This is for
+    -- one that was not.)
+    record = CreateRecord(name, 1000 + index, Config.Coach.Color)
+    record.observer = true
     record.coach = true
     peers[name] = record
     peersByArmy[record.army] = record
@@ -5015,15 +5041,9 @@ end
 ---@param name string
 local function RemoveCoachRecord(name)
     local record = peers[name]
-    if not record or not record.coach then
-        return
+    if record and record.coach then
+        record.coach = false
     end
-    for viewKey, visual in pairs(record.visuals) do
-        pcall(visual.Destroy, visual)
-        record.visuals[viewKey] = nil
-    end
-    peers[name] = nil
-    peersByArmy[record.army] = nil
 end
 
 --- An observer starts coaching: from now on what they do goes to that player
@@ -5081,6 +5101,49 @@ end
 --- the panel offers. Out of InitTeamMouse for the upvalue limit.
 ---@return table   # the panel's hooks
 local function StartCoach()
+    -- (Here, not in InitTeamMouse, for its upvalue limit; and not a file-level
+    -- local: this file is at Lua 5.0's 200 of those.)
+
+    -- A player lists every observer in the panel (after the players): their
+    -- cursor shows while they coach us. Army 1000 + their client index, the
+    -- same on every client. Before the panel is built (InitTeamMouse).
+    if not isObserver and not isReplay then
+        local named = {}
+        for _, army in pairs(GetArmiesTable().armiesTable or {}) do
+            if army.nickname then
+                named[army.nickname] = true
+            end
+        end
+        for index, client in ipairs(GetSessionClients() or {}) do
+            if not client['local'] and client.name and not named[client.name] and not peers[client.name] then
+                local record = CreateRecord(client.name, 1000 + index, Config.Coach.Color)
+                record.observer = true
+                peers[client.name] = record
+                peersByArmy[record.army] = record
+            end
+        end
+    end
+
+    --- The game's own drawings reaching the sim (FAF's painting:
+    --- Sync.SharePaintingBrushStroke, one entry per stroke, named by its
+    --- drawer). Each counts on the drawer's record, so the early copy of their
+    --- drawing (RemoteCursor.ApplyTrail) goes once the real one is drawn.
+    ---@param list table
+    local function OnSimPaintings(list)
+        if type(list) ~= 'table' then
+            return
+        end
+        local now = GetSystemTimeSeconds()
+        for _, data in ipairs(list) do
+            local shared = type(data) == 'table' and data.ShareablePainting
+            local record = type(shared) == 'table' and shared.PeerName and peers[shared.PeerName]
+            if record then
+                record.paintSeq = (record.paintSeq or 0) + 1
+                record.paintT = now
+            end
+        end
+    end
+    pcall(AddOnSyncHashedCallback, OnSimPaintings, 'SharePaintingBrushStroke', 'TeamMouse')
     local myColor = Config.Coach.Color
     if not isObserver and not isReplay then
         local armies = GetArmiesTable().armiesTable
@@ -5106,14 +5169,16 @@ local function StartCoach()
         end,
         forceView = function() sendState.vpT = false end,
         ghostOrder = GhostOrder,
+        panelState = Panel.State,
+        panelOverlay = Panel.SetOverlay,
         panelSync = Panel.SyncFollow,
-        raisePanel = Panel.SetRaised,
     })
-    local hooks = { follow = Coach.ToggleFollow }
+    -- (me: our army as others' panels list us, for the followed player's
+    -- box for us.)
+    local hooks = { follow = Coach.ToggleFollow, changed = Coach.PanelChanged,
+        me = isObserver and 1000 + (sendState.clientIndex[myName] or 0) or myArmy }
     if isObserver and not isReplay then
         hooks.coach = Coach.SetCoach
-    elseif not isReplay then
-        hooks.lens, hooks.lensOn = Coach.SetShow, Coach.Showing
     end
     return hooks
 end
@@ -5169,10 +5234,13 @@ function InitTeamMouse(replay)
         ------------------------------------------------------------------
         -- Players see allies. Observers and replay viewers see everyone --
         -- in a replay, the viewer's own army too: watching your own game,
-        -- your cursor is one of the ones recorded.
+        -- your cursor is one of the ones recorded. (The lobby may keep
+        -- observers to one team: observerteam.lua.)
+        local ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
         for index, army in pairs(armies) do
             if army.human and (isReplay or army.nickname ~= myName) then
-                local visible = isObserver or isReplay or IsAlly(myArmy, index)
+                local visible = isReplay or (isObserver and ObserverTeam.Allowed(index))
+                    or IsAlly(myArmy, index)
                 if visible then
                     local record = CreateRecord(army.nickname, index, army.color)
                     -- For the colours of their interface ghost (hudghost.lua).
@@ -5227,7 +5295,8 @@ function InitTeamMouse(replay)
                     -- A client matching no army at all is an observer.
                     local isSpectator = (not byIndex or not byIndex.human)
                         and not namedArmy
-                    if isSpectator and not Config.Network.ShareWithObservers then
+                    if isSpectator and (not Config.Network.ShareWithObservers
+                        or not ObserverTeam.Allowed(myArmy)) then
                         hostile = true
                     end
 
@@ -5249,6 +5318,8 @@ function InitTeamMouse(replay)
         end
 
         -- Only a player with someone to send to has any use for extra samples.
+        -- Coaching first: it adds the observers a player lists.
+        local hooks = StartCoach()
         -- The panel listing everyone whose cursor can be seen, by army.
         local listed = {}
         for _, record in pairs(peers) do
@@ -5256,7 +5327,7 @@ function InitTeamMouse(replay)
         end
         table.sort(listed, function(a, b) return a.army < b.army end)
         -- In a replay, a player is only listed once their data turns up.
-        Panel.Create(listed, OnPanelToggle, StartCoach(), isReplay)
+        Panel.Create(listed, OnPanelToggle, hooks, isReplay)
 
         -- Stop, repeat build and pause, for teammates to see.
         if Config.Actions.Share and not isObserver and not isReplay then
@@ -5355,6 +5426,7 @@ function Destroy()
     Actions.Uninstall()
     UnblockObserverCommands()
     Coach.Destroy()
+    pcall(RemoveOnSyncHashedCallback, 'SharePaintingBrushStroke', 'TeamMouse')
     Panel.Destroy()
     Version.Reset()
     sendState.actCount = 0

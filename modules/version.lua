@@ -1,9 +1,10 @@
 --******************************************************************************
 --** TeamMouse -- modules/version.lua
 --**
---** Which version of TeamMouse each player is on, for the version column of
---** the player panel (panel.lua): theirs, "old" for a teammate on the older
---** SharedMouse, "none" for a teammate who never answered.
+--** Which version of TeamMouse each player is on, for the player panel's
+--** title tooltip (panel.lua): theirs, "old" for a teammate on the older
+--** SharedMouse, "none" for a teammate who never answered. Observers send
+--** theirs too.
 --**
 --** Each player sends its version once, on the mod's own chat channel, to the
 --** same recipients as the cursor data (teammates and observers), and records
@@ -29,7 +30,7 @@ local state = {
     recorded = false,
 }
 
---- Colours for the panel's version column.
+--- Colours, by what is known of a player's version.
 local SAME_COLOR = 'ff8fd18f'
 local OTHER_COLOR = 'ffffb040'
 local NONE_COLOR = 'ffcc6666'

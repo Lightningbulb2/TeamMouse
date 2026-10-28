@@ -904,6 +904,24 @@ RemoteCursor = Class(Group) {
             self.label:DisableHitTest(true)
         end
 
+        -- A red line through a dead teammate's name (UpdateFrame shows it,
+        -- through its alpha: showing the cursor shows every child).
+        self.strike = false
+        self.strikeOn = false
+        if self.label then
+            local label = self.label
+            local strike = Bitmap(self)
+            strike:SetSolidColor('ffe02020')
+            strike:DisableHitTest(true)
+            strike.Left:Set(function() return label.Left() - 1 end)
+            strike.Top:Set(function() return label.Top() + math.floor(label.Height() / 2) end)
+            strike.Width:Set(function() return label.Width() + 2 end)
+            strike.Height:Set(2)
+            strike.Depth:Set(function() return label.Depth() + 2 end)
+            strike:SetAlpha(0)
+            self.strike = strike
+        end
+
         -- A white stroke around the name, so it reads over busy ground. It
         -- follows the name; its opacity is the name's (ApplyAlpha).
         self.nameStroke = false
@@ -1523,7 +1541,10 @@ RemoteCursor = Class(Group) {
             local n = trail.n
             local last = trail.pts[n]
             if not last then
-                -- The stroke starts where it was pressed.
+                -- The stroke starts where it was pressed. The game's own copy
+                -- of it is the next of their drawings to reach the sim after
+                -- this (record.paintSeq: teammouse.lua, OnSimPaintings).
+                trail.seq0 = record.paintSeq or 0
                 n = 1
                 local p = trail.pts[1] or {}
                 trail.pts[1] = p
@@ -1561,7 +1582,22 @@ RemoteCursor = Class(Group) {
 
         local fade = 1
         if trail.endT then
-            fade = 1 - (now - trail.endT) / cfg.FadeTime
+            -- Finished: held until the game's own copy of it has reached the
+            -- sim (and so is drawn), then gone -- or, with Draw.FadeTime (a
+            -- ReUI option), faded from then. If it never comes (painting off
+            -- in the game options), after Draw.SimWait.
+            local from = false
+            if (record.paintSeq or 0) > (trail.seq0 or 0) then
+                from = math.max(trail.endT, record.paintT or trail.endT)
+            elseif now - trail.endT >= cfg.SimWait then
+                from = trail.endT + cfg.SimWait
+            end
+            if from then
+                fade = 0
+                if cfg.FadeTime > 0 then
+                    fade = 1 - (now - from) / cfg.FadeTime
+                end
+            end
             if fade <= 0 then
                 trail.n = 0
                 trail.endT = false
@@ -1982,7 +2018,7 @@ RemoteCursor = Class(Group) {
         end
 
         if onHud and not self.hud then
-            self.hud = HudGhost(self, self.record.faction, self.record.coach)
+            self.hud = HudGhost(self, self.record.faction, self.record.observer)
             self.hudFade = 0
             self.appliedHudAlpha = -1
             self.hudBound = false
@@ -2172,12 +2208,17 @@ RemoteCursor = Class(Group) {
     UpdateFrame = function(self, viewInfo, now)
         local record = self.record
 
-        -- Hidden from the panel, or a teammate following our view
-        -- (coach.lua): nothing of theirs at all. (A coach following us keeps
-        -- what they hold and drag: HideCursorOnly.)
-        if record.disabled or (record.followsMe and not record.coach) then
+        -- Hidden from the panel, or dead (their army out of the game) with
+        -- "show dead cursors" unticked: nothing of theirs at all. (A teammate
+        -- following our view stays in sight; a coach following us shows
+        -- their cursor only while they act: CursorFade.)
+        if record.disabled or (record.dead and not Config.Panel.ShowDead) then
             self:HideEverything()
             return
+        end
+        if self.strike and self.strikeOn ~= (record.dead and true or false) then
+            self.strikeOn = record.dead and true or false
+            self.strike:SetAlpha(self.strikeOn and 1 or 0)
         end
 
         -- Orders first, and unconditionally: they are pinned to the map, not to
