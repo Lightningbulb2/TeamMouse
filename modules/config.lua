@@ -39,6 +39,13 @@ Panel = {
     --- "show dead cursors" box starts like this.
     ShowDead = false,
 
+    --- A dead teammate's cursor, when shown, at this much of its opacity.
+    DeadAlpha = 0.5,
+
+    --- The red line through a dead teammate's name (panel and cursor), as
+    --- much of the name's opacity.
+    StrikeAlpha = 0.6,
+
     Depth = 60,
     BackColor = 'cc0a0e14',
 }

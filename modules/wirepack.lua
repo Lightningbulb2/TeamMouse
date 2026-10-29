@@ -36,10 +36,11 @@ local OFFSET = 131072   -- 64^3 / 2
 local FLAG_HUD = 1
 local DRAG_FLAGS = 2 + 4 + 8 + 16 + 32
 
---- Write `v` as `width` digits, most significant first. No table for the
---- digits: this runs for every number of every packet, sent and received,
---- and garbage costs frame time in Lua 5.0. (Powers of 64 divide exactly,
---- even in 32-bit floats.)
+--- Write `v` as `width` digits, most significant first, onto `parts` (its
+--- `n` counts what is in it, so one table serves every packet: concat it
+--- with 1, n). No table for the digits: this runs for every number of every
+--- packet, sent and received, and garbage costs frame time in Lua 5.0.
+--- (Powers of 64 divide exactly, even in 32-bit floats.)
 local function Put(parts, v, width)
     local max = SPAN[width]
     v = math.floor(v + 0.5)
@@ -48,7 +49,9 @@ local function Put(parts, v, width)
     local div = max / 64
     for _ = 1, width do
         local d = math.floor(v / div)
-        table.insert(parts, CHAR[d])
+        local n = parts.n + 1
+        parts.n = n
+        parts[n] = CHAR[d]
         v = v - d * div
         div = div / 64
     end
@@ -66,7 +69,10 @@ local function Get(s, at, width)
 end
 
 --- The digit writer and reader, for other compact strings (coach.lua's
---- strokes). `width` 1..3.
+--- strokes). `width` 1..3; the writer's `parts` starts as { n = 0 }.
+
+--- PackSamples' and JoinSamples' pieces, reused (neither is re-entered).
+local pieces = { n = 0 }
 PutDigits = Put
 GetDigits = Get
 
@@ -85,7 +91,8 @@ end
 ---@param pz number
 ---@return string
 function PackSamples(samples, count, px, pz)
-    local parts = {}
+    local parts = pieces
+    parts.n = 0
     for i = 1, count do
         local s = samples[i]
         local hud, drag = Parts(s.flags)
@@ -102,7 +109,7 @@ function PackSamples(samples, count, px, pz)
             Put(parts, (s.bz - pz) * 10 + OFFSET, 3)
         end
     end
-    return table.concat(parts)
+    return table.concat(parts, '', 1, parts.n)
 end
 
 --- The digits of a packed string as whole numbers, exactly as written (offsets
@@ -110,12 +117,14 @@ end
 --- hx, hy when on the HUD and bx, bz when dragging. Nil unless `s` is nothing
 --- but whole samples. JoinSamples(SplitSamples(s)) == s.
 ---@param s string
+---@param out? table   # filled from 1 (a new table unless given)
 ---@return number[] | nil, number   # the numbers, and how many samples
-function SplitSamples(s)
+function SplitSamples(s, out)
     if type(s) ~= 'string' then
         return nil, 0
     end
-    local out, n, samples = {}, 0, 0
+    local n, samples = 0, 0
+    out = out or {}
     local at, len = 1, string.len(s)
     while at <= len do
         local age, flags = Get(s, at, 2), Get(s, at + 2, 1)
@@ -158,7 +167,8 @@ end
 ---@param samples number
 ---@return string
 function JoinSamples(list, samples)
-    local parts, i = {}, 1
+    local parts, i = pieces, 1
+    parts.n = 0
     for _ = 1, samples do
         local flags = list[i + 1]
         Exact(parts, list[i], 2)
@@ -178,7 +188,38 @@ function JoinSamples(list, samples)
             i = i + 2
         end
     end
-    return table.concat(parts)
+    return table.concat(parts, '', 1, parts.n)
+end
+
+--- UnpackSamples, from the numbers SplitSamples gives (as wirecodec.lua's
+--- DecodeReused hands them over: no string made only to be read again).
+--- The numbers are trusted to fit their digits (DecodeReused checks).
+---@param list number[]
+---@param samples number
+---@param px number
+---@param pz number
+---@param max number
+---@param fn function
+---@param ctx? any
+function UnpackList(list, samples, px, pz, max, fn, ctx)
+    local i = 1
+    for _ = 1, math.min(samples, max) do
+        local age, flags = list[i], list[i + 1]
+        local x = px + (list[i + 2] - OFFSET) / 10
+        local z = pz + (list[i + 3] - OFFSET) / 10
+        i = i + 4
+        local hud, drag = Parts(flags)
+        local hx, hy, bx, bz = 0.5, 0.9, x, z
+        if hud then
+            hx, hy = list[i] / 1000, list[i + 1] / 1000
+            i = i + 2
+        end
+        if drag then
+            bx, bz = px + (list[i] - OFFSET) / 10, pz + (list[i + 1] - OFFSET) / 10
+            i = i + 2
+        end
+        fn(age / 500, x, z, hx, hy, bx, bz, flags, ctx)
+    end
 end
 
 --- Unpack samples, calling `fn(age, x, z, hx, hy, bx, bz, flags, ctx)` for

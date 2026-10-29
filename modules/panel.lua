@@ -15,12 +15,14 @@
 --** version of TeamMouse (version.lua), as Sim Speed Balancer's panel does.
 --** Click a player's name to follow their view (coach.lua); click it again to
 --** stop (hovering a name lights its band first). Live observers also get a
---** "coach" box per player (one at a time). Observers are listed under their
+--** "coach" box per player (any number). Observers are listed under their
 --** own heading, "observers - Team: any" (or the team the lobby keeps them to:
 --** observerteam.lua), with no "view" box, and cannot be followed (a player
 --** sees an observer's cursor while they coach). A teammate whose army is out
 --** of the game has a red line through their name, and their cursor shows only
---** with "show dead cursors" ticked (Panel.ShowDead starts it). Following
+--** with "show dead cursors" ticked (Panel.ShowDead starts it). In a replay
+--** there is no such box (nothing of theirs is recorded once their commander
+--** is dead): a dead player's boxes are unticked and locked. Following
 --** someone, their own panel's ticks are drawn as green outlines round your
 --** boxes (not "all"), and their box for you round theirs (SetOverlay).
 --** Choices last for the game only.
@@ -95,6 +97,26 @@ local function Play(cue)
     pcall(function() PlaySound(Sound({ Cue = cue, Bank = 'Interface' })) end)
 end
 
+local Ring
+
+--- Show or hide the outline `holder[key]` round `box`, made the first time
+--- it shows (most never do: only while following someone).
+---@param holder table   # a row, or the panel; its `parent` is what to make it in
+---@param key string
+---@param box Control
+---@param on any
+local function SetRing(holder, key, box, on)
+    local ring = holder[key]
+    if not ring then
+        if not on then
+            return
+        end
+        ring = Ring(holder.parent, box)
+        holder[key] = ring
+    end
+    ring:SetAlpha(on and 1 or 0)
+end
+
 --- Show a row as on or off.
 ---@param row table
 local function Paint(row)
@@ -105,13 +127,13 @@ local function Paint(row)
     row.label:SetColor(record.follow and COLORS.follow or 'ffffffff')
     -- Through its alpha, not Hide: showing the panel shows every child.
     row.highlight:SetAlpha((record.follow and 0.9) or (row.hover and 0.45) or 0)
-    row.strike:SetAlpha(record.dead and 1 or 0)
+    row.strike:SetAlpha(record.dead and Config.Panel.StrikeAlpha or 0)
     -- (The player we follow has no row for themselves: theirs stands in for
     -- their box for us.)
     local theirs = overlay and overlay[record.follow and overlay.me or record.army]
-    row.checkRing:SetAlpha(theirs and theirs.c and 1 or 0)
-    if row.viewRing then
-        row.viewRing:SetAlpha(theirs and theirs.v and 1 or 0)
+    SetRing(row, 'checkRing', row.check, theirs and theirs.c)
+    if row.viewCheck then
+        SetRing(row, 'viewRing', row.viewCheck, theirs and theirs.v)
     end
     if row.check.IsChecked and row.check:IsChecked() ~= on then
         row.check:SetCheck(on, true)
@@ -191,7 +213,7 @@ end
 ---@param parent Control
 ---@param box Control
 ---@return table   # SetAlpha(a), GetAlpha()
-local function Ring(parent, box)
+Ring = function(parent, box)
     local lines = {}
     for i = 1, 4 do
         local line = Bitmap(parent)
@@ -264,8 +286,7 @@ end
 ---@return boolean
 local function VersionsDiffer()
     for _, record in ipairs(source and source.records or {}) do
-        local text = Version.Describe(record.name)
-        if text ~= '?' and text ~= 'v' .. Config.ModVersion then
+        if Version.Differs(record.name) then
             return true
         end
     end
@@ -655,6 +676,27 @@ local function Title(body, inner)
     return title, underline
 end
 
+--- "show dead cursors" (whether a dead teammate's cursor shows at all;
+--- Panel.ShowDead starts it), under the rows at `top`. Not in a replay.
+---@param body Group
+---@param inner Group
+---@param top number
+local function DeadRow(body, inner, top)
+    local deadCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
+    LayoutHelpers.AtLeftTopIn(deadCheck, inner, PAD + 14, top + (ROW_HEIGHT - CHECK) / 2)
+    LayoutHelpers.SetDimensions(deadCheck, CHECK, CHECK)
+    deadCheck:SetCheck(Config.Panel.ShowDead and true or false, true)
+    deadCheck.OnCheck = function(self, checked)
+        Config.Panel.ShowDead = checked and true or false
+        Changed()
+    end
+    local deadLabel = UIUtil.CreateText(body, 'show dead cursors', 10, UIUtil.bodyFont, true)
+    deadLabel:SetColor('ffaaaaaa')
+    deadLabel:DisableHitTest()
+    LayoutHelpers.AtLeftTopIn(deadLabel, inner, PAD + 14 + CHECK + 5, top + 4)
+    panel.deadCheck = deadCheck
+end
+
 --- One row: a player's (or an observer's) boxes, colour and name. `ctx` is
 --- what Build laid out: body, inner, hooks, onToggle, width, nameLeft,
 --- nameRight, nameRoom, coachColumn, syncAll.
@@ -689,7 +731,7 @@ local function MakeRow(ctx, record, top)
     local label = UIUtil.CreateText(body, record.name or '?', 12, UIUtil.bodyFont, true)
     label:SetColor('ffffffff')
     local row = { record = record, check = check, swatch = swatch, label = label, highlight = highlight,
-        color = CursorData.SafeUIColor(record.color) }
+        color = CursorData.SafeUIColor(record.color), parent = body }
     local onClick = nil
     -- (An observer has no camera to follow.)
     if hooks.follow and Config.Follow.Enabled and not record.observer then
@@ -726,11 +768,13 @@ local function MakeRow(ctx, record, top)
             ctx.syncAll()
             Changed()
         end
+        if record.locked then
+            viewCheck:Disable()
+        end
         row.viewCheck = viewCheck
-        row.viewRing = Ring(body, viewCheck)
 
-        -- A live observer: coach this player (coach.lua). One player at a
-        -- time: ticking one unticks the rest.
+        -- A live observer: coach this player (coach.lua), as many as they
+        -- like.
         if ctx.coachColumn then
             local coachCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
             LayoutHelpers.AtLeftTopIn(coachCheck, inner, ctx.width - PAD - CHECK * 2 - 12, mid)
@@ -744,8 +788,11 @@ local function MakeRow(ctx, record, top)
         end
     end
 
-    row.checkRing = Ring(body, check)
     check:SetCheck(not record.disabled, true)
+    -- (Dead in a replay: unticked, for good. UpdateDead.)
+    if record.locked then
+        check:Disable()
+    end
     check.OnCheck = function(self, checked)
         record.disabled = not checked
         Paint(row)
@@ -812,7 +859,10 @@ Build = function()
     -- The title, a row of "all" boxes, a row per player (or one saying there
     -- is nobody), the observers, then "show dead cursors".
     local lines = math.max(table.getn(players), 1) + (obsHeading and table.getn(observers) + 1 or 0)
-    local height = TITLE_HEIGHT + (lines + 2) * ROW_HEIGHT + PAD * 2
+    -- ("show dead cursors" is not in a replay: nothing of a dead player's is
+    -- recorded.)
+    local deadRow = not source.onlyHeard
+    local height = TITLE_HEIGHT + (lines + (deadRow and 2 or 1)) * ROW_HEIGHT + PAD * 2
 
     local root = Group(frame, 'TeamMousePanel')
     LayoutHelpers.SetDimensions(root, WIDTH, height)
@@ -892,20 +942,24 @@ Build = function()
 
     --- Show the "all" boxes ticked while every player's box is.
     local function SyncAll()
-        local cursors, views, anyView = true, true, false
+        -- (A locked row -- dead, in a replay -- does not count.)
+        local cursors, views, anyCursor, anyView = true, true, false, false
         for _, row in ipairs(panel.rows) do
-            if not row.check:IsChecked() then cursors = false end
-            if row.viewCheck then
-                anyView = true
-                if not row.viewCheck:IsChecked() then views = false end
+            if not row.record.locked then
+                anyCursor = true
+                if not row.check:IsChecked() then cursors = false end
+                if row.viewCheck then
+                    anyView = true
+                    if not row.viewCheck:IsChecked() then views = false end
+                end
             end
         end
-        allCursors:SetCheck(cursors and table.getn(panel.rows) > 0, true)
+        allCursors:SetCheck(cursors and anyCursor, true)
         allViews:SetCheck(views and anyView, true)
     end
     allCursors.OnCheck = function(self, checked)
         for _, row in ipairs(panel.rows) do
-            if row.check:IsChecked() ~= checked then
+            if not row.record.locked and row.check:IsChecked() ~= checked then
                 row.check:SetCheck(checked)   -- as if clicked: hides or shows them
             end
         end
@@ -913,7 +967,7 @@ Build = function()
     end
     allViews.OnCheck = function(self, checked)
         for _, row in ipairs(panel.rows) do
-            if row.viewCheck and row.viewCheck:IsChecked() ~= checked then
+            if not row.record.locked and row.viewCheck and row.viewCheck:IsChecked() ~= checked then
                 row.viewCheck:SetCheck(checked)
             end
         end
@@ -947,22 +1001,10 @@ Build = function()
     SyncAll()
     UpdateVersions()
 
-    -- Whether a dead teammate's cursor shows (Panel.ShowDead starts it).
-    local deadTop = PAD + TITLE_HEIGHT + line * ROW_HEIGHT
-    local deadCheck = UIUtil.CreateCheckbox(body, '/CHECKBOX/')
-    LayoutHelpers.AtLeftTopIn(deadCheck, inner, PAD + 14, deadTop + (ROW_HEIGHT - CHECK) / 2)
-    LayoutHelpers.SetDimensions(deadCheck, CHECK, CHECK)
-    deadCheck:SetCheck(Config.Panel.ShowDead and true or false, true)
-    deadCheck.OnCheck = function(self, checked)
-        Config.Panel.ShowDead = checked and true or false
-        Changed()
+    panel.parent = body
+    if deadRow then
+        DeadRow(body, inner, PAD + TITLE_HEIGHT + line * ROW_HEIGHT)
     end
-    local deadLabel = UIUtil.CreateText(body, 'show dead cursors', 10, UIUtil.bodyFont, true)
-    deadLabel:SetColor('ffaaaaaa')
-    deadLabel:DisableHitTest()
-    LayoutHelpers.AtLeftTopIn(deadLabel, inner, PAD + 14 + CHECK + 5, deadTop + 4)
-    panel.deadCheck = deadCheck
-    panel.deadRing = Ring(body, deadCheck)
     PaintOverlay()
 
     if arrow then
@@ -993,9 +1035,11 @@ end
 
 --- The title orange while anyone is on another version than ours.
 function UpdateVersions()
-    if not panel or not panel.title then
+    -- (Only when something was heard: Version.Revision.)
+    if not panel or not panel.title or panel.versionRev == Version.Revision() then
         return
     end
+    panel.versionRev = Version.Revision()
     local color = VersionsDiffer() and COLORS.titleOther or COLORS.title
     if color ~= panel.titleColor then
         panel.titleColor = color
@@ -1049,19 +1093,29 @@ function PaintOverlay()
     for _, row in ipairs(panel.rows) do
         Paint(row)
     end
-    if panel.deadRing then
-        panel.deadRing:SetAlpha(overlay and overlay.dead and 1 or 0)
+    if panel.deadCheck then
+        SetRing(panel, 'deadRing', panel.deadCheck, overlay and overlay.dead)
     end
 end
 
+--- When UpdateDead last looked.
+local deadT = -1000
+
 --- Which teammates' armies are out of the game (dead): a line through their
---- name, and no cursor unless "show dead cursors" is ticked. Each beat.
+--- name, and no cursor unless "show dead cursors" is ticked. Once a second:
+--- GetArmiesTable builds the whole table afresh each call.
 local function UpdateDead()
-    local ok, armies = pcall(function() return GetArmiesTable().armiesTable end)
-    if not ok or type(armies) ~= 'table' then
+    local now = GetSystemTimeSeconds()
+    if now - deadT < 1 then
         return
     end
-    local changed = false
+    deadT = now
+    local ok, info = pcall(GetArmiesTable)
+    local armies = ok and type(info) == 'table' and info.armiesTable
+    if type(armies) ~= 'table' then
+        return
+    end
+    local changed, locked = false, false
     for _, record in ipairs(source.records) do
         if not record.observer then
             local army = armies[record.army]
@@ -1070,9 +1124,20 @@ local function UpdateDead()
                 record.dead = dead
                 changed = true
             end
+            -- In a replay, nothing of theirs is recorded once they are dead:
+            -- their boxes unticked and locked (rebuilt so).
+            if dead and source.onlyHeard and not record.locked then
+                record.locked, record.disabled, record.showView = true, true, false
+                locked = true
+                if source.onToggle then
+                    pcall(source.onToggle, record)
+                end
+            end
         end
     end
-    if changed and panel then
+    if locked then
+        Build()
+    elseif changed and panel then
         for _, row in ipairs(panel.rows) do
             Paint(row)
         end
@@ -1177,4 +1242,5 @@ function Destroy()
     source = false
     collapsedPref = nil
     overlay = false
+    deadT = -1000
 end

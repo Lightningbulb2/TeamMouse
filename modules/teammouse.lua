@@ -463,6 +463,7 @@ local function CreateRecord(name, armyIndex, color)
         camIn = {},              -- scratch for reading one in
         follow = false,          -- the viewer's camera follows theirs (a click on their name)
         followsMe = false,       -- they follow our view (a coach's cursor then shows only while they act)
+        coachViewing = false,    -- a coach following someone (maybe not us): the same (coach.lua, tv)
         observer = false,        -- an observer, not a player (listed in the panel; coach.lua)
         dead = false,            -- their army is out of the game (panel.lua)
         coach = false,           -- an observer coaching us (coach.lua)
@@ -790,7 +791,14 @@ local extraCtx = { record = false, now = 0, py = 0 }
 
 local function PushExtras(record, e, now, px, py, pz)
     extraCtx.record, extraCtx.now, extraCtx.py = record, now, py
-    WirePack.UnpackSamples(e, px, pz, Config.Network.ExtraSamples.MaxPerPacket, PushExtra, extraCtx)
+    local max = Config.Network.ExtraSamples.MaxPerPacket
+    -- (Decoded live, the numbers themselves: WireCodec.DecodeReused. Only
+    -- that table: any other came off the wire as it is.)
+    if e == WireCodec.RAW_SAMPLES then
+        WirePack.UnpackList(e.list, e.samples, px, pz, max, PushExtra, extraCtx)
+    else
+        WirePack.UnpackSamples(e, px, pz, max, PushExtra, extraCtx)
+    end
     extraCtx.record = false
 end
 
@@ -1663,9 +1671,11 @@ end
 --- panels list it), and UnProject's convention is learnt while the pointer
 --- rests on the map, so their drags can be followed later.
 local function ObserverBeat()
-    Version.Tick(GetSystemTimeSeconds())
-    -- (The lobby may keep observers to one team: observerteam.lua.)
-    import(_G.TeamMousePath .. '/modules/observerteam.lua').Enforce(GetSystemTimeSeconds())
+    local now = GetSystemTimeSeconds()
+    Version.Tick(now)
+    -- (The lobby may keep observers to one team: observerteam.lua, kept on
+    -- Coach for this file's 200 locals.)
+    Coach.ObserverTeam.Enforce(now)
     if localMouse.overWorld and not pointerMap.verified then
         local ok, world = pcall(GetMouseWorldPos)
         if ok then
@@ -3591,7 +3601,7 @@ function OnBeat()
     pcall(Panel.Refresh)
 
     -- An observer sends nothing, unless coaching: then their cursor goes to
-    -- that one player (Coach.SetCoach -> SetCoachTarget). Following or
+    -- those players (Coach.SetCoach -> SetCoachTarget). Following or
     -- coaching, it also runs for their own screen (FeedSelf).
     if isObserver and not isReplay then
         ObserverBeat()
@@ -3990,7 +4000,7 @@ local function UpdateFrame(delta)
                     -- the building in their hand and their drags show.
                     if record.self then
                         visual:HideOwnPieces()
-                    elseif record.followsMe and record.coach then
+                    elseif record.coach and (record.followsMe or record.coachViewing) then
                         visual:CursorFade(record.coachFade or 0)
                     elseif visual.cursorOnlyHidden or visual.cursorFaded then
                         visual:ShowCursorAgain()
@@ -5159,12 +5169,12 @@ local function StartCoach()
         myArmy = myArmy, observer = isObserver, replay = isReplay, myColor = myColor,
         addCoach = AddCoachRecord,
         removeCoach = RemoveCoachRecord,
-        -- An observer's cursor goes to the player they coach, and nobody else.
-        setCoachTarget = function(index)
-            if index then
+        -- An observer's cursor goes to the players they coach, and nobody else.
+        setCoachTarget = function(indices)
+            if indices[1] then
                 CoachInputs()
             end
-            sendState.teamTo = index and { index } or {}
+            sendState.teamTo = indices
             RebuildTargets()
         end,
         forceView = function() sendState.vpT = false end,
@@ -5236,7 +5246,7 @@ function InitTeamMouse(replay)
         -- in a replay, the viewer's own army too: watching your own game,
         -- your cursor is one of the ones recorded. (The lobby may keep
         -- observers to one team: observerteam.lua.)
-        local ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
+        local ObserverTeam = Coach.ObserverTeam
         for index, army in pairs(armies) do
             if army.human and (isReplay or army.nickname ~= myName) then
                 local visible = isReplay or (isObserver and ObserverTeam.Allowed(index))

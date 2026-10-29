@@ -91,15 +91,15 @@ V4:
 
 • while following someone, your clicks stay your own (select, build, order your units); a right-drag with nothing selected draws straight on their screen instead (over their interface, never in the game or the replay), fading after a second, and a single right click there is a ghost order
 
-• the panel's title is "TeamMouse - v4": hover it for everyone's version (the version column is gone)
+• add TeamMouse panel hovering for versions
 
-• observers are listed in the panel under their own heading, with no "view" box, and cannot be followed
+• observers are listed in the panel now that they can follow and coach players
 
 • lobby option "TeamMouse: observers watch": keep observers to one team (default any)
 
-• hovering a name in the panel lights its band before you click to follow
-
 • a dead teammate has a red line through their name, on the panel and on their cursor; "show dead cursors" box (ReUI option to start it ticked)
+
+• less garbage per frame receiving teammates' cursors (about a third of before), and a lighter panel
 
 • following someone, their panel's ticks show as green outlines round your boxes (not "all"; their box for you round their own row)
 
@@ -111,9 +111,7 @@ V4:
 
 • observers' build placements, move orders and upgrades never reach the game (no "trying to cheat" message), and neither do their keyboard orders (stop, pause, fire states, ...); placements and orders still go to the coached player, and show on the observer's own screen
 
-• a coach's single right click is a ghost order for the player, not a dot; the follow camera holds still during a left drag; a coach on their own interface shows the player nothing
-
-• teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots, and go once the game draws its own copy (ReUI option: seconds to fade from then instead)
+• teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots
 
 
 ]]

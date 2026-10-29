@@ -904,8 +904,9 @@ RemoteCursor = Class(Group) {
             self.label:DisableHitTest(true)
         end
 
-        -- A red line through a dead teammate's name (UpdateFrame shows it,
-        -- through its alpha: showing the cursor shows every child).
+        -- A red line through a dead teammate's name, always while they are
+        -- (UpdateFrame), as opaque as the name (ApplyAlpha): through its
+        -- alpha, as showing the cursor shows every child.
         self.strike = false
         self.strikeOn = false
         if self.label then
@@ -1284,6 +1285,9 @@ RemoteCursor = Class(Group) {
         if self.label then
             self.label:SetHidden(true)
         end
+        if self.strike then
+            self.strike:SetHidden(true)
+        end
         if self.nameStroke then
             ResyncStroke(self.nameStroke, true)
         end
@@ -1362,6 +1366,9 @@ RemoteCursor = Class(Group) {
         end
         if self.label then
             self.label:SetHidden(false)
+        end
+        if self.strike then
+            self.strike:SetHidden(false)
         end
         if self.nameStroke then
             ResyncStroke(self.nameStroke, false)
@@ -2108,6 +2115,9 @@ RemoteCursor = Class(Group) {
             self.appliedLabelAlpha = labelAlpha
             self.label:SetAlpha(labelAlpha)
             ShowStroke(self.nameStroke, labelAlpha)
+            if self.strikeOn then
+                self.strike:SetAlpha(labelAlpha * Config.Panel.StrikeAlpha)
+            end
         end
 
         if math.abs(alpha - self.appliedAlpha) < Config.Appearance.AlphaEpsilon then
@@ -2218,7 +2228,7 @@ RemoteCursor = Class(Group) {
         end
         if self.strike and self.strikeOn ~= (record.dead and true or false) then
             self.strikeOn = record.dead and true or false
-            self.strike:SetAlpha(self.strikeOn and 1 or 0)
+            self.strike:SetAlpha(self.strikeOn and math.max(self.appliedLabelAlpha, 0) * Config.Panel.StrikeAlpha or 0)
         end
 
         -- Orders first, and unconditionally: they are pinned to the map, not to
@@ -2459,6 +2469,11 @@ RemoteCursor = Class(Group) {
             local t = (Config.Smoothing.StaleTimeout - age) / fadeWindow
             if t < 0 then t = 0 end
             shared = shared * t
+        end
+
+        -- A dead teammate (shown with "show dead cursors"): fainter.
+        if self.record.dead then
+            shared = shared * Config.Panel.DeadAlpha
         end
 
         alpha = alpha * shared

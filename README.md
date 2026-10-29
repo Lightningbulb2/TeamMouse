@@ -28,7 +28,7 @@ Built on top of the SharedMouse mod by Eternal- that was cleaned up by KasperAUS
 
 • (optional) follow player perspective and selections --- click a name in the panel (teammates, observers and replays)
 
-• coaching: while following someone, draw on their screen and click-ping for them; observers can coach one player (their cursor and map drawings go to that player only)
+• coaching: while following someone, draw on their screen and click-ping for them; observers can coach any number of players (their cursor and map drawings go to those players only; following someone coaches them, and screen drawings go to the followed player alone)
 
 • show drawings earlier before it's applied to the simulation
 
@@ -170,7 +170,9 @@ lines, trails -- and tick them again to bring it back. Hovering a name lights
 the band behind it; click to follow. A teammate whose army is out of the game
 has a red line through their name, on the panel and on their cursor, and their
 cursor only shows with "show dead cursors" ticked (`Panel.ShowDead`, a ReUI
-option, starts it). Following someone, their own panel's ticks are drawn as
+option, starts it), at half its opacity. In a replay there is no such box --
+nothing of theirs is recorded once their commander is dead -- and a dead
+player's boxes are unticked and locked. Following someone, their own panel's ticks are drawn as
 green outlines round your boxes (not "all"), and their box for you round
 their own row; your ticks stay yours. It folds away to its tab with the arrow,
 and hides in screen capture mode. Position and starting state are under
@@ -179,8 +181,10 @@ and hides in screen capture mode. Position and starting state are under
 ### Observers kept to one team
 
 The host's lobby option "TeamMouse: observers watch" (default "Any team") can
-keep observers to one team: their view is put back on that team whenever it
-leaves it (never the all-seeing observer view), they list, follow and coach
+keep observers to one team: a switch of view to another team or to the
+all-seeing observer view (the score panel, the console) is refused before it
+happens, and their view is put on the team if it is ever off it; they list,
+follow and coach
 only its players, and players on other teams send them nothing. The panel's
 heading says which: "observers - Team: 1".
 

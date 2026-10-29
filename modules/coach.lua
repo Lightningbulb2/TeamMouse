@@ -22,17 +22,24 @@
 --** (Coach.AlwaysShowCursor: always). Whoever follows you is sent your
 --** panel's ticks, and draws them round their own boxes (panel.lua).
 --**
---** Coaching (live observers only). The panel's "coach" box on one player:
---**   * your cursor is sent to that player, and to nobody else (observers are
---**     never recorded into the replay);
---**   * your selection follows theirs;
---**   * a right-drag on the map (not following) is drawn on THEIR map, not
---**     through the game's painting, and fades like the lens strokes.
+--** Coaching (live observers only). The panel's "coach" box, on as many
+--** players as you like (following someone ticks theirs):
+--**   * your cursor is sent to those players, and to nobody else (observers
+--**     are never recorded into the replay);
+--**   * your selection follows the one you follow, or else the one you
+--**     ticked last;
+--**   * a right-drag on the map (not following) is drawn on all their maps,
+--**     not through the game's painting, and fades like the lens strokes.
+--**     Following, a right-drag is a lens stroke, on the followed player's
+--**     screen only.
 --**
 --** Messages (plain tables, Identifier = Config.ChatIdentifier), each to the
 --** one client concerned:
 --**   { tmf = 1|0, ta = army }     I follow you / no longer
---**   { tmh = 1|0 }                I coach you / no longer (observers)
+--**   { tmh = 1|0, tv = 1|0 }      I coach you / no longer (observers); tv:
+--**                                I am following someone (anyone), so my
+--**                                cursor shows only while I act. Said again
+--**                                whenever that changes.
 --**   { tml = <points> }           a lens stroke: thousandths of your main view
 --**   { tmw = <points> }           a coach's stroke on the map, world tenths
 --**   { tmp = <panel> }            my panel's ticks, to whoever follows me
@@ -58,6 +65,10 @@ local WorldViewManager = import('/lua/ui/game/worldview.lua')
 local Group = import('/lua/maui/group.lua').Group
 local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 
+--- The lobby's choice of team for observers (observerteam.lua): here for
+--- teammouse.lua too, which is at Lua 5.0's 200 file-level locals.
+ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
+
 --- What teammouse.lua hands us at the start of a session (Start):
 ---   send(index, msg)      SessionSendChatMessage to one client
 ---   clientIndex           name -> client index
@@ -66,7 +77,7 @@ local Bitmap = import('/lua/maui/bitmap.lua').Bitmap
 ---   myColor               our own strokes' colour
 ---   addCoach(name)        a cursor for an observer coaching us
 ---   removeCoach(name)
----   setCoachTarget(index) who an observer's cursor goes to (false: nobody)
+---   setCoachTarget(list)  the client indices an observer's cursor goes to
 ---   forceView()           send our camera with the next packet
 ---   panelSync()           show the panel as following/coaching now is
 ---   ghostOrder()          an order marker where the pointer is, never given
@@ -77,7 +88,9 @@ local env = false
 --- Our side of it.
 ---   following   the record we follow (false: nobody)
 ---   before      our camera before following began (put back on unclick)
----   coaching    the record we coach (observers; false: nobody)
+---   coached     record -> true: everyone we coach (observers)
+---   coaching    the one of them our focus and selection go by when we follow
+---               nobody: the last ticked (false: nobody)
 ---   coachSel    their selVersion last copied into ours
 ---   followers   client index -> true: who follows us
 ---   followTeam  how many of them are teammates (they need our camera)
@@ -87,7 +100,7 @@ local env = false
 ---   followSaidT when we last said we follow (said again while no camera comes)
 local state = {
     following = false, before = false,
-    coaching = false, coachSel = -1,
+    coached = {}, coaching = false, coachSel = -1,
     followers = {}, followTeam = 0,
     coaches = {},
     stroke = false, nextId = 0,
@@ -150,6 +163,19 @@ end
 ---@return number | nil
 local function IndexOf(record)
     return record and env and env.clientIndex[record.name]
+end
+
+--- Everyone we coach, as client indices: where our cursor and our ink go.
+---@return number[]
+local function CoachIndices()
+    local out = {}
+    for record in pairs(state.coached) do
+        local index = IndexOf(record)
+        if index then
+            table.insert(out, index)
+        end
+    end
+    return out
 end
 
 --- Whether we can say anything to anyone: a live game.
@@ -513,7 +539,9 @@ end
 local function StartStroke(kind, view, x, y)
     state.nextId = state.nextId + 1
     local target = kind == 'lens' and state.following or state.coaching
-    local s = { kind = kind, id = state.nextId, target = target, index = IndexOf(target),
+    -- (A lens stroke goes to the player we follow; ink to everyone we coach.)
+    local indices = kind == 'lens' and { IndexOf(target) } or CoachIndices()
+    local s = { kind = kind, id = state.nextId, target = target, indices = indices,
         wire = {}, n = 0, sent = 0, lastSend = GetSystemTimeSeconds(), view = view,
         l = 0, t = 0, w = 1, h = 1, local_ = false, lx = x, ly = y }
     if kind == 'lens' then
@@ -582,10 +610,9 @@ local function FlushStroke(done)
     if s.n > s.sent or done then
         -- From the last point sent (whole), so a lost chunk leaves a gap.
         local packed = PackPoints(s.id, done, s.wire, math.max(1, s.sent), s.n, per)
-        if s.kind == 'lens' then
-            Send(s.index, { tml = packed })
-        else
-            Send(s.index, { tmw = packed })
+        local msg = s.kind == 'lens' and { tml = packed } or { tmw = packed }
+        for _, index in ipairs(s.indices) do
+            Send(index, msg)
         end
         s.sent = s.n
     end
@@ -625,6 +652,9 @@ local WHOLE = 131072
 local SMALL = 31
 local ESCAPE = 63
 
+--- PackPoints' pieces, reused (WirePack.PutDigits counts them in n).
+local packParts = { n = 0 }
+
 --- A chunk of a stroke as one string (see the top of the file): `values`
 --- holds whole numbers, `per` to a point; points `from`..`to` go.
 ---@param id number
@@ -635,7 +665,8 @@ local ESCAPE = 63
 ---@param per number   # 2 on the screen, 3 on the map
 ---@return string
 function PackPoints(id, done, values, from, to, per)
-    local parts = {}
+    local parts = packParts
+    parts.n = 0
     local Put = WirePack.PutDigits
     Put(parts, done and 1 or 0, 1)
     Put(parts, math.mod(math.floor(id), 4096), 2)
@@ -654,7 +685,7 @@ function PackPoints(id, done, values, from, to, per)
             end
         end
     end
-    return table.concat(parts)
+    return table.concat(parts, '', 1, parts.n)
 end
 
 --- The reverse, into `out` (scratch unless given): how many numbers (whole
@@ -770,19 +801,30 @@ local function OnCoached(sender, msg)
     if env.observer then
         return
     end
-    if msg.tmh == 1 and not state.coaches[sender] then
-        state.coaches[sender] = true
-        pcall(env.addCoach, sender)
-        -- Following us already (their tmf came first, before the record was
-        -- theirs): their cursor fades between actions from the start
-        -- (reported: it did not, the first time they followed in a match).
-        local record = env.peers[sender]
-        local index = env.clientIndex[sender]
-        if record and index and state.followers[index] then
-            record.followsMe = true
+    if msg.tmh == 1 then
+        if not state.coaches[sender] then
+            state.coaches[sender] = true
+            pcall(env.addCoach, sender)
+            -- Following us already (their tmf came first, before the record
+            -- was theirs): their cursor fades between actions from the start
+            -- (reported: it did not, the first time they followed in a match).
+            local record = env.peers[sender]
+            local index = env.clientIndex[sender]
+            if record and index and state.followers[index] then
+                record.followsMe = true
+            end
         end
-    elseif msg.tmh ~= 1 and state.coaches[sender] then
+        -- Following someone (maybe not us): their cursor only while they act.
+        local record = env.peers[sender]
+        if record then
+            record.coachViewing = msg.tv == 1
+        end
+    elseif state.coaches[sender] then
         state.coaches[sender] = nil
+        local record = env.peers[sender]
+        if record then
+            record.coachViewing = false
+        end
         EndStrokesOf(sender)
         pcall(env.removeCoach, sender)
     end
@@ -1037,6 +1079,18 @@ local function SayUnfollow()
     end
 end
 
+--- Tell everyone we coach whether we follow someone now (tv): while we do,
+--- they see our cursor only while we act, as the one we follow does.
+local function SayViewing()
+    if not env or not env.observer or not Live() then
+        return
+    end
+    local tv = state.following and 1 or 0
+    for record in pairs(state.coached) do
+        Send(IndexOf(record), { tmh = 1, tv = tv })
+    end
+end
+
 --- Following stopped from elsewhere (a hard scroll): the camera stays
 --- where it is.
 ---@param record? table
@@ -1047,6 +1101,7 @@ function FollowStopped(record)
     SayUnfollow()
     state.following = false
     state.before = false
+    SayViewing()
     SyncFocus()
 end
 
@@ -1097,39 +1152,48 @@ function ToggleFollow(record)
                 Send(IndexOf(record), { tmf = 1, ta = record.army })
             end
             -- An observer coaches whoever they last followed (Coach.CoachFollowed).
-            if env.observer and Live() and Config.Coach.CoachFollowed and state.coaching ~= record then
+            if env.observer and Live() and Config.Coach.CoachFollowed and not state.coached[record] then
                 SetCoach(record, true)
             end
         end
     end
+    SayViewing()
     SyncFocus()
     pcall(env.panelSync)
 end
 
---- The panel's "coach" box (live observers).
+--- The panel's "coach" box (live observers): on or off for one player, the
+--- others as they are.
 ---@param record table
 ---@param on boolean
 function SetCoach(record, on)
     if not env or not env.observer or env.replay then
         return
     end
-    local old = state.coaching
-    if old and (old ~= record or not on) then
-        if state.stroke and state.stroke.kind == 'ink' then
-            EndStroke()
-        end
-        old.coached = false
-        Send(IndexOf(old), { tmh = 0 })
-        state.coaching = false
-        pcall(env.setCoachTarget, false)
+    on = on and true or false
+    if (state.coached[record] or false) == on then
+        return
     end
-    if on and old ~= record then
+    -- (An ink stroke goes to whoever was coached when it began.)
+    if state.stroke and state.stroke.kind == 'ink' then
+        EndStroke()
+    end
+    if on then
+        state.coached[record] = true
+        record.coached = true
         state.coaching = record
         state.coachSel = -1
-        record.coached = true
-        Send(IndexOf(record), { tmh = 1 })
-        pcall(env.setCoachTarget, IndexOf(record) or false)
+        Send(IndexOf(record), { tmh = 1, tv = state.following and 1 or 0 })
+    else
+        state.coached[record] = nil
+        record.coached = false
+        Send(IndexOf(record), { tmh = 0 })
+        if state.coaching == record then
+            state.coaching = next(state.coached) or false
+            state.coachSel = -1
+        end
     end
+    pcall(env.setCoachTarget, CoachIndices())
     SyncFocus()
     pcall(env.panelSync)
 end
@@ -1174,6 +1238,13 @@ end
 ---@param now number
 ---@return boolean
 local function CoachBusy(record, now)
+    -- (The prefix of their strokes' keys, made once.)
+    local prefix = record.lensPrefix
+    if not prefix then
+        prefix = tostring(record.name) .. '/'
+        record.lensPrefix = prefix
+    end
+    local plen = string.len(prefix)
     if Config.Coach.AlwaysShowCursor or record.buildId or (record.renderDrag or 0) ~= 0 then
         return true
     end
@@ -1182,10 +1253,9 @@ local function CoachBusy(record, now)
             return true
         end
     end
-    local prefix = tostring(record.name) .. '/'
     for i = 1, draw.nlens do
         local s = draw.lens[i]
-        if not s.endT and string.sub(s.key, 1, string.len(prefix)) == prefix then
+        if not s.endT and string.sub(s.key, 1, plen) == prefix then
             return true
         end
     end
@@ -1223,7 +1293,8 @@ function Frame(delta)
     -- frame driver) up while they do something, fading out after.
     for name in pairs(state.coaches) do
         local record = env.peers[name]
-        if record and record.followsMe then
+        -- (Following us, or anyone: tv.)
+        if record and (record.followsMe or record.coachViewing) then
             if CoachBusy(record, now) then
                 record.coachFade = 1
             else
@@ -1263,13 +1334,19 @@ end
 function Start(e)
     Destroy()
     env = e
+    -- A live observer kept to one team by the lobby: their focus cannot
+    -- leave it (observerteam.lua).
+    if env.observer and not env.replay then
+        ObserverTeam.Install()
+    end
 end
 
 function Destroy()
+    ObserverTeam.Uninstall()
     if env and Live() then
         SayUnfollow()
-        if state.coaching then
-            Send(IndexOf(state.coaching), { tmh = 0 })
+        for record in pairs(state.coached) do
+            Send(IndexOf(record), { tmh = 0 })
         end
     end
     if draw.root then
@@ -1285,7 +1362,10 @@ function Destroy()
     draw.shape, draw.shaped = false, {}
     state.focusArmy, state.selFrom = -1, false
     state.following, state.before = false, false
-    state.coaching, state.coachSel = false, -1
+    for record in pairs(state.coached) do
+        record.coached = false
+    end
+    state.coached, state.coaching, state.coachSel = {}, false, -1
     state.followers, state.followTeam = {}, 0
     state.coaches = {}
     state.stroke = false

@@ -562,6 +562,8 @@ function M.CreateEnvironment(opts)
     end
     -- Console commands (ConExecute), kept in env.__console.
     env.__console = {}
+    -- SetFocusArmy (0-based, -1 the observer view), as the replay's army list uses.
+    env.SetFocusArmy = function(n) env.__focusArmy = n >= 0 and n + 1 or -1 end
     env.ConExecute = function(command)
         table.insert(env.__console, command)
         local _, _, n = string.find(command, '^SetFocusArmy (%-?%d+)$')
@@ -829,7 +831,10 @@ function M.CreateEnvironment(opts)
                     if not skipEvent and self.OnCheck then self:OnCheck(self._checked) end
                 end
                 box.IsChecked = function(self) return self._checked end
-                box.Click = function(self) self:SetCheck(not self._checked) end
+                -- Disable: greyed, and clicks no longer reach it.
+                box.Disable = function(self) self._disabled = true; self:DisableHitTest() end
+                box.IsDisabled = function(self) return self._disabled == true end
+                box.Click = function(self) if not self._disabled then self:SetCheck(not self._checked) end end
                 return box
             end,
             -- A Checkbox in the game: checked means collapsed.

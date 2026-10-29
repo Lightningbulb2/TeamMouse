@@ -28,6 +28,7 @@ local state = {
     seen = {},         -- name -> version, from anyone (observers and replays too)
     record = false,    -- function(msg): records our version into the replay (SetRecorder)
     recorded = false,
+    rev = 0,           -- counts changes to what Describe says (the panel redraws on one)
 }
 
 --- Colours, by what is known of a player's version.
@@ -70,6 +71,7 @@ function Tick(now)
 
     if not state.checked and (now - state.startT) >= Config.VersionReport.CheckDelay then
         state.checked = true
+        state.rev = state.rev + 1
     end
 end
 
@@ -81,14 +83,19 @@ function Heard(sender, version)
         or version ~= version or version < 0 or version > 1e6 then
         return
     end
-    state.seen[sender] = math.floor(version)
+    version = math.floor(version)
+    if state.seen[sender] ~= version then
+        state.seen[sender] = version
+        state.rev = state.rev + 1
+    end
 end
 
 --- SharedMouse packets came from this player.
 ---@param sender string
 function NoteLegacy(sender)
-    if type(sender) == 'string' then
+    if type(sender) == 'string' and not state.legacy[sender] then
         state.legacy[sender] = true
+        state.rev = state.rev + 1
     end
 end
 
@@ -117,7 +124,26 @@ function Describe(name)
     return '?', UNKNOWN_COLOR
 end
 
+--- Whether `name` is known to be on another version than ours (or none): as
+--- Describe, without making its text.
+---@param name string
+---@return boolean
+function Differs(name)
+    local v = state.seen[name]
+    if v then
+        return v ~= Config.ModVersion
+    end
+    return (state.legacy[name] or (state.checked and state.expect[name])) and true or false
+end
+
+--- A number that changes whenever what Describe says might have.
+---@return number
+function Revision()
+    return state.rev
+end
+
 function Reset()
+    state.rev = state.rev + 1
     state.started = false
     state.announced = false
     state.checked = false

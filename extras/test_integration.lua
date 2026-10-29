@@ -6730,6 +6730,11 @@ local function PanelRow(env, army)
     end
 end
 
+--- Whether a green outline (Panel's, made when first shown) is showing.
+local function Lit(ring)
+    return ring ~= nil and ring:GetAlpha() == 1
+end
+
 --- Click a player's name in the panel: follow them, or stop (coach.lua).
 local function ClickName(row)
     row.label:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true }, MouseX = 10, MouseY = 10 })
@@ -9514,18 +9519,83 @@ do
     Check('"show dead cursors" is there, unticked by default', panel.deadCheck and not panel.deadCheck:IsChecked()
         and cfg.Panel.ShowDead == false)
     env.GetArmiesTable().armiesTable[2].outOfGame = true
-    env.__clock.t = env.__clock.t + 0.2
+    -- (Looked at once a second.)
+    env.__clock.t = env.__clock.t + 1.1
     SM.OnBeat()
     receive('KasperAUS', { v = 1, a = 2, p = { 101, 0, 100 }, o = 0, z = 80, w = true })
     Frames(env, 0.3, 0.05)
-    Check('dead: a red line through their name', PanelRow(env, 2).strike:GetAlpha() == 1)
+    Check('dead: a red line through their name, a little see-through',
+        PanelRow(env, 2).strike:GetAlpha() == cfg.Panel.StrikeAlpha and cfg.Panel.StrikeAlpha < 1)
     Check('and their cursor is hidden', not Mock.IsVisible(cursor.mouseIcon))
     panel.deadCheck:Click()
     receive('KasperAUS', { v = 1, a = 2, p = { 102, 0, 100 }, o = 0, z = 80, w = true })
     Frames(env, 0.3, 0.05)
     Check('"show dead cursors" ticked: it shows, with a red line through its name', Mock.IsVisible(cursor.mouseIcon)
-        and cursor.strike:GetAlpha() == 1 and Mock.IsVisible(cursor.strike))
+        and cursor.strike:GetAlpha() > 0.1 and Mock.IsVisible(cursor.strike))
+    local function Ratio() return cursor.strike:GetAlpha() / cursor.label:GetAlpha() end
+    Check('the line goes by the opacity of the name', math.abs(Ratio() - cfg.Panel.StrikeAlpha) < 0.03, Ratio())
+    -- They go quiet: the name fades, and the line with it.
+    Frames(env, 4, 0.05)
+    Check('fading with it, not a red bar left on its own', math.abs(Ratio() - cfg.Panel.StrikeAlpha) < 0.03, Ratio())
+    panel.deadCheck:Click()
+    receive('KasperAUS', { v = 1, a = 2, p = { 103, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    Check('unticked again: their cursor is gone again', not Mock.IsVisible(cursor.mouseIcon))
+    Check('and the line stays through their name in the panel', PanelRow(env, 2).strike:GetAlpha() > 0)
     Check('no errors', NoErrors(env))
+end
+
+do
+    -- A dead teammate's cursor, shown, is at half its opacity.
+    local function IconAlpha(dead)
+        local env, SM = NewSession()
+        local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+        cfg.Panel.ShowDead = true
+        SM.InitTeamMouse(false)
+        env.GetArmiesTable().armiesTable[2].outOfGame = dead
+        local receive = env.__chatFuncs['TeamMouse']
+        for i = 1, 6 do
+            receive('KasperAUS', { v = 1, a = 2, p = { 100 + i, 0, 100 }, o = 0, z = 80, w = true })
+            env.__clock.t = env.__clock.t + 0.3
+            SM.OnBeat()
+            Frames(env, 0.1, 0.05)
+        end
+        return CursorFor(env, 2).mouseIcon:GetAlpha(), cfg.Panel.DeadAlpha
+    end
+    local alive = IconAlpha(false)
+    local dead, half = IconAlpha(true)
+    Check('the cursor of a dead teammate is half as opaque', half == 0.5 and math.abs(dead - alive * half) < 0.03,
+        dead .. ' vs ' .. alive)
+end
+
+do
+    -- In a replay: no "show dead cursors" (nothing of a dead player's is
+    -- recorded), and a dead player's boxes are unticked and locked.
+    local env, SM = RecordingSession('on')
+    MoveTo(env, SM, 400, 0, 300, 400, 400)
+    local armies = Armies()
+    local renv, _, Play = ReplayOf(env, { armies = armies })
+    Play()
+    local P = renv.import('/mods/TeamMouse/modules/panel.lua')
+    Check('in a replay the panel has no "show dead cursors"', P.Get() and P.Get().deadCheck == nil)
+    local row = PanelRow(renv, 1)
+    row.viewCheck:Click()
+    Check('(alive: their boxes work)', row and row.check:IsChecked() and row.viewCheck:IsChecked()
+        and not row.check:IsDisabled())
+    armies[1].outOfGame = true
+    renv.__clock.t = renv.__clock.t + 1.1
+    renv.import('/mods/TeamMouse/modules/teammouse.lua').OnBeat()
+    row = PanelRow(renv, 1)
+    Check('dead: their boxes are unticked', not row.check:IsChecked() and not row.viewCheck:IsChecked()
+        and row.record.disabled and not row.record.showView)
+    Check('and locked', row.check:IsDisabled() and row.viewCheck:IsDisabled())
+    row.check:Click()
+    Check('so clicking does nothing', not row.check:IsChecked() and row.record.disabled)
+    P.Get().allCursors:SetCheck(false)
+    P.Get().allCursors:SetCheck(true)
+    Check('nor does "all"', not PanelRow(renv, 1).check:IsChecked() and PanelRow(renv, 1).record.disabled)
+    Check('with a line through their name', PanelRow(renv, 1).strike:GetAlpha() > 0)
+    Check('no errors', NoErrors(renv))
 end
 
 do
@@ -9630,11 +9700,55 @@ do
     MoveTo(env, SM, 160, 0, 150, 320, 300)
     Check('and our cursor stops going', table.getn(env.__sent) == first - 1)
 
-    -- One at a time.
+    -- Any number at once.
     PanelRow(env, 2).coachCheck:Click()
     PanelRow(env, 3).coachCheck:Click()
-    Check('coaching another unticks the first', not PanelRow(env, 2).coachCheck:IsChecked()
-        and PanelRow(env, 3).coachCheck:IsChecked() and not PanelRow(env, 2).record.coached)
+    Check('coaching another keeps the first', PanelRow(env, 2).coachCheck:IsChecked()
+        and PanelRow(env, 3).coachCheck:IsChecked() and PanelRow(env, 2).record.coached
+        and PanelRow(env, 3).record.coached)
+    first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 170, 0, 150, 340, 300)
+    Check('our cursor goes to both', table.getn(SentTo(env, first, 2)) > 0 and table.getn(SentTo(env, first, 3)) > 0)
+    local c1 = table.getn(env.__sentCoach)
+    env.__mouseWorld = { 10, 0, 10 }
+    view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Right = true }, MouseX = 20, MouseY = 20 })
+    for i = 1, 5 do
+        env.__mouseWorld = { 10 + i * 5, 0, 10 }
+        view:HandleEvent({ Type = 'MouseMotion', Modifiers = { Right = true }, MouseX = 20 + i * 10, MouseY = 20 })
+    end
+    view:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Right = true }, MouseX = 70, MouseY = 20 })
+    local to = {}
+    for _, m in ipairs(CoachSent(env, 'tmw', c1 + 1)) do to[To(m)] = true end
+    Check('and a stroke on the map goes to both', to['2'] and to['3'])
+
+    -- Following one of them: a right-drag is a lens stroke, theirs alone.
+    ClickName(PanelRow(env, 2))
+    local c2 = table.getn(env.__sentCoach)
+    view:HandleEvent({ Type = 'ButtonPress', Modifiers = { Right = true }, MouseX = 20, MouseY = 20 })
+    for i = 1, 5 do
+        view:HandleEvent({ Type = 'MouseMotion', Modifiers = { Right = true }, MouseX = 20 + i * 10, MouseY = 20 })
+    end
+    view:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Right = true }, MouseX = 70, MouseY = 20 })
+    local lens = CoachSent(env, 'tml', c2 + 1)
+    local only2 = table.getn(lens) > 0
+    for _, m in ipairs(lens) do if To(m) ~= '2' then only2 = false end end
+    Check('following, a lens stroke goes to the followed player only', only2)
+    Check('and no map stroke to anyone', table.getn(CoachSent(env, 'tmw', c2 + 1)) == 0)
+    ClickName(PanelRow(env, 2))
+
+    -- Unticking one leaves the other.
+    PanelRow(env, 3).coachCheck:Click()
+    said = CoachSent(env, 'tmh')
+    Check('unticking one tells them', said[table.getn(said)].msg.tmh == 0 and To(said[table.getn(said)]) == '3')
+    first = table.getn(env.__sent) + 1
+    MoveTo(env, SM, 180, 0, 150, 360, 300)
+    Check('and our cursor still goes to the other, not them', table.getn(SentTo(env, first, 2)) > 0
+        and table.getn(SentTo(env, first, 3)) == 0)
+
+    -- Following someone not coached ticks them, and keeps the rest.
+    ClickName(PanelRow(env, 3))
+    Check('following someone coaches them too', PanelRow(env, 3).record.coached and PanelRow(env, 3).coachCheck:IsChecked()
+        and PanelRow(env, 2).record.coached)
     Check('no errors', NoErrors(env))
 end
 
@@ -10120,6 +10234,59 @@ do
 end
 
 do
+    -- An observer coaching us while following someone else: their cursor
+    -- shows only while they act, as it does for the one they follow.
+    local function Shown(tv)
+        local clients = Clients()
+        clients[4] = { name = 'Caster' }
+        local env, SM = NewSession({ clients = clients })
+        SM.InitTeamMouse(false)
+        local receive = env.__chatFuncs['TeamMouse']
+        receive('Caster', { Identifier = 'TeamMouse', tmh = 1, tv = tv })
+        for i = 1, 6 do
+            receive('Caster', { v = 1, a = -1, p = { 120 + i, 0, 100 }, o = 0, z = 80, w = true })
+            Frames(env, 0.1, 0.05)
+        end
+        for _, c in ipairs(Mock.FindCursors(env, 'WorldCamera')) do
+            if c.record.name == 'Caster' then return Mock.IsVisible(c.mouseIcon), env, receive, c end
+        end
+    end
+    local idle = Shown(1)
+    Check('following someone else, an idle coach is not shown', idle == false)
+    Check('not following anyone, they are', Shown(0) == true)
+    local _, env, receive, c = Shown(1)
+    receive('Caster', { Identifier = 'TeamMouse', tmh = 1, tv = 0 })
+    receive('Caster', { v = 1, a = -1, p = { 130, 0, 100 }, o = 0, z = 80, w = true })
+    Frames(env, 0.3, 0.05)
+    Check('they stop following: shown again', Mock.IsVisible(c.mouseIcon))
+end
+
+do
+    -- The coach's side: everyone coached is told when they follow someone.
+    local env, SM = NewSession(ObserverOpts())
+    SM.InitTeamMouse(false)
+    PanelRow(env, 1).coachCheck:Click()
+    PanelRow(env, 3).coachCheck:Click()
+    local said = CoachSent(env, 'tmh')
+    Check('coaching, not following: tv 0', table.getn(said) == 2 and said[1].msg.tv == 0 and said[2].msg.tv == 0)
+    local n = table.getn(env.__sentCoach)
+    ClickName(PanelRow(env, 1))
+    local to = {}
+    for _, m in ipairs(CoachSent(env, 'tmh', n + 1)) do
+        if m.msg.tmh == 1 and m.msg.tv == 1 then to[To(m)] = true end
+    end
+    Check('following one: both are told tv 1', to['1'] and to['3'])
+    n = table.getn(env.__sentCoach)
+    ClickName(PanelRow(env, 1))
+    to = {}
+    for _, m in ipairs(CoachSent(env, 'tmh', n + 1)) do
+        if m.msg.tmh == 1 and m.msg.tv == 0 then to[To(m)] = true end
+    end
+    Check('stopping: both are told tv 0', to['1'] and to['3'])
+    Check('no errors', NoErrors(env))
+end
+
+do
     -- Following someone: their panel's ticks, as green outlines round ours.
     local armies = Armies()
     armies[3].team = 1
@@ -10131,19 +10298,21 @@ do
         cam = { 300, 0, 200, 3.14159, 1.1, 80 } })
     -- Before following: theirs are ignored.
     receive('KasperAUS', { Identifier = 'TeamMouse', tmp = '3:11|d1' })
-    Check('not following: their panel is not drawn on ours', PanelRow(env, 3).checkRing:GetAlpha() == 0)
+    Check('not following: their panel is not drawn on ours', not Lit(PanelRow(env, 3).checkRing))
+    Check('and no outline is made until one shows', PanelRow(env, 3).checkRing == nil
+        and PanelRow(env, 3).viewRing == nil and P.Get().deadRing == nil)
     ClickName(PanelRow(env, 2))
     receive('KasperAUS', { Identifier = 'TeamMouse', tmp = '1:11,3:10|d1' })
     local row = PanelRow(env, 3)
-    Check('following: a box they have ticked gets a green outline', row.checkRing:GetAlpha() == 1)
-    Check('one they have not, none', row.viewRing:GetAlpha() == 0)
-    Check('their "show dead cursors" too', P.Get().deadRing:GetAlpha() == 1)
+    Check('following: a box they have ticked gets a green outline', Lit(row.checkRing))
+    Check('one they have not, none', not Lit(row.viewRing))
+    Check('their "show dead cursors" too', Lit(P.Get().deadRing))
     Check('and our own ticks stay ours', row.check:IsChecked() and not row.viewCheck:IsChecked())
     receive('Eternal', { Identifier = 'TeamMouse', tmp = '3:01|d0' })
-    Check('someone we do not follow cannot change it', PanelRow(env, 3).checkRing:GetAlpha() == 1)
+    Check('someone we do not follow cannot change it', Lit(PanelRow(env, 3).checkRing))
     ClickName(PanelRow(env, 2))
-    Check('stopping takes the outlines away', PanelRow(env, 3).checkRing:GetAlpha() == 0
-        and P.Get().deadRing:GetAlpha() == 0)
+    Check('stopping takes the outlines away', not Lit(PanelRow(env, 3).checkRing)
+        and not Lit(P.Get().deadRing))
     Check('no errors', NoErrors(env))
 end
 
@@ -10184,14 +10353,14 @@ do
     -- Their panel: us (1) shown, view off; Eternal (3) shown, view on.
     receive('KasperAUS', { Identifier = 'TeamMouse', tmp = '1:10,3:11|d0' })
     local theirs, other = PanelRow(env, 2), PanelRow(env, 3)
-    Check('their own row stands in for their box for us', theirs.checkRing:GetAlpha() == 1
-        and theirs.viewRing:GetAlpha() == 0)
-    Check('a "view" box they ticked is outlined', other.viewRing:GetAlpha() == 1)
+    Check('their own row stands in for their box for us', Lit(theirs.checkRing)
+        and not Lit(theirs.viewRing))
+    Check('a "view" box they ticked is outlined', Lit(other.viewRing))
     receive('KasperAUS', { Identifier = 'TeamMouse', tmp = '1:11,3:11|d0' })
     Check('the "all" row is never outlined, all of theirs ticked or not', P.Get().allCursorsRing == nil
         and P.Get().allViewsRing == nil)
     ClickName(PanelRow(env, 2))
-    Check('stopping takes them all away', theirs.checkRing:GetAlpha() == 0 and other.viewRing:GetAlpha() == 0)
+    Check('stopping takes them all away', not Lit(theirs.checkRing) and not Lit(other.viewRing))
     Check('no errors', NoErrors(env))
 end
 
@@ -10275,6 +10444,30 @@ do
     end
     Check('without a request every beat', sets <= 4, sets)
 
+    -- Regression test for: an observer kept to a team could click the other
+    -- team in the score panel and see it for a moment, until it was put back.
+    local seen = {}
+    local con = env.ConExecute
+    env.ConExecute('SetFocusArmy 0')
+    seen[1] = env.GetFocusArmy()
+    env.ConExecute('SetFocusArmy -1')
+    seen[2] = env.GetFocusArmy()
+    env.SetFocusArmy(1)
+    seen[3] = env.GetFocusArmy()
+    env.SetFocusArmy(-1)
+    seen[4] = env.GetFocusArmy()
+    Check('a change of view to another team is refused before it happens',
+        seen[1] == 3 and seen[2] == 3 and seen[3] == 3 and seen[4] == 3, table.concat(seen, ','))
+    env.ConExecute('SetFocusArmy 2')
+    Check('one to the team still goes through', env.GetFocusArmy() == 3)
+    local before = table.getn(env.__console)
+    env.ConExecute('UI_ShowSomething 1')
+    Check('and other console commands are untouched', table.getn(env.__console) == before + 1)
+    SM.Destroy()
+    Check('the session over, the game functions are back', env.ConExecute ~= con)
+    env.ConExecute('SetFocusArmy 0')
+    Check('(and refuse nothing)', env.GetFocusArmy() == 1)
+
     -- Any team: left alone.
     local env2, SM2 = NewSession(ObserverOpts())
     SM2.InitTeamMouse(false)
@@ -10283,6 +10476,8 @@ do
         env2.__clock.t = env2.__clock.t + 0.3
     end
     Check('any team: their view is theirs', env2.GetFocusArmy() == -1 and PanelRow(env2, 1) ~= nil)
+    env2.ConExecute('SetFocusArmy 2')
+    Check('any team: they can look at whoever they like', env2.GetFocusArmy() == 3)
 
     -- A player on another team sends observers nothing; one on it does.
     local clients = Clients()
@@ -10311,6 +10506,36 @@ do
         and table.getn(o.values) == 9)
 end
 
+do
+    -- Regression test for: live extras were decoded to numbers, joined into
+    -- a string, then parsed again (most of the receive side's garbage). Now
+    -- DecodeReused hands the numbers over; they must say exactly the same.
+    local env = NewSession()
+    local C = env.import('/mods/TeamMouse/modules/wirecodec.lua')
+    local WP = env.import('/mods/TeamMouse/modules/wirepack.lua')
+    local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+    local e = WP.PackSamples({
+        { age = 0.1, x = 98.5, z = 201.2, hx = 0.5, hy = 0.9, bx = 98.5, bz = 201.2, flags = 0 },
+        { age = 0.066, x = 99.1, z = 200.4, hx = 0.31, hy = 0.87, bx = 99.1, bz = 200.4, flags = 1 },
+        { age = 0.033, x = 99.7, z = 200.1, hx = 0.5, hy = 0.9, bx = 90.2, bz = 210.6, flags = 2 } }, 3, 100, 200)
+    local s = C.Encode({ v = cfg.Protocol, a = 2, p = { 100, 0, 200 }, e = e })
+    local a, b = {}, {}
+    local function Into(t)
+        return function(age, x, z, hx, hy, bx, bz, flags)
+            table.insert(t, string.format('%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%d', age, x, z, hx, hy, bx, bz, flags))
+        end
+    end
+    WP.UnpackSamples(C.Decode(s).e, 100, 200, 10, Into(a))
+    local m = C.DecodeReused(s)
+    Check('a live packet\'s extras come as numbers, not a string', s and m and m.e == C.RAW_SAMPLES)
+    WP.UnpackList(m.e.list, m.e.samples, 100, 200, 10, Into(b))
+    Check('and say exactly what the string does', table.getn(a) == 3 and table.concat(a, ';') == table.concat(b, ';'),
+        table.concat(a, ';') .. ' vs ' .. table.concat(b, ';'))
+    b = {}
+    WP.UnpackList(m.e.list, m.e.samples, 100, 200, 2, Into(b))
+    Check('capped at max as the string is', table.getn(b) == 2)
+end
+
 --------------------------------------------------------------------------------
 Section('per-frame cost (extras/frame_report.lua)')
 --------------------------------------------------------------------------------
@@ -10325,8 +10550,10 @@ do
     local FR = dofile('extras/frame_report.lua')
     rawset(_G, 'FRAME_REPORT_LIB', nil)
     local garbage, instructions = FR.Measure('busy', 60)
-    -- (~334 since packets are decoded into a reused table: wirecodec DecodeReused.)
-    Check('three busy teammates: under 600 bytes of garbage a frame', garbage < 600,
+    -- (~334 since packets are decoded into a reused table: wirecodec DecodeReused;
+    -- ~120 since their extras are handed over as numbers, and Encode reuses
+    -- its pieces.)
+    Check('three busy teammates: under 250 bytes of garbage a frame', garbage < 250,
         string.format('%.0f bytes', garbage))
     Check('and under 7800 Lua instructions a frame', instructions < 7800,
         string.format('%.0f instructions', instructions))

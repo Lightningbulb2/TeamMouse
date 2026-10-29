@@ -2,9 +2,13 @@
 --** TeamMouse -- modules/observerteam.lua
 --**
 --** The host's lobby option "TeamMouse: observers watch" (lobbyoptions.lua):
---** any team, or one team only. With one team, an observer's focus army is
---** kept on that team (never the all-seeing observer view), they list, follow
---** and coach only its players, and players on other teams send them nothing.
+--** any team, or one team only. With one team, an observer's focus army
+--** cannot leave that team: a change of focus to another army (the score
+--** panel, the console: ConExecute 'SetFocusArmy n'; SetFocusArmy itself) or
+--** to the all-seeing observer view is refused before it happens (Install),
+--** and their focus is put on the team if it is ever off it (Enforce). They
+--** list, follow and coach only its players, and players on other teams send
+--** them nothing.
 --**
 --** Teams are numbered as the lobby showed them: ScenarioInfo.ArmySetup's
 --** Team (1 is "no team", 2 is team 1, ...), or, without it, the alliances in
@@ -99,6 +103,57 @@ function Label()
 end
 
 local lastSet = -1000
+
+--- The game's ConExecute and SetFocusArmy as they were, and ours in their
+--- place (Install); false while not installed.
+local saved = false
+
+--- A live observer kept to one team: refuse every change of focus off it,
+--- before it happens -- the score panel's click (ConExecute 'SetFocusArmy
+--- n'), the console, SetFocusArmy -- so the other team is never seen, not
+--- even for the moment Enforce would take. Nothing while any team will do.
+function Install()
+    if saved or not Forced() then
+        return
+    end
+    local con, set = rawget(_G, 'ConExecute'), rawget(_G, 'SetFocusArmy')
+    saved = { con = con, set = set, ourCon = false, ourSet = false }
+    if con then
+        saved.ourCon = function(command)
+            if type(command) == 'string' then
+                local _, _, n = string.find(string.lower(command), '^%s*setfocusarmy%s+(%-?%d+)')
+                if n and not Allowed(tonumber(n) + 1) then
+                    return
+                end
+            end
+            return con(command)
+        end
+        _G.ConExecute = saved.ourCon
+    end
+    if set then
+        saved.ourSet = function(n)
+            if type(n) == 'number' and not Allowed(n + 1) then
+                return
+            end
+            return set(n)
+        end
+        _G.SetFocusArmy = saved.ourSet
+    end
+end
+
+--- Put the game's own back (unless something has wrapped ours since).
+function Uninstall()
+    if not saved then
+        return
+    end
+    if saved.ourCon and rawget(_G, 'ConExecute') == saved.ourCon then
+        _G.ConExecute = saved.con
+    end
+    if saved.ourSet and rawget(_G, 'SetFocusArmy') == saved.ourSet then
+        _G.SetFocusArmy = saved.set
+    end
+    saved = false
+end
 
 --- An observer, each beat: their focus put back on the team when it has
 --- left it (the score panel, or the observer view). At most once a second:

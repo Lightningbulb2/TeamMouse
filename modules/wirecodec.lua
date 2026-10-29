@@ -68,6 +68,16 @@ local AGE_STEP = 17
 -- Writing
 --------------------------------------------------------------------------------
 
+--- Append to what Encode is building: parts.n counts (one table, reused
+--- every packet; table.insert would grow and copy a new one each time).
+---@param parts table
+---@param piece string
+local function Add(parts, piece)
+    local n = parts.n + 1
+    parts.n = n
+    parts[n] = piece
+end
+
 local function PutUint(parts, u)
     if u < 0 or u >= 2 * LIMIT or math.floor(u) ~= u then
         error('varint out of range')
@@ -81,11 +91,11 @@ local function PutUint(parts, u)
     end
     while div > 1 do
         local d = math.floor(u / div)
-        table.insert(parts, CHAR[d + 32])
+        Add(parts, CHAR[d + 32])
         u = u - d * div
         div = div / 32
     end
-    table.insert(parts, CHAR[u])
+    Add(parts, CHAR[u])
 end
 
 local function PutInt(parts, n)
@@ -131,13 +141,13 @@ local function PutReal(parts, v, scale, base)
         text = string.format('%.' .. digits .. 'g', v)
         if tonumber(text) == v then break end
     end
-    table.insert(parts, '!' .. text .. '~')
+    Add(parts, '!' .. text .. '~')
     return nil
 end
 
 local function PutStr(parts, s)
     PutUint(parts, string.len(s))
-    table.insert(parts, s)
+    Add(parts, s)
 end
 
 --------------------------------------------------------------------------------
@@ -408,11 +418,18 @@ local function Predict(msg)
     return hx, hy, bx, bz, flags
 end
 
+--- PutSamples' working space, reused: SplitSamples' numbers, and where
+--- each sample starts in them.
+local putScratch = { list = {}, starts = {} }
+
+--- 64 ^ width.
+local SPAN = { 64, 4096, 262144 }
+
 local function PutSamples(parts, s, msg)
-    local list, samples = WirePack.SplitSamples(s)
+    local list, samples = WirePack.SplitSamples(s, putScratch.list)
     if not list then error('bad samples') end
     -- Where each sample starts (they differ in length).
-    local starts, i = {}, 1
+    local starts, i = putScratch.starts, 1
     for k = 1, samples do
         starts[k] = i
         local f = list[i + 1]
@@ -460,7 +477,23 @@ end
 --- JoinSamples. Only the entries a call writes are read back.
 local scratch = { each = {}, list = {} }
 
-local function GetSamples(r, msg)
+--- DecodeReused's samples: the numbers themselves (msg.e is this table, not
+--- a string), for WirePack.UnpackList -- no string joined only to be split.
+local rawSamples = { list = {}, samples = 0 }
+
+--- That table, to know it by: a table in a plain packet's `e` is the
+--- sender's, and nothing about it is trusted.
+RAW_SAMPLES = rawSamples
+
+--- Whether `v` fits `width` digits (as JoinSamples would insist).
+local function Fits(v, width)
+    return v >= 0 and v < SPAN[width]
+end
+
+--- The digits each number of a sample has: age, flags, dx, dz, hx, hy, bx, bz.
+local WIDTHS = { 2, 1, 3, 3, 2, 2, 3, 3 }
+
+local function GetSamples(r, msg, raw)
     local samples = GetCount(r)
     local each = scratch.each
     local hx, hy, bx, bz, flags = Predict(msg)
@@ -492,7 +525,7 @@ local function GetSamples(r, msg)
     end
     -- Oldest first, each sample only the numbers its flags say it has.
     -- (An explicit count, never table.getn: see engine-gotchas.md.)
-    local list, n = scratch.list, 0
+    local list, n = raw and raw.list or scratch.list, 0
     for k = 1, samples do
         local at = (k - 1) * 8
         local f = each[at + 2]
@@ -507,7 +540,16 @@ local function GetSamples(r, msg)
             n = n + 2
         end
     end
-    return WirePack.JoinSamples(list, samples)
+    if not raw then
+        return WirePack.JoinSamples(list, samples)
+    end
+    for k = 1, samples * 8 do
+        if not Fits(each[k], WIDTHS[math.mod(k - 1, 8) + 1]) then
+            error('sample digit out of range')
+        end
+    end
+    raw.samples = samples
+    return raw
 end
 
 --------------------------------------------------------------------------------
@@ -611,7 +653,7 @@ Field('b', 'b',
 
 Field('e', 'e',
     function(parts, v, ctx) PutSamples(parts, v, ctx.msg) end,
-    function(r, ctx) return GetSamples(r, ctx.msg) end)
+    function(r, ctx) return GetSamples(r, ctx.msg, ctx.raw) end)
 
 local function StringField(key, tag, put, get)
     Field(key, tag,
@@ -695,7 +737,7 @@ Field('mob', 'M',
                 PutUint(parts, 0)
             elseif type(bp) == 'string' then
                 PutUint(parts, string.len(bp) + 1)
-                table.insert(parts, bp)
+                Add(parts, bp)
             else
                 error('mob: not a string')
             end
@@ -799,7 +841,7 @@ end
 
 --- Decode's reader and context, reused (decoding is never re-entered).
 local decodeR = { s = '', at = 1, len = 0 }
-local decodeCtx = { p = false, msg = false, px = nil, py = nil, pz = nil }
+local decodeCtx = { p = false, msg = false, px = nil, py = nil, pz = nil, raw = false }
 
 --- DecodeReused's packet and position, kept from one packet to the next;
 --- and Encode's own, for the check that the string decodes to the packet
@@ -826,6 +868,8 @@ local function DecodeUnsafe(s, into)
     msg.a = (GetReal(r, 1, nil))
     local ctx = decodeCtx
     ctx.p, ctx.msg = p, msg
+    -- (DecodeReused: samples as numbers.)
+    ctx.raw = into == reused and rawSamples
     p[1], ctx.px = GetReal(r, 10, nil)
     p[2], ctx.py = GetReal(r, 10, nil)
     p[3], ctx.pz = GetReal(r, 10, nil)
@@ -862,7 +906,8 @@ end
 --- Decode, into the same table every time: the live receive path, which is
 --- done with each packet before the next arrives, and copies what it keeps.
 --- Valid only until the next call. (A new table per packet was most of the
---- mod's garbage with teammates at rest: extras/frame_report.lua.)
+--- mod's garbage with teammates at rest: extras/frame_report.lua.) Its `e`
+--- is not the string but { list, samples }, for WirePack.UnpackList.
 ---@param s any
 ---@return table | nil
 function DecodeReused(s)
@@ -876,16 +921,22 @@ function DecodeReused(s)
     return nil
 end
 
+--- Encode's pieces and context, reused (encoding is never re-entered).
+local encodeParts = { n = 0 }
+local encodeCtx = { p = false, msg = false, px = nil, py = nil, pz = nil }
+
 local function EncodeUnsafe(msg)
     for k in pairs(msg) do
         if not KNOWN[k] then error('unknown field ' .. tostring(k)) end
     end
     if msg.v ~= Config.Protocol then error('another protocol') end
     if Numbers(msg.p, 3) then error('p: n') end
-    local parts = {}
+    local parts = encodeParts
+    parts.n = 0
     PutUint(parts, FORMAT)
     PutReal(parts, msg.a, 1, nil)
-    local ctx = { p = msg.p, msg = msg }
+    local ctx = encodeCtx
+    ctx.p, ctx.msg = msg.p, msg
     ctx.px = PutReal(parts, msg.p[1], 10, nil)
     ctx.py = PutReal(parts, msg.p[2], 10, nil)
     ctx.pz = PutReal(parts, msg.p[3], 10, nil)
@@ -894,17 +945,19 @@ local function EncodeUnsafe(msg)
         if v ~= nil then
             if f.flag ~= nil then
                 if v == f.flag then
-                    table.insert(parts, f.tag)
+                    Add(parts, f.tag)
                 elseif type(v) ~= 'boolean' then
                     error('not a boolean')
                 end
             else
-                table.insert(parts, f.tag)
+                Add(parts, f.tag)
                 f.put(parts, v, ctx)
             end
         end
     end
-    return table.concat(parts)
+    local s = table.concat(parts, '', 1, parts.n)
+    ctx.p, ctx.msg = false, false
+    return s
 end
 
 --- The packet as a string, or nil if it cannot be carried exactly (then send

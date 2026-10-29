@@ -1209,3 +1209,48 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   checked in a real game that the UI's scenario info carries ArmySetup. An
   observer's focus is put back on the team's first live army each beat it is
   off it (at most once a second: each SetFocusArmy is a moderator event).
+- **Garbage, second pass** (extras/frame_report.lua, three busy teammates:
+  ~300 -> ~120 B/frame). A live packet's extra samples were decoded to
+  numbers, joined into a string (WirePack.JoinSamples) and parsed again
+  (UnpackSamples); DecodeReused now hands the numbers over as
+  `WireCodec.RAW_SAMPLES` for `WirePack.UnpackList` (range-checked as
+  JoinSamples would; a table in a plain packet's `e` is never taken for
+  it). Encode, PackSamples, JoinSamples and coach's PackPoints reuse one
+  pieces table each (`parts.n` counts; concat with 1, n -- table.insert
+  can't be reset portably: 5.0 keeps sizes apart, 5.1 has no setn).
+  Encode's check decode is kept: it is what falls back to the plain table.
+- **The panel per beat**: the version title is redrawn only when
+  `Version.Revision()` changes (it was building every name's version text
+  each beat); dead teammates are read once a second (GetArmiesTable makes
+  the whole table each call); the outlines are made the first time one
+  shows (4 bitmaps each, two a row, most never shown).
+- **"Dead" is the game's out-of-game flag** (`armiesTable[i].outOfGame`,
+  set by the sim's `SetArmyOutOfGame` when a victory condition defeats the
+  army). A sandbox game (extras/CustomLaunchInstances.ps1 launches with
+  `Victory:sandbox`) never defeats anyone, so a teammate there is never dead
+  however many commanders die: test it with assassination or demoralization.
+  The cursor's line follows the name's opacity (ApplyAlpha), so it fades
+  with it instead of being left as a red bar.
+- **Coaching many** (`state.coached`, record -> true): the cursor goes to all
+  of them (`setCoachTarget` takes the list), and a map stroke too (the
+  indices as the stroke began; ticking or unticking ends one in progress). A
+  lens stroke goes only to the followed player. Focus and selection go by
+  the followed player, else `state.coaching`, the last ticked.
+- **Dead players in a replay**: nothing of theirs is recorded once their
+  commander is dead, so there is no "show dead cursors" box; Panel.UpdateDead
+  unticks both boxes, marks the record `locked` and rebuilds, and a locked
+  row's boxes are disabled (`Disable()`: no hit test) and skipped by "all".
+  A dead cursor, shown live, is at `Panel.DeadAlpha` (0.5); the line through
+  the name at `Panel.StrikeAlpha` (0.6) of the name's opacity.
+- **The team lock refuses, not undoes** (reported: clicking the other team
+  in the score panel showed it "for a moment"). Enforce, once a beat at
+  most once a second, came after the switch. `ObserverTeam.Install` (from
+  Coach.Start, live observers kept to a team) wraps `_G.ConExecute` (the
+  score panel: `ConExecute('SetFocusArmy n')`, and the console) and
+  `_G.SetFocusArmy` (the replay's army list) to drop a change off the team,
+  -1 included; Uninstall restores them unless something wrapped ours since.
+  Enforce stays for any other way in.
+- **tv on tmh**: an observer coaching several players while following one
+  tells all of them `{ tmh = 1, tv = 1 }` (again with 0 on stopping:
+  SayViewing). A coached player then fades their cursor between actions
+  (`record.coachViewing`, as `followsMe` already did for the followed one).
