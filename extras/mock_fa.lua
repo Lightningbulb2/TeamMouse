@@ -486,6 +486,9 @@ function M.CreateEnvironment(opts)
         if on and not views['WorldCamera2'] then
             main.Right:Set(960); main.Width:Set(960)
             views['WorldCamera2'] = WorldView(frame, 'WorldCamera2', 960, 0, 960, 1080)
+            -- (A new view's camera: the whole map. The main one is kept.)
+            env.__cameras['WorldCamera2'] = { Focus = { 512, 0, 512 }, Heading = 3.14159, Pitch = 1.57,
+                Zoom = 600, restored = {} }
         elseif not on and views['WorldCamera2'] then
             views['WorldCamera2']:Destroy()
             views['WorldCamera2'] = nil

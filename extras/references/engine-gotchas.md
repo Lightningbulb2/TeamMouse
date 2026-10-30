@@ -1305,3 +1305,9 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   once) after opening or closing a view itself. The mock's IsHidden now
   raises on a destroyed control, as the engine does, and its SplitMapGroup
   destroys the right view.
+- **A splitscreen opened for following keeps our view** (reported: Ctrl-click
+  reset our own side to the map view). SplitMapGroup keeps WorldCamera's
+  camera but the new WorldCamera2 starts at the whole map: AssignViews copies
+  the main camera to it. Closing a split we opened with one followed, the
+  main view takes the camera of the side that was ours (`state.splitOwn`)
+  instead of going back to before the follow.

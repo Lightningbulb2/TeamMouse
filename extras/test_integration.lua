@@ -10644,6 +10644,33 @@ do
     ClickName(PanelRow(env, 2))
     Check('no errors', NoErrors(env))
 
+    -- Regression test for: Ctrl-click (any splitscreen opened for following)
+    -- reset our own side to the whole-map view.
+    env, SM, receive = FollowIn()
+    env.__camera.Focus = { 250, 0, 250 }
+    Feed(receive, 'KasperAUS', 2, 600)
+    CtrlClick(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('our side of the new splitscreen stays where we were looking', Near(env.__cameras['WorldCamera2'], 250),
+        env.__cameras['WorldCamera2'].Focus[1])
+    Check('(the left follows)', Near(env.__camera, 600))
+    env.__cameras['WorldCamera2'].Focus = { 320, 0, 250 }
+    ClickName(PanelRow(env, 2))
+    Check('closing it, the main view carries on from our side', Near(env.__camera, 320), env.__camera.Focus[1])
+
+    -- Following on the right instead: the left, ours, is kept as it was.
+    env, SM, receive = FollowIn(nil, function(c) c.Follow.RightSide = true end)
+    env.__camera.Focus = { 250, 0, 250 }
+    Feed(receive, 'KasperAUS', 2, 600)
+    CtrlClick(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('following on the right: the left stays ours, where it was', Near(env.__camera, 250), env.__camera.Focus[1])
+    Check('and the right follows', Near(env.__cameras['WorldCamera2'], 600))
+    env.__camera.Focus = { 330, 0, 250 }
+    ClickName(PanelRow(env, 2))
+    Check('closing it, the main view is still ours', Near(env.__camera, 330), env.__camera.Focus[1])
+    Check('no errors', NoErrors(env))
+
     -- Regression test for: "Game object has been destroyed" (IsHidden) every
     -- frame after closing a splitscreen follow, having used the other side.
     env, SM, receive = FollowIn()

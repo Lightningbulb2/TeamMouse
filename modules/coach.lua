@@ -94,6 +94,8 @@ local env = false
 ---   before      view key -> its camera before following began on it (put
 ---               back when following there ends by a click)
 ---   openedSplit we opened the splitscreen (and close it after)
+---   splitOwn    while it is open with one followed: the side that is ours
+---               (closing it, the main view carries on from there)
 ---   splitOne    the one we follow was Ctrl-clicked: in the splitscreen, as
 ---               Follow.AutoSplit would (on the main monitor, the other side ours)
 ---   head2       our second view on the second monitor, beside CameraHead2,
@@ -110,7 +112,7 @@ local env = false
 ---   nextId      our stroke ids
 ---   followSaidT when we last said we follow (said again while no camera comes)
 local state = {
-    follows = {}, following = false, before = {}, openedSplit = false, splitOne = false, head2 = false, head2Rect = false,
+    follows = {}, following = false, before = {}, openedSplit = false, splitOwn = false, splitOne = false, head2 = false, head2Rect = false,
     coached = {}, coaching = false, coachSel = -1,
     followers = {}, followTeam = 0,
     coaches = {},
@@ -1207,6 +1209,28 @@ local function SetSplit(on)
     pcall(env.viewsChanged)
 end
 
+--- A camera's settings now (nil if it cannot be had).
+---@param key string
+---@return table | nil
+local function CameraSettings(key)
+    local ok, camera = pcall(GetCamera, key)
+    if ok and camera then
+        local okSave, saved = pcall(camera.SaveSettings, camera)
+        if okSave and type(saved) == 'table' then
+            return saved
+        end
+    end
+end
+
+---@param key string
+---@param settings table
+local function SetCamera(key, settings)
+    local ok, camera = pcall(GetCamera, key)
+    if ok and camera then
+        pcall(camera.RestoreSettings, camera, settings)
+    end
+end
+
 --- Our second view on the second monitor: CameraHead2 halved, and a view
 --- of ours (its own camera: the engine makes one for any name) on the
 --- right half, starting where CameraHead2 looks.
@@ -1293,11 +1317,31 @@ local function AssignViews()
     local primary = (n >= 2 and not head)
         or (n == 1 and (Config.Follow.AutoSplit or state.splitOne) and DefaultView() ~= 'CameraHead2')
     if primary and not Views()['WorldCamera2'] then
+        -- The game keeps the main view's camera, but the new right side
+        -- starts at the whole map: it starts where we were looking instead
+        -- (reported: our own side was reset to the map view).
+        local was = CameraSettings('WorldCamera')
         SetSplit(true)
         state.openedSplit = Views()['WorldCamera2'] and true or false
+        if state.openedSplit and was then
+            SetCamera('WorldCamera2', was)
+        end
     elseif not primary and state.openedSplit then
-        state.openedSplit = false
+        -- Closing: the main view carries on from our own side (where we
+        -- were looking meanwhile), not from the followed one.
+        local own = state.splitOwn == 'WorldCamera2' and CameraSettings('WorldCamera2')
+        state.openedSplit, state.splitOwn = false, false
         SetSplit(false)
+        if own then
+            SetCamera('WorldCamera', own)
+            state.before['WorldCamera'] = nil
+        end
+    end
+    -- Which side is ours while one is followed in a splitscreen we opened.
+    if state.openedSplit and n == 1 then
+        state.splitOwn = FollowView(state.follows[1]) == 'WorldCamera' and 'WorldCamera2' or 'WorldCamera'
+    elseif n >= 2 then
+        state.splitOwn = false
     end
 end
 
@@ -1633,7 +1677,7 @@ function Destroy()
         r.follow, r.followCam = false, nil
     end
     state.follows, state.following, state.before, state.openedSplit = {}, false, {}, false
-    state.splitOne = false
+    state.splitOne, state.splitOwn = false, false
     for record in pairs(state.coached) do
         record.coached = false
     end

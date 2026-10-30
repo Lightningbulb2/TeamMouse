@@ -15,7 +15,7 @@ ChatIdentifier = 'TeamMouse'
 
 --- The mod's version, as reported in chat at the start of a game. Keep in
 --- step with `version` in mod_info.lua (a test checks).
-ModVersion = 5
+ModVersion = 6
 
 --- Each player's version shows in the player panel's title tooltip.
 --- A teammate not heard from CheckDelay seconds in shows as "none".
