@@ -219,6 +219,7 @@ local Control = MakeClass() {
         end
     end,
     Hide = function(self) self._hidden = true end,
+    GetParent = function(self) return self.parent end,
     -- Show() cascades into every child, exactly as the engine's does: a child
     -- the mod hid individually is shown again along with its parent. The one
     -- escape is the engine's own: a child whose OnHide(false) returns true is
@@ -234,7 +235,11 @@ local Control = MakeClass() {
             end
         end
     end,
-    IsHidden = function(self) return self._hidden end,
+    -- (As the engine: a destroyed control's methods raise.)
+    IsHidden = function(self)
+        if self._destroyed then error('Game object has been destroyed') end
+        return self._hidden
+    end,
     SetHidden = function(self, h) self._hidden = h end,
     SetAlpha = function(self, a)
         if type(a) ~= 'number' or a ~= a then
@@ -466,6 +471,28 @@ function M.CreateEnvironment(opts)
     if opts.splitscreen then
         views['WorldCamera2'] = WorldView(frame, 'WorldCamera2', 960, 0, 960, 1080)
     end
+    -- A second monitor (the game's secondary adapter): its own view.
+    if opts.secondHead then
+        views['CameraHead2'] = WorldView(frame, 'CameraHead2', 1920, 0, 1920, 1080)
+    end
+    -- FAF's borders.lua SplitMapGroup(on): the main view halved and a right
+    -- one made, or the right one gone. Each call kept in env.__splitCalls.
+    env.__splitCalls = {}
+    env.__splitRefused = false
+    local function SplitMapGroup(on)
+        table.insert(env.__splitCalls, on and true or false)
+        if env.__splitRefused then return end
+        local main = views['WorldCamera']
+        if on and not views['WorldCamera2'] then
+            main.Right:Set(960); main.Width:Set(960)
+            views['WorldCamera2'] = WorldView(frame, 'WorldCamera2', 960, 0, 960, 1080)
+        elseif not on and views['WorldCamera2'] then
+            views['WorldCamera2']:Destroy()
+            views['WorldCamera2'] = nil
+            main.Right:Set(1920); main.Width:Set(1920)
+        end
+    end
+    env.__setSplit = SplitMapGroup
     views['MiniMap'] = WorldView(frame, 'MiniMap', 0, 900, 180, 180)
 
     env.__views = views
@@ -590,7 +617,33 @@ function M.CreateEnvironment(opts)
     -- RestoreSettings calls are kept in env.__restored.
     env.__camera = { Focus = { 100, 0, 100 }, Heading = 3.14159, Pitch = 1.2 }
     env.__restored = {}
+    -- Every camera but the main one ('WorldCamera': env.__camera) has its
+    -- own state, made on first use: env.__cameras[name].
+    env.__cameras = {}
     env.GetCamera = function(name)
+        if name and name ~= 'WorldCamera' then
+            local c = env.__cameras[name]
+            if not c then
+                c = { Focus = { 100, 0, 100 }, Heading = 3.14159, Pitch = 1.2, Zoom = 80, restored = {} }
+                env.__cameras[name] = c
+            end
+            return {
+                SaveSettings = function()
+                    return { Focus = { c.Focus[1], c.Focus[2], c.Focus[3] }, Heading = c.Heading,
+                        Pitch = c.Pitch, Zoom = c.Zoom }
+                end,
+                RestoreSettings = function(self, st)
+                    table.insert(c.restored, st)
+                    c.Focus = { st.Focus[1], st.Focus[2], st.Focus[3] }
+                    c.Heading, c.Pitch, c.Zoom = st.Heading, st.Pitch, st.Zoom
+                end,
+                GetZoom = function() return c.Zoom end,
+                GetTargetZoom = function() return c.Zoom end,
+                GetFocusPosition = function() return { 0, 0, 0 } end,
+                GetMinZoom = function() return env.__zoomRange[1] end,
+                GetMaxZoom = function() return env.__zoomRange[2] end,
+            }
+        end
         return {
             SaveSettings = function()
                 local c = env.__camera
@@ -878,6 +931,22 @@ function M.CreateEnvironment(opts)
             end,
             viewLeft = views['WorldCamera'],
             viewRight = views['WorldCamera2'],
+        },
+        ['/lua/ui/game/borders.lua'] = { SplitMapGroup = function(on) env.__setSplit(on) end },
+        -- FAF's WorldView control: Register lists it (GetWorldViews), Destroy
+        -- takes it off.
+        ['/lua/ui/controls/worldview.lua'] = {
+            WorldView = function(parent, cameraName, depth, isMiniMap)
+                local view = WorldView(parent or frame, cameraName, 0, 0, 0, 0)
+                view.Register = function(self, name) views[name] = self end
+                view.SetRenderPass = function(self, pass) self._renderPass = pass end
+                local destroy = view.Destroy
+                view.Destroy = function(self)
+                    if views[self._cameraName] == self then views[self._cameraName] = nil end
+                    destroy(self)
+                end
+                return view
+            end,
         },
         ['/lua/ui/game/commandmode.lua'] = {
             GetCommandMode = function() return env.__commandMode end,

@@ -1254,3 +1254,54 @@ follow putting the camera back. 0 disables it. UNVERIFIED: the notch size
   tells all of them `{ tmh = 1, tv = 1 }` (again with 0 on stopping:
   SayViewing). A coached player then fades their cursor between actions
   (`record.coachViewing`, as `followsMe` already did for the followed one).
+- **World views** (FAF lua/ui/game/worldview.lua, multihead.lua): the main
+  view is 'WorldCamera' (the left side in splitscreen), the splitscreen's
+  right 'WorldCamera2', the second monitor's (secondary adapter)
+  'CameraHead2'; each a camera of the same name, `view._cameraName`.
+  Splitscreen is `borders.lua` SplitMapGroup(on), as the Home/End keys: it
+  rebuilds the views (VerifyViews picks them up), does nothing while input
+  is locked or the interface hidden, and clears the selection (coach.lua
+  puts an observer's copied one back: selFrom).
+- **Following per view** (reported: a scroll on a view nobody was followed
+  on broke the follow). coach.lua keeps `state.follows` (one, or two for a
+  live observer's Shift-click) and `FollowView(record)`: one followed goes
+  on 'CameraHead2' (Follow.SecondMonitor), else 'WorldCamera2' if open and
+  Follow.RightSide, else 'WorldCamera'; two go left and right, the split
+  opened for them (`openedSplit`) and closed when fewer. Each view's camera
+  from before is kept (`state.before[key]`) and put back on an unclick.
+  teammouse.lua's camera state is per record (`record.followCam`, with the
+  view it is on), and NoteFollowScroll counts only on the view it is on.
+  A lens stroke goes to whoever is followed on the view it is drawn on.
+  The first followed is the one whose panel (tmp, kept per record as
+  panelSeen) and selection we take.
+- **v5: following two, for everyone; the second monitor halved.** Shift
+  works for players too (live). With a second monitor followed on
+  (Follow.SecondMonitor + SplitSecondMonitor), two followed halve it:
+  CameraHead2 shrinks to the left half and coach.lua makes a view of its own,
+  'TeamMouseHead2', on the right (the engine's WorldView makes a camera for
+  any name -- faf-re CUIWorldView: CAM_GetManager():CreateCamera(name); FAF
+  lists it through Register), started where CameraHead2 looks, destroyed
+  and CameraHead2 given its rectangle back when fewer. Follow.AutoSplit
+  opens the splitscreen for one followed on the main monitor.
+- **Our own view** (`Coach.OwnView`): the first of WorldCamera,
+  WorldCamera2, CameraHead2, TeamMouseHead2 that follows nobody; the
+  outline and camera we send are from it (GatherViewport).
+- **Pointer calibration and following** (found writing the AutoSplit test):
+  calibration was skipped while any camera was being moved for us, so a
+  view that exists only while following (our side of an auto splitscreen)
+  never learnt UnProject's convention, and no outline was sent from it.
+  Now skipped only for the view whose camera moved
+  (`pointerMap.movedAt[view key]`).
+- **Ctrl-click** follows that one player as Follow.AutoSplit would
+  (`state.splitOne`): the main monitor's splitscreen, even with a second
+  monitor, the other side ours; cleared by a plain click or when nobody is
+  followed. Shift-Ctrl is Shift.
+- **A destroyed view between beats** (reported: "Game object has been
+  destroyed" from IsHidden every frame after closing a splitscreen follow,
+  having used the other side). `localMouse.view` kept the closed view until
+  the next beat's VerifyViews, and frames read it first. Now every reader
+  goes through `localMouse.View()` (checks it is still the registered view of
+  its camera name), and coach.lua calls `env.viewsChanged()` (VerifyViews at
+  once) after opening or closing a view itself. The mock's IsHidden now
+  raises on a destroyed control, as the engine does, and its SplitMapGroup
+  destroys the right view.

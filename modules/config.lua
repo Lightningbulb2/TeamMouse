@@ -15,7 +15,7 @@ ChatIdentifier = 'TeamMouse'
 
 --- The mod's version, as reported in chat at the start of a game. Keep in
 --- step with `version` in mod_info.lua (a test checks).
-ModVersion = 4
+ModVersion = 5
 
 --- Each player's version shows in the player panel's title tooltip.
 --- A teammate not heard from CheckDelay seconds in shows as "none".
@@ -754,6 +754,21 @@ Follow = {
     --- or two) are undone by the follow. 0: scrolling never stops it.
     BreakScrolls = 4,
     BreakWindow = 0.75,
+
+    --- Which view follows. With a second monitor (the game's secondary
+    --- adapter), its view; otherwise the main view, or with RightSide the
+    --- splitscreen's right side while it is open (the left: the main view).
+    --- Following two (Shift-click, live): with a second monitor followed on
+    --- (SplitSecondMonitor), it is halved for them; otherwise the
+    --- splitscreen's two sides. Either opened for it if it is not open, and
+    --- closed again after.
+    SecondMonitor = true,
+    RightSide = false,
+    SplitSecondMonitor = true,
+
+    --- Following one player on the main view, open the splitscreen too: one
+    --- side follows (RightSide), the other stays yours.
+    AutoSplit = false,
 
     --- How quickly your camera catches up with theirs: the share of the way
     --- it moves each second is about 1 - e^-Rate. Higher is tighter but

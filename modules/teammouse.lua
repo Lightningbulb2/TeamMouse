@@ -76,6 +76,21 @@ local knownViews = {}
 local localMouse = { x = false, y = false, overWorld = false, view = false, pendingHud = false,
     cellX = false, cellY = false }
 
+--- The view the pointer was last on, if it is still one of the game's (nil
+--- otherwise, and forgotten). A view can be destroyed between beats -- the
+--- splitscreen closed, by us or the End key -- and VerifyViews, which would
+--- notice, only runs on the beat (reported: "Game object has been
+--- destroyed" from IsHidden after closing a splitscreen follow).
+---@return WorldView | nil
+localMouse.View = function()
+    local view = localMouse.view
+    if view and WorldViewManager.GetWorldViews()[view._cameraName or ''] ~= view then
+        localMouse.view, localMouse.overWorld = false, false
+        return nil
+    end
+    return view or nil
+end
+
 --- Set by the world view event hook while a selection box is being dragged.
 local localSelecting = false
 local selectingSince = 0
@@ -1453,7 +1468,7 @@ end
 local function ReadLocalState(state)
     state.overWorld, state.zoom, state.hudX, state.hudY = false, 0, 0.5, 0.9
 
-    local view = localMouse.view
+    local view = localMouse.View()
 
     if localMouse.overWorld and view and not view:IsHidden() then
 
@@ -1499,7 +1514,7 @@ end
 --- an offset view has settled it, then 'relative' or 'absolute'. failed:
 --- neither reading ever agreed, and projection stays off for the session.
 --- lastX/lastY detect a resting pointer between beats.
-local pointerMap = { verified = false, mode = false, failed = false, lastX = -1, lastY = -1 }
+local pointerMap = { verified = false, mode = false, failed = false, lastX = -1, lastY = -1, movedAt = {} }
 
 --- Largest disagreement, in world units, between UnProject and the engine's own
 --- reading for a resting pointer that still counts as agreement. Loose on
@@ -1613,12 +1628,14 @@ local function CalibratePointerMap(engineWorld)
     -- observer's very first beats are all like that -- one disagreement
     -- failed calibration for good, and with it every drag's far end
     -- (reported: an observer coach's drags did not move until released).
-    if (GetSystemTimeSeconds() - (pointerMap.camMovedT or -1000)) < 0.5 then
+    local view = localMouse.View()
+    if not view or not localMouse.x or not IsFiniteVector(engineWorld) then
         return
     end
-
-    local view = localMouse.view
-    if not view or not localMouse.x or not IsFiniteVector(engineWorld) then
+    -- (Only that view's camera: another view can be followed meanwhile, and
+    -- one that exists only while following -- our side of the splitscreen
+    -- -- would otherwise never be learnt, nor its outline sent.)
+    if (GetSystemTimeSeconds() - (pointerMap.movedAt[view._cameraName or ''] or -1000)) < 0.5 then
         return
     end
 
@@ -1692,7 +1709,7 @@ local function PointerToWorld()
         return nil
     end
 
-    local view = localMouse.view
+    local view = localMouse.View()
     if not view or view:IsHidden() then
         return nil
     end
@@ -2121,7 +2138,7 @@ local function ResolveDragBox()
         local world
         if overlay then
             world = UnProjectAt(overlay.view, overlay.liveScreen[1], overlay.liveScreen[2])
-        elseif localMouse.view and localMouse.x then
+        elseif localMouse.View() and localMouse.x then
             world = UnProjectAt(localMouse.view, localMouse.x, localMouse.y)
         end
         if world then
@@ -2453,7 +2470,7 @@ local function FinishRightPress(mx, my, how, endKnown)
     end
 
     if rc.order then
-        local ex, ez = ReleaseWorldPoint(rc.view or localMouse.view, mx, my)
+        local ex, ez = ReleaseWorldPoint(rc.view or localMouse.View(), mx, my)
         local x, y, z = rc.sx, rc.sy, rc.sz
         local x2, z2 = x, z
         -- Only a button held past the delay is a formation; before that it
@@ -3181,8 +3198,10 @@ local function GatherViewport()
     -- The camera itself, whole (what SaveSettings says), for following a
     -- player's view in a replay: focus x, y, z, heading, pitch, zoom. Only
     -- when recording: following is for replays, and live packets stay small.
+    -- (Ours: the view following nobody, Coach.OwnView.)
+    local own = Coach.OwnView()
     local camera = (sendState.recording or table.getn(sendState.specTo) > 0 or Coach.TeamFollowing())
-        and GetCamera('WorldCamera')
+        and GetCamera(own)
     local okCam, settings = pcall(SaveCamera, camera)
     if okCam and type(settings) == 'table' and IsFiniteVector(settings.Focus)
         and type(settings.Heading) == 'number' and type(settings.Pitch) == 'number'
@@ -3202,7 +3221,7 @@ local function GatherViewport()
     end
 
     local views = WorldViewManager.GetWorldViews()
-    local view = views and views['WorldCamera']
+    local view = views and views[own]
     if not view or view:IsHidden() then
         return
     end
@@ -3680,11 +3699,13 @@ local function HoldWhilePaused(delta)
     end
 end
 
---- Where the followed camera is now, on its way to the player's (replays).
---- army: whose it is following (false: nobody), so a new choice starts from
---- where the camera already is rather than jumping.
-local follow = { army = false, fx = 0, fy = 0, fz = 0, heading = 0, pitch = 0, zoom = 1, selVersion = -1,
-    fitPt = { 0, 0, 0 }, scrollT = false, scrolls = 0 }
+--- Following's scratch. Each followed player's camera, on its way to theirs,
+--- is on their record (record.followCam: the view it is on, fx, fy, fz,
+--- heading, pitch, zoom, and the scrolls that would break it), so a new
+--- choice -- or a new view for them -- starts from where that camera already
+--- is rather than jumping. (One follows at a time; two, a live observer's
+--- Shift-click, each on a view of its own: Coach.FollowView.)
+local follow = { fitPt = { 0, 0, 0 } }
 
 --- Our screen position of the point halfway between corners a and b of
 --- their view outline (vp: four corners, x/y/z, clockwise from top left).
@@ -3719,8 +3740,10 @@ end
 --- the last one for this player is used (kept on their record).
 ---@param target table   # the record being followed
 ---@param tzoom number   # their zoom
+---@param f table        # our camera following them (target.followCam)
+---@param view WorldView # the view it is on
 ---@return number        # the zoom multiplier
-local function FollowFit(target, tzoom)
+local function FollowFit(target, tzoom, f, view)
     local cfg = Config.Follow
     local vp = target.vp
     if not cfg.FitView then
@@ -3732,15 +3755,11 @@ local function FollowFit(target, tzoom)
     end
     -- Looking where they look: the same spot, angle and turn.
     local cam = target.cam
-    local dx, dz = follow.fx - cam[1], follow.fz - cam[3]
+    local dx, dz = f.fx - cam[1], f.fz - cam[3]
     local near = tzoom * 0.05
-    local turn = math.abs(follow.heading - cam[4])
+    local turn = math.abs(f.heading - cam[4])
     if turn > math.pi then turn = 2 * math.pi - turn end
-    if dx * dx + dz * dz > near * near or math.abs(follow.pitch - cam[5]) > 0.05 or turn > 0.05 then
-        return fit
-    end
-    local view = WorldViewManager.GetWorldViews()['WorldCamera']
-    if not view then
+    if dx * dx + dz * dz > near * near or math.abs(f.pitch - cam[5]) > 0.05 or turn > 0.05 then
         return fit
     end
     local w, h = view.Width(), view.Height()
@@ -3759,74 +3778,69 @@ local function FollowFit(target, tzoom)
     end
     -- Spans shrink as the camera pulls back: the zoom that makes the larger
     -- one exactly fill our view, as a share of theirs.
-    fit = need * follow.zoom / tzoom
+    fit = need * f.zoom / tzoom
     if fit < cfg.FitMin then fit = cfg.FitMin end
     if fit > cfg.FitMax then fit = cfg.FitMax end
     target.followFit = fit
     return fit
 end
 
---- A wheel notch on a world view. Following someone, a strong scroll (at
---- least Follow.BreakScrolls notches within Follow.BreakWindow seconds) means
---- the viewer wants the camera back: stop following, and untick the box. One
---- or two stray notches do nothing (the follow puts the camera back).
+--- A wheel notch on world view `view`. Following someone on it, a strong
+--- scroll (at least Follow.BreakScrolls notches within Follow.BreakWindow
+--- seconds) means the viewer wants that camera back: stop following them,
+--- and untick the box. One or two stray notches do nothing (the follow puts
+--- the camera back). A scroll on any other view leaves following alone
+--- (reported: scrolling a view nobody was followed on broke it).
+---@param view WorldView
 ---@param event table
-local function NoteFollowScroll(event)
+local function NoteFollowScroll(view, event)
     local cfg = Config.Follow
-    if not follow.army or not cfg.BreakScrolls or cfg.BreakScrolls <= 0 then
+    if not cfg.BreakScrolls or cfg.BreakScrolls <= 0 then
+        return
+    end
+    local key = view and view._cameraName
+    local record, f = nil, nil
+    for _, r in pairs(peers) do
+        if r.follow and r.followCam and r.followCam.view == key then
+            record, f = r, r.followCam
+            break
+        end
+    end
+    if not record then
         return
     end
     local now = GetSystemTimeSeconds()
-    if not follow.scrollT or now - follow.scrollT > cfg.BreakWindow then
-        follow.scrollT, follow.scrolls = now, 0
+    if not f.scrollT or now - f.scrollT > cfg.BreakWindow then
+        f.scrollT, f.scrolls = now, 0
     end
     -- One event can carry several notches (120 a notch, as Windows sends them).
     local notches = math.floor(math.abs(event.WheelRotation or 0) / 120 + 0.5)
     if notches < 1 then notches = 1 end
-    follow.scrolls = follow.scrolls + notches
-    if follow.scrolls >= cfg.BreakScrolls then
-        local record = peersByArmy[follow.army]
-        follow.army, follow.scrollT, follow.scrolls = false, false, 0
-        if record then
-            record.follow = false
-            Debug('stopped following ' .. tostring(record.name) .. ': scrolled')
-        end
+    f.scrolls = f.scrolls + notches
+    if f.scrolls >= cfg.BreakScrolls then
+        record.follow, record.followCam = false, nil
+        Debug('stopped following ' .. tostring(record.name) .. ': scrolled')
         pcall(Coach.FollowStopped, record)
         pcall(Panel.SyncFollow)
     end
 end
 
---- The viewer's camera follows the player whose name was clicked in the
---- panel (coach.lua). Each frame it moves part of the way to where theirs
---- last was (Follow.Rate), so their updates -- about ten a second, and only
---- when their camera moves -- read as smooth motion rather than steps. The
---- heading turns the short way round; the zoom eases on a log scale, so
---- zooming reads as even.
+--- Our camera on `target`'s view (Coach.FollowView) moves part of the way to
+--- where theirs last was (Follow.Rate), so their updates -- about ten a
+--- second, and only when their camera moves -- read as smooth motion rather
+--- than steps. The heading turns the short way round; the zoom eases on a
+--- log scale, so zooming reads as even.
+---@param target table
 ---@param delta number
-local function FollowPass(delta)
-    if not Config.Follow.Enabled then
+follow.One = function(target, delta)
+    local key = Coach.FollowView(target)
+    local views = WorldViewManager.GetWorldViews()
+    local view = key and views and views[key]
+    local cam = target.cam
+    if not view or not cam then
         return
     end
-    local target = false
-    for _, record in pairs(peers) do
-        if record.follow and record.hasData then
-            target = record
-            break
-        end
-    end
-    if not target then
-        follow.army = false
-        return
-    end
-
-    -- Not while a left drag is under way (a box, a row of structures): a row
-    -- is laid on the ground under a camera that should not slide away from
-    -- it. It catches up from where it was once the drag is over.
-    if localSelecting then
-        return
-    end
-
-    local camera = GetCamera('WorldCamera')
+    local camera = GetCamera(key)
     if not camera then
         return
     end
@@ -3835,29 +3849,24 @@ local function FollowPass(delta)
         or type(mine.Heading) ~= 'number' or type(mine.Pitch) ~= 'number' or type(mine.Zoom) ~= 'number' then
         return
     end
-
-    -- Where they are looking.
-    local cam = target.cam
-    if not cam then
-        return
-    end
     local tx, ty, tz, th, tp, tzoom = cam[1], cam[2], cam[3], cam[4], cam[5], cam[6]
 
-    if follow.army ~= target.army then
-        follow.army = target.army
-        follow.fx, follow.fy, follow.fz = mine.Focus[1], mine.Focus[2], mine.Focus[3]
-        follow.heading, follow.pitch, follow.zoom = mine.Heading, mine.Pitch, math.max(mine.Zoom, 1)
-        follow.selVersion = -1
-        follow.scrollT, follow.scrolls = false, 0
+    local f = target.followCam
+    if not f or f.view ~= key then
+        f = { view = key, scrollT = false, scrolls = 0 }
+        f.fx, f.fy, f.fz = mine.Focus[1], mine.Focus[2], mine.Focus[3]
+        f.heading, f.pitch, f.zoom = mine.Heading, mine.Pitch, math.max(mine.Zoom, 1)
+        f.selVersion = -1
+        target.followCam = f
     end
 
     -- In a replay, their selection is ours too while we follow them.
-    if isReplay and Config.Follow.CopySelection and follow.selVersion ~= target.selVersion then
-        follow.selVersion = target.selVersion
+    if isReplay and Config.Follow.CopySelection and f.selVersion ~= target.selVersion then
+        f.selVersion = target.selVersion
         local units = {}
         for _, id in ipairs(target.sel) do
-            local ok, unit = pcall(GetUnitById, id)
-            if ok and unit then
+            local okUnit, unit = pcall(GetUnitById, id)
+            if okUnit and unit then
                 table.insert(units, unit)
             end
         end
@@ -3865,24 +3874,44 @@ local function FollowPass(delta)
     end
 
     local k = 1 - math.exp(-Config.Follow.Rate * delta)
-    follow.fx = follow.fx + (tx - follow.fx) * k
-    follow.fy = follow.fy + (ty - follow.fy) * k
-    follow.fz = follow.fz + (tz - follow.fz) * k
-    local turn = th - follow.heading
+    f.fx = f.fx + (tx - f.fx) * k
+    f.fy = f.fy + (ty - f.fy) * k
+    f.fz = f.fz + (tz - f.fz) * k
+    local turn = th - f.heading
     while turn > math.pi do turn = turn - 2 * math.pi end
     while turn < -math.pi do turn = turn + 2 * math.pi end
-    follow.heading = follow.heading + turn * k
-    follow.pitch = follow.pitch + (tp - follow.pitch) * k
+    f.heading = f.heading + turn * k
+    f.pitch = f.pitch + (tp - f.pitch) * k
     if tzoom < 1 then tzoom = 1 end
     -- Their whole view in ours, by its larger axis.
-    tzoom = tzoom * FollowFit(target, tzoom)
-    follow.zoom = math.exp(math.log(follow.zoom) + (math.log(tzoom) - math.log(follow.zoom)) * k)
+    tzoom = tzoom * FollowFit(target, tzoom, f, view)
+    f.zoom = math.exp(math.log(f.zoom) + (math.log(tzoom) - math.log(f.zoom)) * k)
 
-    pointerMap.camMovedT = GetSystemTimeSeconds()
+    pointerMap.movedAt[key] = GetSystemTimeSeconds()
     pcall(function()
-        camera:RestoreSettings({ Focus = { follow.fx, follow.fy, follow.fz },
-            Heading = follow.heading, Pitch = follow.pitch, Zoom = follow.zoom })
+        camera:RestoreSettings({ Focus = { f.fx, f.fy, f.fz },
+            Heading = f.heading, Pitch = f.pitch, Zoom = f.zoom })
     end)
+end
+
+--- The viewer's cameras follow the players whose names were clicked in the
+--- panel (coach.lua): follow.One for each.
+---@param delta number
+local function FollowPass(delta)
+    if not Config.Follow.Enabled then
+        return
+    end
+    -- Not while a left drag is under way (a box, a row of structures): a row
+    -- is laid on the ground under a camera that should not slide away from
+    -- it. It catches up from where it was once the drag is over.
+    if localSelecting then
+        return
+    end
+    for _, record in pairs(peers) do
+        if record.follow and record.hasData then
+            follow.One(record, delta)
+        end
+    end
 end
 
 --- Each frame, besides the cursors: hold them still while a replay is
@@ -4717,7 +4746,7 @@ local function HookViewEvents(view)
         local tracking = not isObserver or Coach.Acting()
 
         if t == 'WheelRotation' then
-            NoteFollowScroll(event)
+            NoteFollowScroll(self, event)
         end
         if t == 'MouseMotion' or t == 'MouseEnter' or t == 'ButtonPress' then
             if event.MouseX then
@@ -5178,6 +5207,9 @@ local function StartCoach()
             RebuildTargets()
         end,
         forceView = function() sendState.vpT = false end,
+        -- Views opened or closed (a splitscreen for following): checked now,
+        -- not on the next beat.
+        viewsChanged = function() pcall(VerifyViews) end,
         ghostOrder = GhostOrder,
         panelState = Panel.State,
         panelOverlay = Panel.SetOverlay,
@@ -5516,6 +5548,6 @@ function Destroy()
     pointerMap.mode = false
     pointerMap.failed = false
     pointerMap.misses = 0
-    pointerMap.camMovedT = false
+    pointerMap.movedAt = {}
     pointerMap.lastX, pointerMap.lastY = -1, -1
 end

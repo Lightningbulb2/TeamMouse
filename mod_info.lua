@@ -6,7 +6,7 @@ copyright = "Licensed under the FAF Vault License. Free to use and modify."
 author = "Lightningbulb & HotCheese | KasperAUS | Eternal-"
 url = "https://github.com/Lightningbulb2/TeamMouse"
 icon = "/mods/TeamMouse/logo.png"
-version = 4
+version = 5
 exclusive = false
 
 ui_only = true
@@ -112,6 +112,17 @@ V4:
 • observers' build placements, move orders and upgrades never reach the game (no "trying to cheat" message), and neither do their keyboard orders (stop, pause, fire states, ...); placements and orders still go to the coached player, and show on the observer's own screen
 
 • teammates' drawings show while they draw as solid lines on the map, like the game's own, instead of dots
+
+V5:
+
+• add split screen support for coaching
+
+• following goes on your second monitor if you have one (else the main view, or the splitscreen)
+
+• Shift-click a second name to follow two players side by side: the splitscreen opens for it, or with two monitors the second one is halved (ReUI option)
+
+• Ctrl-click a name to follow that player in splitscreen mode
+
 
 
 ]]

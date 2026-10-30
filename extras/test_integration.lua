@@ -10537,6 +10537,320 @@ do
 end
 
 --------------------------------------------------------------------------------
+Section('following on splitscreen and a second monitor')
+--------------------------------------------------------------------------------
+do
+    --- A session following a player whose camera is at x = `tx`, with
+    --- `opts` and config changes `cfgFn`. Returns env, SM, receive.
+    local function FollowIn(opts, cfgFn, tx)
+        local env, SM = NewSession(opts)
+        local cfg = env.import('/mods/TeamMouse/modules/config.lua')
+        cfg.Follow.FitView = false
+        if cfgFn then cfgFn(cfg) end
+        SM.InitTeamMouse(false)
+        SM.OnBeat()
+        local receive = env.__chatFuncs['TeamMouse']
+        return env, SM, receive
+    end
+    local function Feed(receive, name, army, x)
+        receive(name, { v = 1, a = army, p = { x, 0, 200 }, o = 0, z = 80, w = true,
+            cam = { x, 0, 200, 3.14159, 1.1, 80 } })
+    end
+    local function Near(c, x) return c and math.abs(c.Focus[1] - x) < 5 end
+
+    -- One monitor, splitscreen open: the left side (the main view).
+    local env, SM, receive = FollowIn({ splitscreen = true })
+    Feed(receive, 'KasperAUS', 2, 600)
+    ClickName(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('splitscreen: following moves the left side', Near(env.__camera, 600), env.__camera.Focus[1])
+    Check('and leaves the right one alone', not env.__cameras['WorldCamera2']
+        or not Near(env.__cameras['WorldCamera2'], 600))
+
+    -- Follow.RightSide: the right side.
+    env, SM, receive = FollowIn({ splitscreen = true }, function(c) c.Follow.RightSide = true end)
+    Feed(receive, 'KasperAUS', 2, 600)
+    ClickName(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('Follow.RightSide: the right side follows', Near(env.__cameras['WorldCamera2'], 600))
+    Check('and the left is ours', not Near(env.__camera, 600), env.__camera.Focus[1])
+
+    -- A second monitor: its view, by default.
+    env, SM, receive = FollowIn({ secondHead = true })
+    Feed(receive, 'KasperAUS', 2, 600)
+    ClickName(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('two monitors: the second one follows', Near(env.__cameras['CameraHead2'], 600))
+    Check('and the main view is ours', not Near(env.__camera, 600), env.__camera.Focus[1])
+
+    -- Regression test for: scrolling a view nobody was followed on broke
+    -- the follow.
+    local main, second = env.__views['WorldCamera'], env.__views['CameraHead2']
+    for _ = 1, 6 do
+        main:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120, MouseX = 500, MouseY = 400, Modifiers = {} })
+    end
+    Check('scrolling the main view leaves the follow on the second alone', PanelRow(env, 2).record.follow == true)
+    for _ = 1, 6 do
+        second:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120, MouseX = 2400, MouseY = 400, Modifiers = {} })
+    end
+    Check('scrolling the followed view breaks free', not PanelRow(env, 2).record.follow)
+
+    -- Follow.SecondMonitor off: the main view.
+    env, SM, receive = FollowIn({ secondHead = true }, function(c) c.Follow.SecondMonitor = false end)
+    Feed(receive, 'KasperAUS', 2, 600)
+    ClickName(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('Follow.SecondMonitor off: the main view follows', Near(env.__camera, 600))
+    ClickName(PanelRow(env, 2))
+    Check('and clicking again puts it back', not Near(env.__camera, 600), env.__camera.Focus[1])
+    Check('no errors', NoErrors(env))
+
+    -- A player can follow two as well (Shift).
+    local armies = Armies()
+    armies[3].team = 1
+    env, SM, receive = FollowIn({ armies = armies })
+    Feed(receive, 'KasperAUS', 2, 600)
+    Feed(receive, 'Eternal', 3, 900)
+    ClickName(PanelRow(env, 2))
+    PanelRow(env, 3).label:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true, Shift = true } })
+    for _ = 1, 20 do
+        Feed(receive, 'KasperAUS', 2, 600)
+        Feed(receive, 'Eternal', 3, 900)
+        Frames(env, 0.1, 0.05)
+    end
+    Check('a player Shift-clicking follows both', PanelRow(env, 3).record.follow and PanelRow(env, 2).record.follow
+        and env.__splitCalls[1] == true)
+    Check('side by side', Near(env.__camera, 600) and Near(env.__cameras['WorldCamera2'], 900))
+    local told = {}
+    for _, m in ipairs(CoachSent(env, 'tmf')) do if m.msg.tmf == 1 then told[To(m)] = true end end
+    Check('both told, so both send their camera', told['2'] and told['3'])
+    Check('(a player coaches nobody)', not PanelRow(env, 2).record.coached)
+
+    -- Ctrl-click: this one follow in the splitscreen (Follow.AutoSplit, once).
+    local function CtrlClick(row)
+        row.label:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true, Ctrl = true } })
+    end
+    env, SM, receive = FollowIn()
+    Feed(receive, 'KasperAUS', 2, 600)
+    CtrlClick(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('Ctrl-click: the splitscreen opens for one', env.__splitCalls[1] == true and env.__views['WorldCamera2'] ~= nil)
+    Check('following on the left, the right ours', Near(env.__camera, 600)
+        and (not env.__cameras['WorldCamera2'] or not Near(env.__cameras['WorldCamera2'], 600)))
+    ClickName(PanelRow(env, 2))
+    Check('stopping closes it', env.__splitCalls[2] == false and env.__views['WorldCamera2'] == nil)
+    ClickName(PanelRow(env, 2))
+    Check('a plain click after: no splitscreen', table.getn(env.__splitCalls) == 2 and env.__views['WorldCamera2'] == nil)
+    ClickName(PanelRow(env, 2))
+    Check('no errors', NoErrors(env))
+
+    -- Regression test for: "Game object has been destroyed" (IsHidden) every
+    -- frame after closing a splitscreen follow, having used the other side.
+    env, SM, receive = FollowIn()
+    Feed(receive, 'KasperAUS', 2, 600)
+    CtrlClick(PanelRow(env, 2))
+    for _ = 1, 4 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    SM.OnBeat()
+    Mock.HoverWorld(env, 1400, 300, 'WorldCamera2')
+    SM.OnBeat()
+    Mock.HoverHud(env, 1400, 1000)
+    ClickName(PanelRow(env, 2))
+    Frames(env, 0.3, 0.05)
+    SM.OnBeat()
+    Frames(env, 0.3, 0.05)
+    Check('closing it, with the pointer last on the side that goes: no errors', env.__views['WorldCamera2'] == nil
+        and NoErrors(env), ErrorLogs and table.concat(ErrorLogs(env), ' | '))
+
+    -- The same with the splitscreen closed by the player (End), between beats.
+    env, SM, receive = FollowIn({ splitscreen = true })
+    SM.OnBeat()
+    Mock.HoverWorld(env, 1400, 300, 'WorldCamera2')
+    SM.OnBeat()
+    Mock.HoverHud(env, 1400, 1000)
+    env.__setSplit(false)
+    Frames(env, 0.3, 0.05)
+    SM.OnBeat()
+    Check('the splitscreen closed with End: no errors either', NoErrors(env), table.concat(ErrorLogs(env), ' | '))
+
+    -- With two monitors, Ctrl-click: the splitscreen on the main one, not
+    -- the second monitor.
+    env, SM, receive = FollowIn({ secondHead = true })
+    Feed(receive, 'KasperAUS', 2, 600)
+    CtrlClick(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('two monitors, Ctrl-click: the main one split, the left following', env.__views['WorldCamera2'] ~= nil
+        and Near(env.__camera, 600) and not Near(env.__cameras['CameraHead2'], 600))
+    ClickName(PanelRow(env, 2))
+    ClickName(PanelRow(env, 2))
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('a plain click after: the second monitor again', env.__views['WorldCamera2'] == nil
+        and Near(env.__cameras['CameraHead2'], 600))
+    Check('no errors', NoErrors(env))
+
+    -- Follow.AutoSplit: one followed, and the splitscreen opens; the other
+    -- side stays ours, and our view outline is from it.
+    env, SM, receive = FollowIn(nil, function(c) c.Follow.AutoSplit = true end)
+    Feed(receive, 'KasperAUS', 2, 600)
+    -- (The right side looks at another part of the map: its corners say so.)
+    local unproject = env.UnProject
+    env.UnProject = function(v, point)
+        local w = unproject(v, point)
+        if v._cameraName == 'WorldCamera2' then w = { w[1] + 1000, w[2], w[3] } end
+        return w
+    end
+    ClickName(PanelRow(env, 2))
+    local before = table.getn(env.__sent)
+    for _ = 1, 20 do Feed(receive, 'KasperAUS', 2, 600); Frames(env, 0.1, 0.05) end
+    Check('Follow.AutoSplit: one followed opens the splitscreen', env.__splitCalls[1] == true
+        and env.__views['WorldCamera2'] ~= nil)
+    Check('following on the left', Near(env.__camera, 600))
+    Check('and the right is ours', not env.__cameras['WorldCamera2'] or not Near(env.__cameras['WorldCamera2'], 600))
+    -- The pointer rests on our side once (while the left one follows):
+    -- enough to learn how that view reads, with no wait for the follow.
+    SM.OnBeat()
+    env.__mouseWorld = { 1220, 0, 150 }
+    for _ = 1, 4 do
+        Mock.HoverWorld(env, 1400, 300, 'WorldCamera2')
+        Feed(receive, 'KasperAUS', 2, 600)
+        Frames(env, 0.1, 0.05)
+        SM.OnBeat()
+    end
+    local vp
+    for i = before + 1, table.getn(env.__sent) do vp = env.__sent[i].msg.vp or vp end
+    Check('our view outline is from our own side, not the followed one', vp and vp[1] > 1000, vp and vp[1])
+    ClickName(PanelRow(env, 2))
+    Check('stopping closes it again', env.__splitCalls[2] == false and env.__views['WorldCamera2'] == nil)
+    Check('no errors', NoErrors(env))
+end
+
+do
+    -- An observer Shift-clicks a second name: both, side by side.
+    local function ShiftClick(row)
+        row.label:HandleEvent({ Type = 'ButtonPress', Modifiers = { Left = true, Shift = true } })
+    end
+    local function Feed(receive, name, army, x)
+        receive(name, { v = 1, a = army, p = { x, 0, 200 }, o = 0, z = 80, w = true,
+            cam = { x, 0, 200, 3.14159, 1.1, 80 } })
+    end
+    local function Near(c, x) return c and math.abs(c.Focus[1] - x) < 5 end
+    local function Session(opts)
+        local o = ObserverOpts()
+        for k, v in pairs(opts or {}) do o[k] = v end
+        local env, SM = NewSession(o)
+        env.import('/mods/TeamMouse/modules/config.lua').Follow.FitView = false
+        SM.InitTeamMouse(false)
+        SM.OnBeat()
+        local receive = env.__chatFuncs['TeamMouse']
+        Feed(receive, 'Lightningbulb', 1, 300)
+        Feed(receive, 'Eternal', 3, 900)
+        local function Run(n)
+            for _ = 1, n do
+                Feed(receive, 'Lightningbulb', 1, 300)
+                Feed(receive, 'Eternal', 3, 900)
+                Frames(env, 0.1, 0.05)
+                SM.OnBeat()
+            end
+        end
+        return env, SM, receive, Run
+    end
+
+    local env, SM, receive, Run = Session()
+    ClickName(PanelRow(env, 1))
+    Run(2)
+    local selects = table.getn(env.__selectCalls)
+    ShiftClick(PanelRow(env, 3))
+    Run(1)
+    Check('(opening the splitscreen clears the selection: the copied one is put back)',
+        table.getn(env.__selectCalls) > selects)
+    Check('Shift: both followed', PanelRow(env, 1).record.follow and PanelRow(env, 3).record.follow)
+    Check('the splitscreen opened for it', env.__splitCalls[1] == true and env.__views['WorldCamera2'] ~= nil)
+    Run(20)
+    Check('the first on the left', Near(env.__camera, 300), env.__camera.Focus[1])
+    Check('the second on the right', Near(env.__cameras['WorldCamera2'], 900))
+    local told = {}
+    for _, m in ipairs(CoachSent(env, 'tmf')) do if m.msg.tmf == 1 then told[To(m)] = true end end
+    Check('both are told they are followed', told['1'] and told['3'])
+    Check('and both coached', PanelRow(env, 1).record.coached and PanelRow(env, 3).record.coached)
+
+    -- A lens stroke on the right side goes to the one on the right.
+    local right = env.__views['WorldCamera2']
+    local n = table.getn(env.__sentCoach)
+    right:HandleEvent({ Type = 'ButtonPress', Modifiers = { Right = true }, MouseX = 1000, MouseY = 300 })
+    for i = 1, 5 do
+        right:HandleEvent({ Type = 'MouseMotion', Modifiers = { Right = true }, MouseX = 1000 + i * 20, MouseY = 300 })
+    end
+    right:HandleEvent({ Type = 'ButtonRelease', Modifiers = { Right = true }, MouseX = 1100, MouseY = 300 })
+    local lens = CoachSent(env, 'tml', n + 1)
+    local toRight = table.getn(lens) > 0
+    for _, m in ipairs(lens) do if To(m) ~= '3' then toRight = false end end
+    Check('a drawing on the right side goes to the player there', toRight)
+
+    -- Scrolling one side breaks only that one.
+    for _ = 1, 6 do
+        right:HandleEvent({ Type = 'WheelRotation', WheelRotation = -120, MouseX = 1400, MouseY = 400, Modifiers = {} })
+    end
+    Check('a hard scroll on the right stops following the one there only', not PanelRow(env, 3).record.follow
+        and PanelRow(env, 1).record.follow)
+    Check('and the splitscreen we opened closes', env.__splitCalls[2] == false and env.__views['WorldCamera2'] == nil)
+    Run(10)
+    Check('the other carries on, on the main view', Near(env.__camera, 300))
+
+    -- A third: the earliest makes room.
+    ShiftClick(PanelRow(env, 3))
+    ShiftClick(PanelRow(env, 2))
+    Check('a third Shift-click drops the earliest', PanelRow(env, 2).record.follow and PanelRow(env, 3).record.follow
+        and not PanelRow(env, 1).record.follow)
+    -- A plain click: that one alone.
+    ClickName(PanelRow(env, 1))
+    Check('a plain click follows that one alone', PanelRow(env, 1).record.follow
+        and not PanelRow(env, 2).record.follow and not PanelRow(env, 3).record.follow)
+    Check('and closes the splitscreen again', env.__views['WorldCamera2'] == nil)
+    ClickName(PanelRow(env, 1))
+    Check('no errors', NoErrors(env))
+
+    -- The splitscreen already open: left as it was.
+    env, SM, receive, Run = Session({ splitscreen = true })
+    ClickName(PanelRow(env, 1))
+    ShiftClick(PanelRow(env, 3))
+    Run(20)
+    Check('already split: not opened again', table.getn(env.__splitCalls) == 0)
+    Check('and both shown', Near(env.__camera, 300) and Near(env.__cameras['WorldCamera2'], 900))
+    ClickName(PanelRow(env, 3))
+    ClickName(PanelRow(env, 1))
+    Check('stopping leaves the splitscreen open', table.getn(env.__splitCalls) == 0 and env.__views['WorldCamera2'] ~= nil)
+
+    -- Two monitors: two followed halve the second one.
+    env, SM, receive, Run = Session({ secondHead = true })
+    ClickName(PanelRow(env, 1))
+    Run(10)
+    Check('two monitors: one followed on the second', Near(env.__cameras['CameraHead2'], 300))
+    ShiftClick(PanelRow(env, 3))
+    Run(20)
+    local head2 = env.__views['TeamMouseHead2']
+    Check('two followed: the second monitor is halved', head2 ~= nil and env.__views['CameraHead2'].Right() < head2.Left())
+    Check('one each side of it', Near(env.__cameras['CameraHead2'], 300) and Near(env.__cameras['TeamMouseHead2'], 900))
+    Check('and the main monitor is left alone, ours', table.getn(env.__splitCalls) == 0 and not Near(env.__camera, 300)
+        and not Near(env.__camera, 900))
+    Check('(cursors are drawn on the new half too)', SM.OnBeat() == nil and table.getn(Mock.FindCursors(env, 'TeamMouseHead2')) > 0)
+    ClickName(PanelRow(env, 3))
+    Run(2)
+    Check('down to one: the second monitor whole again', env.__views['TeamMouseHead2'] == nil
+        and env.__views['CameraHead2'].Right() == 3840)
+    ClickName(PanelRow(env, 1))
+    Check('no errors', NoErrors(env))
+
+    -- Follow.SplitSecondMonitor off: the main monitor goes splitscreen.
+    env, SM, receive, Run = Session({ secondHead = true })
+    env.import('/mods/TeamMouse/modules/config.lua').Follow.SplitSecondMonitor = false
+    ClickName(PanelRow(env, 1))
+    ShiftClick(PanelRow(env, 3))
+    Run(20)
+    Check('Follow.SplitSecondMonitor off: the splitscreen on the main one', env.__views['TeamMouseHead2'] == nil
+        and Near(env.__camera, 300) and Near(env.__cameras['WorldCamera2'], 900))
+    Check('no errors', NoErrors(env))
+end
+
+--------------------------------------------------------------------------------
 Section('per-frame cost (extras/frame_report.lua)')
 --------------------------------------------------------------------------------
 -- Regression test for: per-frame garbage and work on the receiving end --

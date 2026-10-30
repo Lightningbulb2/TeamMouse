@@ -26,7 +26,9 @@ Built on top of the SharedMouse mod by Eternal- that was cleaned up by KasperAUS
 
 • (optional) show camera perspective of your teammates
 
-• (optional) follow player perspective and selections --- click a name in the panel (teammates, observers and replays)
+• (optional) follow player perspective and selections --- click a name in the panel (teammates, observers and replays); on the second monitor if you have one, else the main view (or the splitscreen's right side: ReUI options); a hard scroll on that view breaks free
+
+• follow two players at once: Shift-click a second name, and the splitscreen opens with one each side -- or, with two monitors, the second one is halved (a ReUI option turns that off) -- closed again after, unless it was already open; Ctrl-click a name (or a ReUI option, always) to follow one player in the splitscreen, the other side staying yours. Your view outline is always from the view that follows nobody
 
 • coaching: while following someone, draw on their screen and click-ping for them; observers can coach any number of players (their cursor and map drawings go to those players only; following someone coaches them, and screen drawings go to the followed player alone)
 
@@ -190,7 +192,7 @@ heading says which: "observers - Team: 1".
 
 ### Versions
 
-The panel's title, "TeamMouse - v4", is underlined: hover it for everyone's
+The panel's title, "TeamMouse - v5", is underlined: hover it for everyone's
 version of TeamMouse -- "old" for a teammate on SharedMouse, "none" for a
 teammate who never answered. The title turns orange while anyone is on another
 version. Nothing is posted in chat.

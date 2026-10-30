@@ -79,6 +79,7 @@ ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
 ---   removeCoach(name)
 ---   setCoachTarget(list)  the client indices an observer's cursor goes to
 ---   forceView()           send our camera with the next packet
+---   viewsChanged()        we opened or closed a view: check them now
 ---   panelSync()           show the panel as following/coaching now is
 ---   ghostOrder()          an order marker where the pointer is, never given
 ---   panelState()          our panel's ticks, as a string (Panel.State)
@@ -86,8 +87,18 @@ ObserverTeam = import(_G.TeamMousePath .. '/modules/observerteam.lua')
 local env = false
 
 --- Our side of it.
----   following   the record we follow (false: nobody)
----   before      our camera before following began (put back on unclick)
+---   follows     the records we follow, in order: one, or two (Shift-click,
+---               live), each on a view of its own (FollowView)
+---   following   the first of them, live (false: nobody): their panel, the
+---               focus and selection, lens strokes from the interface
+---   before      view key -> its camera before following began on it (put
+---               back when following there ends by a click)
+---   openedSplit we opened the splitscreen (and close it after)
+---   splitOne    the one we follow was Ctrl-clicked: in the splitscreen, as
+---               Follow.AutoSplit would (on the main monitor, the other side ours)
+---   head2       our second view on the second monitor, beside CameraHead2,
+---               for two followed (false: none); head2Rect, CameraHead2's
+---               own rectangle to give back
 ---   coached     record -> true: everyone we coach (observers)
 ---   coaching    the one of them our focus and selection go by when we follow
 ---               nobody: the last ticked (false: nobody)
@@ -99,7 +110,7 @@ local env = false
 ---   nextId      our stroke ids
 ---   followSaidT when we last said we follow (said again while no camera comes)
 local state = {
-    following = false, before = false,
+    follows = {}, following = false, before = {}, openedSplit = false, splitOne = false, head2 = false, head2Rect = false,
     coached = {}, coaching = false, coachSel = -1,
     followers = {}, followTeam = 0,
     coaches = {},
@@ -538,7 +549,7 @@ end
 ---@param y number
 local function StartStroke(kind, view, x, y)
     state.nextId = state.nextId + 1
-    local target = kind == 'lens' and state.following or state.coaching
+    local target = kind == 'lens' and FollowedOn(view) or state.coaching
     -- (A lens stroke goes to the player we follow; ink to everyone we coach.)
     local indices = kind == 'lens' and { IndexOf(target) } or CoachIndices()
     local s = { kind = kind, id = state.nextId, target = target, indices = indices,
@@ -856,9 +867,14 @@ function Receive(sender, msg)
     end
     -- The panel of the player we follow, drawn round ours.
     if msg.tmp ~= nil then
-        local f = state.following
-        if f and f.name == sender and type(msg.tmp) == 'string' then
-            pcall(env.panelOverlay, msg.tmp)
+        -- (Kept for each player we follow: the first's is drawn, and the
+        -- second's as soon as it is the first.)
+        local r = env.peers[sender]
+        if r and r.follow and type(msg.tmp) == 'string' and string.len(msg.tmp) < 4000 then
+            r.panelSeen = msg.tmp
+            if r == state.following then
+                pcall(env.panelOverlay, msg.tmp, r.army)
+            end
         end
         return true
     end
@@ -933,6 +949,10 @@ end
 ---@return boolean
 function ViewEvent(view, event)
     local mode = Mode()
+    -- (Following, on a view that shows nobody we follow: as if not.)
+    if mode == 'lens' and not FollowedOn(view) then
+        mode = state.coaching and 'ink' or false
+    end
     local t = event.Type
     if not mode then
         if state.stroke then
@@ -986,11 +1006,11 @@ function ViewEvent(view, event)
     return false
 end
 
---- The followed player's view in our main world view.
+--- The view the first player we follow is on.
 ---@return WorldView | nil
 local function MainView()
-    local views = WorldViewManager.GetWorldViews()
-    return views and views['WorldCamera']
+    local key = state.following and FollowView(state.following)
+    return key and Views()[key]
 end
 
 --- The root frame's event: a lens stroke carries on over the interface, and
@@ -1033,6 +1053,101 @@ end
 -- Following and coaching
 --------------------------------------------------------------------------------
 
+--- Our second view on the second monitor (OpenHead2).
+HEAD2 = 'TeamMouseHead2'
+
+--- Which view is ours, in order (OwnView).
+local OWN_ORDER = { 'WorldCamera', 'WorldCamera2', 'CameraHead2', 'TeamMouseHead2' }
+
+--- The world views there are now.
+---@return table
+function Views()
+    return WorldViewManager.GetWorldViews() or {}
+end
+
+--- The view a single follow goes on: the second monitor's, if there is
+--- one (Follow.SecondMonitor); else the splitscreen's right side if it is
+--- open and Follow.RightSide; else the main view (the left side).
+---@return string
+function DefaultView()
+    local views = Views()
+    local cfg = Config.Follow
+    -- (Ctrl-clicked: the splitscreen here, not the second monitor.)
+    if cfg.SecondMonitor and views['CameraHead2'] and not state.splitOne then
+        return 'CameraHead2'
+    end
+    if cfg.RightSide and views['WorldCamera2'] then
+        return 'WorldCamera2'
+    end
+    return 'WorldCamera'
+end
+
+--- The view `record` is followed on (nil: none right now -- two followed,
+--- and the second view would not open). Two: the second monitor's two
+--- halves (HeadSplit), or the splitscreen's left and right. Its camera from
+--- before is kept the first time (state.before).
+---@param record table
+---@return string | nil
+function FollowView(record)
+    local key
+    if state.follows[2] then
+        local i = (record == state.follows[1] and 1) or (record == state.follows[2] and 2) or nil
+        local views = Views()
+        if i and views['CameraHead2'] and state.head2 then
+            key = i == 1 and 'CameraHead2' or (views[HEAD2] and HEAD2) or nil
+        elseif i then
+            key = i == 1 and 'WorldCamera' or (views['WorldCamera2'] and 'WorldCamera2') or nil
+        end
+    else
+        key = DefaultView()
+    end
+    if key and not state.before[key] then
+        local ok, camera = pcall(GetCamera, key)
+        local okSave, saved = false, nil
+        if ok and camera then
+            okSave, saved = pcall(camera.SaveSettings, camera)
+        end
+        if okSave and type(saved) == 'table' then
+            state.before[key] = saved
+        end
+    end
+    return key
+end
+
+--- The view that is ours, following nobody, for what we show others (our
+--- view outline and camera): the main view, else the splitscreen's right,
+--- else either on the second monitor. The main view if every one follows.
+---@return string
+function OwnView()
+    local views = Views()
+    local followed = {}
+    for _, r in ipairs(state.follows) do
+        local key = FollowView(r)
+        if key then
+            followed[key] = true
+        end
+    end
+    for _, key in ipairs(OWN_ORDER) do
+        if views[key] and not followed[key] then
+            return key
+        end
+    end
+    return 'WorldCamera'
+end
+
+--- Whom we follow on `view` (nil: nobody).
+---@param view WorldView
+---@return table | nil
+function FollowedOn(view)
+    local views = Views()
+    for _, r in ipairs(state.follows) do
+        local key = FollowView(r)
+        if key and views[key] == view then
+            return r
+        end
+    end
+end
+
 --- An observer looks through the eyes of the army they follow or coach:
 --- their focus army is set to it (as FAF's score panel does for a click on
 --- an army), so their selection can be copied. Stopping leaves it there.
@@ -1059,22 +1174,14 @@ local function SyncFocus()
     state.focusArmy = army
 end
 
----@return table | nil
-local function Camera()
-    local ok, camera = pcall(GetCamera, 'WorldCamera')
-    if ok then
-        return camera
+--- Tell `record` we no longer follow them (and, if theirs is the panel we
+--- draw round ours, stop).
+---@param record table
+local function SayUnfollow(record)
+    if record and Live() and not env.replay then
+        Send(IndexOf(record), { tmf = 0, ta = record.army })
     end
-end
-
---- Tell whoever we follow that we have stopped (and stop drawing their
---- panel's ticks round ours).
-local function SayUnfollow()
-    local old = state.following
-    if old and Live() then
-        Send(IndexOf(old), { tmf = 0, ta = old.army })
-    end
-    if old and env then
+    if record and env and record == state.following then
         pcall(env.panelOverlay, false)
     end
 end
@@ -1091,75 +1198,225 @@ local function SayViewing()
     end
 end
 
---- Following stopped from elsewhere (a hard scroll): the camera stays
---- where it is.
+--- Open or close the splitscreen, as the game's Home and End keys do. (It
+--- clears the selection: an observer's copied one is put back -- selFrom.)
+---@param on boolean
+local function SetSplit(on)
+    pcall(function() import('/lua/ui/game/borders.lua').SplitMapGroup(on) end)
+    state.selFrom = false
+    pcall(env.viewsChanged)
+end
+
+--- Our second view on the second monitor: CameraHead2 halved, and a view
+--- of ours (its own camera: the engine makes one for any name) on the
+--- right half, starting where CameraHead2 looks.
+local function OpenHead2()
+    local main = Views()['CameraHead2']
+    if not main or state.head2 then
+        return
+    end
+    local ok, err = pcall(function()
+        local l, t, r, b = main.Left(), main.Top(), main.Right(), main.Bottom()
+        local mid = math.floor((l + r) / 2)
+        local WorldView = import('/lua/ui/controls/worldview.lua').WorldView
+        local UIUtil = import('/lua/ui/uiutil.lua')
+        local view = WorldView(main:GetParent(), HEAD2, 1, false)
+        view:Register(HEAD2, nil, 'TeamMouse second view', 3)
+        if view.SetRenderPass and UIUtil.UIRP_UnderWorld then
+            -- (As the game's own: else the camera lags a frame behind.)
+            view:SetRenderPass(UIUtil.UIRP_UnderWorld + UIUtil.UIRP_PostGlow)
+        end
+        state.head2Rect = { l, t, r, b }
+        main.Right:Set(mid - 2)
+        main.Width:Set(mid - 2 - l)
+        view.Left:Set(mid + 2)
+        view.Top:Set(t)
+        view.Right:Set(r)
+        view.Bottom:Set(b)
+        view.Width:Set(r - mid - 2)
+        view.Height:Set(b - t)
+        view.Depth:Set(function() return main.Depth() end)
+        state.head2 = view
+        local okFrom, from = pcall(GetCamera, 'CameraHead2')
+        local okTo, to = pcall(GetCamera, HEAD2)
+        if okFrom and from and okTo and to then
+            local okSave, saved = pcall(from.SaveSettings, from)
+            if okSave and type(saved) == 'table' then
+                pcall(to.RestoreSettings, to, saved)
+            end
+        end
+    end)
+    if not ok then
+        LOG('TeamMouse: could not split the second monitor: ' .. tostring(err))
+    end
+    pcall(env.viewsChanged)
+end
+
+--- Back to CameraHead2 alone.
+local function CloseHead2()
+    local view, rect = state.head2, state.head2Rect
+    state.head2, state.head2Rect = false, false
+    state.before[HEAD2] = nil
+    if view then
+        pcall(view.Destroy, view)
+    end
+    local main = Views()['CameraHead2']
+    if main and rect then
+        pcall(function()
+            main.Right:Set(rect[3])
+            main.Width:Set(rect[3] - rect[1])
+        end)
+    end
+    pcall(env.viewsChanged)
+end
+
+--- Two followed with a second monitor (Follow.SplitSecondMonitor): that
+--- monitor is halved for them, not the main one.
+---@return boolean
+local function HeadSplit()
+    local cfg = Config.Follow
+    return (cfg.SecondMonitor and cfg.SplitSecondMonitor and Views()['CameraHead2']) and true or false
+end
+
+--- Views for whoever we follow: two on the second monitor halved (ours,
+--- HeadSplit), or the splitscreen's two sides; one on the main view with
+--- Follow.AutoSplit, the splitscreen. Opened if not open, and closed again
+--- when no longer wanted, if we opened it.
+local function AssignViews()
+    local n = table.getn(state.follows)
+    local head = HeadSplit()
+    if n >= 2 and head then
+        OpenHead2()
+    elseif state.head2 then
+        CloseHead2()
+    end
+    local primary = (n >= 2 and not head)
+        or (n == 1 and (Config.Follow.AutoSplit or state.splitOne) and DefaultView() ~= 'CameraHead2')
+    if primary and not Views()['WorldCamera2'] then
+        SetSplit(true)
+        state.openedSplit = Views()['WorldCamera2'] and true or false
+    elseif not primary and state.openedSplit then
+        state.openedSplit = false
+        SetSplit(false)
+    end
+end
+
+--- `record` is followed no more.
+---@param record table
+local function Unfollow(record)
+    for i, r in ipairs(state.follows) do
+        if r == record then
+            table.remove(state.follows, i)
+            break
+        end
+    end
+    SayUnfollow(record)
+    record.follow = false
+    record.followCam = nil
+    record.panelSeen = nil
+end
+
+--- Views that no longer show anyone we follow: put back as they were
+--- before (`restore`, an unclick), or just forgotten (a hard scroll: the
+--- camera stays where it was taken).
+---@param restore boolean
+local function ReleaseViews(restore)
+    local shown = {}
+    for _, r in ipairs(state.follows) do
+        local key = FollowView(r)
+        if key then
+            shown[key] = true
+        end
+    end
+    for key, saved in pairs(state.before) do
+        if not shown[key] then
+            state.before[key] = nil
+            if restore and Views()[key] then
+                local ok, camera = pcall(GetCamera, key)
+                if ok and camera then
+                    pcall(camera.RestoreSettings, camera, saved)
+                end
+            end
+        end
+    end
+end
+
+--- After a change to who we follow: the views, the focus, the panel.
+local function Followed()
+    if not state.follows[1] then
+        state.splitOne = false
+    end
+    local was = state.following
+    state.following = not env.replay and state.follows[1] or false
+    if state.following and state.following ~= was and state.following.panelSeen then
+        pcall(env.panelOverlay, state.following.panelSeen, state.following.army)
+    end
+    AssignViews()
+    SayViewing()
+    SyncFocus()
+    pcall(env.panelSync)
+end
+
+--- Following stopped from elsewhere (a hard scroll on its view): that
+--- camera stays where it is; anyone else followed carries on.
 ---@param record? table
 function FollowStopped(record)
     if state.stroke then
         EndStroke()
     end
-    SayUnfollow()
-    state.following = false
-    state.before = false
-    SayViewing()
-    SyncFocus()
+    if record then
+        Unfollow(record)
+    end
+    Followed()
+    ReleaseViews(false)
 end
 
 --- A player's name was clicked in the panel: follow their view, or stop
---- (and go back to where we were looking before).
+--- (and put the view back where it was looking before). `add` (Shift, a
+--- live observer): follow them as well as whoever we follow already, two at
+--- most, side by side in the splitscreen (the earlier of two makes room).
+--- `split` (Ctrl): in the splitscreen, opened for it, the other side ours --
+--- Follow.AutoSplit for this one follow.
 ---@param record table
-function ToggleFollow(record)
+---@param add? boolean
+---@param split? boolean
+function ToggleFollow(record, add, split)
     if not env or not Config.Follow.Enabled then
         return
     end
+    -- (Two at once: live, players and observers alike.)
+    add = add and not env.replay and Live()
+    if state.stroke then
+        EndStroke()
+    end
     if record.follow then
-        record.follow = false
-        if state.stroke then
-            EndStroke()
-        end
-        SayUnfollow()
-        state.following = false
-        local before = state.before
-        state.before = false
-        local camera = Camera()
-        if before and camera then
-            pcall(camera.RestoreSettings, camera, before)
-        end
+        Unfollow(record)
     else
-        -- Only one at a time; the camera to go back to is from before the first.
-        for _, other in pairs(env.peers) do
-            if other ~= record and other.follow then
-                other.follow = false
+        if not add then
+            -- (The views keep the cameras to go back to: from before the first.)
+            while state.follows[1] do
+                Unfollow(state.follows[1])
             end
+            state.splitOne = split and true or false
+        elseif table.getn(state.follows) >= 2 then
+            Unfollow(state.follows[1])
         end
-        if state.stroke then
-            EndStroke()
-        end
-        SayUnfollow()
-        if not state.before then
-            local camera = Camera()
-            local ok, saved = false, nil
-            if camera then
-                ok, saved = pcall(camera.SaveSettings, camera)
-            end
-            state.before = ok and type(saved) == 'table' and saved or false
-        end
+        table.insert(state.follows, record)
         record.follow = true
+        record.followCam = nil
         if not env.replay then
-            state.following = record
             state.followSaidT = GetSystemTimeSeconds()
             if Live() then
                 Send(IndexOf(record), { tmf = 1, ta = record.army })
             end
-            -- An observer coaches whoever they last followed (Coach.CoachFollowed).
+            -- An observer coaches whoever they follow (Coach.CoachFollowed).
             if env.observer and Live() and Config.Coach.CoachFollowed and not state.coached[record] then
                 SetCoach(record, true)
             end
         end
     end
-    SayViewing()
-    SyncFocus()
-    pcall(env.panelSync)
+    Followed()
+    ReleaseViews(true)
 end
 
 --- The panel's "coach" box (live observers): on or off for one player, the
@@ -1283,10 +1540,13 @@ function Frame(delta)
 
     -- Following a teammate whose camera has not come: they may not have
     -- heard us. Say it again, now and then.
-    local f = state.following
-    if f and not f.cam and Live() and now - state.followSaidT >= 2 then
-        state.followSaidT = now
-        Send(IndexOf(f), { tmf = 1, ta = f.army })
+    if Live() and now - state.followSaidT >= 2 then
+        for _, f in ipairs(state.follows) do
+            if not f.cam then
+                state.followSaidT = now
+                Send(IndexOf(f), { tmf = 1, ta = f.army })
+            end
+        end
     end
 
     -- A coach following us: their cursor (record.coachFade, used by the
@@ -1344,7 +1604,9 @@ end
 function Destroy()
     ObserverTeam.Uninstall()
     if env and Live() then
-        SayUnfollow()
+        for _, r in ipairs(state.follows) do
+            SayUnfollow(r)
+        end
         for record in pairs(state.coached) do
             Send(IndexOf(record), { tmh = 0 })
         end
@@ -1361,7 +1623,17 @@ function Destroy()
     draw.ink, draw.nink = {}, 0
     draw.shape, draw.shaped = false, {}
     state.focusArmy, state.selFrom = -1, false
-    state.following, state.before = false, false
+    if state.openedSplit then
+        SetSplit(false)
+    end
+    if state.head2 then
+        CloseHead2()
+    end
+    for _, r in ipairs(state.follows) do
+        r.follow, r.followCam = false, nil
+    end
+    state.follows, state.following, state.before, state.openedSplit = {}, false, {}, false
+    state.splitOne = false
     for record in pairs(state.coached) do
         record.coached = false
     end

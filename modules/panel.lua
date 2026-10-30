@@ -11,7 +11,7 @@
 --** Built at the start of the game. In a replay, a player only gets a row
 --** once their recorded cursor data has actually turned up (the panel is rebuilt
 --** then), so players without the mod, or without recording on, are not listed.
---** The title, "TeamMouse - v4", is underlined: hovering it lists everyone's
+--** The title, "TeamMouse - vN" (the version), is underlined: hovering it lists everyone's
 --** version of TeamMouse (version.lua), as Sim Speed Balancer's panel does.
 --** Click a player's name to follow their view (coach.lua); click it again to
 --** stop (hovering a name lights its band first). Live observers also get a
@@ -128,9 +128,9 @@ local function Paint(row)
     -- Through its alpha, not Hide: showing the panel shows every child.
     row.highlight:SetAlpha((record.follow and 0.9) or (row.hover and 0.45) or 0)
     row.strike:SetAlpha(record.dead and Config.Panel.StrikeAlpha or 0)
-    -- (The player we follow has no row for themselves: theirs stands in for
-    -- their box for us.)
-    local theirs = overlay and overlay[record.follow and overlay.me or record.army]
+    -- (The player whose panel it is has no row for themselves: theirs stands
+    -- in for their box for us.)
+    local theirs = overlay and overlay[record.army == overlay.from and overlay.me or record.army]
     SetRing(row, 'checkRing', row.check, theirs and theirs.c)
     if row.viewCheck then
         SetRing(row, 'viewRing', row.viewCheck, theirs and theirs.v)
@@ -384,7 +384,8 @@ local function ShowName(label, name, room, onClick, row)
     local tip = { text = name }
     if onClick then
         tip.body = 'Click to follow their view. Click again to go back to where you were looking;'
-            .. ' scrolling hard also breaks free.'
+            .. ' scrolling hard on that view also breaks free. Shift-click a second player to watch'
+            .. ' both side by side; Ctrl-click to follow in the splitscreen, keeping the other side.'
     end
     local function Hover(on)
         if onClick and row then
@@ -403,7 +404,8 @@ local function ShowName(label, name, room, onClick, row)
         elseif onClick and (t == 'ButtonPress' or t == 'ButtonDClick')
             and not (event.Modifiers and event.Modifiers.Right) then
             Play('UI_Menu_MouseDown_Sml')
-            onClick()
+            local m = event.Modifiers or {}
+            onClick(m.Shift and true or false, m.Ctrl and true or false)
             return true
         end
         return false
@@ -647,7 +649,7 @@ local function SetUpTab(root, arrow, edge, height)
     end
 end
 
---- The title, "TeamMouse - v4", underlined: hovering it lists everyone's
+--- The title, "TeamMouse - vN" (the version), underlined: hovering it lists everyone's
 --- version (VersionList).
 ---@param body Group
 ---@param inner Group
@@ -735,8 +737,10 @@ local function MakeRow(ctx, record, top)
     local onClick = nil
     -- (An observer has no camera to follow.)
     if hooks.follow and Config.Follow.Enabled and not record.observer then
-        onClick = function()
-            hooks.follow(record)
+        -- (Shift: as well as whoever is followed already. Ctrl: in the
+        -- splitscreen, the other side ours.)
+        onClick = function(shift, ctrl)
+            hooks.follow(record, shift, ctrl)
             SyncFollow()
         end
     end
@@ -1071,10 +1075,11 @@ end
 --- Their ticks (State's string, from the player we follow), drawn as green
 --- outlines round our boxes; false takes them away. Ours stay as they are.
 ---@param state string | false
-function SetOverlay(state)
+---@param from? number   # whose it is (their army)
+function SetOverlay(state, from)
     overlay = false
     if type(state) == 'string' and string.len(state) < 4000 then
-        overlay = { me = source and source.hooks.me }
+        overlay = { me = source and source.hooks.me, from = from }
         for army, c, v in string.gfind(state, '(%d+):(%d)(%d)') do
             overlay[tonumber(army)] = { c = c == '1', v = v == '1' }
         end
